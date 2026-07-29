@@ -16,7 +16,10 @@ from typing import Any
 
 from langchain_core.messages import AIMessage
 
-from .state import CircuitState
+try:
+    from .state import CircuitState
+except ImportError:
+    from state import CircuitState
 
 logger = logging.getLogger(__name__)
 

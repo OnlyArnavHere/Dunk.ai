@@ -15,19 +15,33 @@ from typing import Any
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from .graph import compile_graph, run_workflow
-from .nodes import (
-    architecture_node,
-    component_node,
-    documentation_node,
-    eda_enrichment_node,
-    pcb_node,
-    requirements_node,
-    validation_node,
-)
-from .state import CircuitState, _merge_errors
+try:
+    from .graph import compile_graph, run_workflow, stream_workflow
+    from .nodes import (
+        architecture_node,
+        component_node,
+        documentation_node,
+        eda_enrichment_node,
+        pcb_node,
+        requirements_node,
+        validation_node,
+    )
+    from .state import CircuitState, _merge_errors
+except ImportError:
+    from graph import compile_graph, run_workflow, stream_workflow
+    from nodes import (
+        architecture_node,
+        component_node,
+        documentation_node,
+        eda_enrichment_node,
+        pcb_node,
+        requirements_node,
+        validation_node,
+    )
+    from state import CircuitState, _merge_errors
 
 load_dotenv()
 
@@ -141,8 +155,10 @@ def _build_initial_state(payload: SupervisorRequest) -> CircuitState:
     if user_input:
         state["user_input"] = user_input
 
-    history = project.get("interview_history") or project.get("interviewHistory")
-    if isinstance(history, list):
+    history = payload.messages[:-1] if len(payload.messages) > 1 else []
+    if not history:
+        history = project.get("interview_history") or project.get("interviewHistory") or []
+    if history:
         state["interview_history"] = history
 
     return state
@@ -259,12 +275,109 @@ def supervisor_endpoint(payload: SupervisorRequest) -> dict[str, Any]:
     raise HTTPException(status_code=400, detail=f"Unsupported action: {action}")
 
 
+# ---------------------------------------------------------------------------
+# SSE streaming endpoint (new — does not alter the endpoint above)
+# ---------------------------------------------------------------------------
+
+# Human-readable labels shown in progress events.
+_NODE_LABELS: dict[str, str] = {
+    "supervisor": "Starting workflow",
+    "requirements": "Analysing requirements",
+    "architecture": "Generating architecture",
+    "component": "Selecting components & building BOM",
+    "eda_enrichment": "Enriching EDA data",
+    "pcb": "Generating PCB layout",
+    "validation": "Running validation checks",
+    "documentation": "Compiling documentation",
+}
+
+
+def _sse_event(data: dict[str, Any], event: str = "progress") -> str:
+    """Format a single SSE event line.  Always ends with a double newline."""
+    payload = json.dumps(data, default=str)
+    return f"event: {event}\ndata: {payload}\n\n"
+
+
+def _stream_generator(payload: SupervisorRequest):
+    """Yield SSE text chunks as the LangGraph pipeline progresses.
+
+    Each node completion produces an ``event: progress`` chunk.
+    If an agent raises, we yield ``event: error`` so the consumer knows
+    the stream failed *after* the HTTP 200 was already sent.
+    On success the final chunk is ``event: complete`` with the full state.
+    """
+    job_id = payload.jobId or str(uuid.uuid4())
+    initial_state = _build_initial_state(payload)
+
+    # Tell the client we're starting.
+    yield _sse_event({"jobId": job_id, "node": "__start__", "label": "Pipeline starting"}, event="progress")
+
+    final_state: CircuitState = dict(initial_state)
+
+    try:
+        for node_name, state_snapshot in stream_workflow(initial_state):
+            final_state = state_snapshot
+            label = _NODE_LABELS.get(node_name, node_name)
+
+            yield _sse_event(
+                {
+                    "jobId": job_id,
+                    "node": node_name,
+                    "label": label,
+                    "status": state_snapshot.get("workflow_status", "running"),
+                    "errors": state_snapshot.get("errors") or [],
+                },
+                event="progress",
+            )
+
+    except Exception as exc:
+        logger.exception("Streaming workflow failed at node level")
+        yield _sse_event(
+            {
+                "jobId": job_id,
+                "error": str(exc),
+                "node": final_state.get("current_node", "unknown"),
+            },
+            event="error",
+        )
+        return  # Close the stream.
+
+    # Final event carries the complete serialised state.
+    yield _sse_event(
+        {"jobId": job_id, "data": _serialize_state(final_state), "status": "completed"},
+        event="complete",
+    )
+
+
+@app.post("/api/v1/supervisor/stream")
+def supervisor_stream_endpoint(payload: SupervisorRequest):
+    """SSE streaming variant of the supervisor endpoint.
+
+    Returns ``text/event-stream`` so the Node.js backend can read
+    progress events as they arrive and relay them over Socket.io.
+    """
+    return StreamingResponse(
+        _stream_generator(payload),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",  # Disable nginx buffering if proxied.
+        },
+    )
+
+
 def main() -> None:
+    import sys
     import uvicorn
+    from pathlib import Path
+
+    ai_engine_dir = Path(__file__).resolve().parent.parent.parent
+    if str(ai_engine_dir) not in sys.path:
+        sys.path.insert(0, str(ai_engine_dir))
 
     host = os.getenv("SUPERVISOR_HOST", "127.0.0.1")
     port = int(os.getenv("SUPERVISOR_PORT", "8000"))
-    uvicorn.run("agents.supervisor.server:app", host=host, port=port, reload=False)
+    uvicorn.run(app, host=host, port=port, reload=False)
 
 
 if __name__ == "__main__":

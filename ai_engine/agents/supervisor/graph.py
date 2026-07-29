@@ -2,21 +2,34 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Generator, Literal
 
 from langgraph.graph import END, START, StateGraph
 
-from .nodes import (
-    architecture_node,
-    component_node,
-    documentation_node,
-    eda_enrichment_node,
-    pcb_node,
-    requirements_node,
-    supervisor_node,
-    validation_node,
-)
-from .state import CircuitState
+try:
+    from .nodes import (
+        architecture_node,
+        component_node,
+        documentation_node,
+        eda_enrichment_node,
+        pcb_node,
+        requirements_node,
+        supervisor_node,
+        validation_node,
+    )
+    from .state import CircuitState
+except ImportError:
+    from nodes import (
+        architecture_node,
+        component_node,
+        documentation_node,
+        eda_enrichment_node,
+        pcb_node,
+        requirements_node,
+        supervisor_node,
+        validation_node,
+    )
+    from state import CircuitState
 
 
 def _route_after_requirements(state: CircuitState) -> Literal["architecture", "__end__"]:
@@ -64,3 +77,36 @@ def run_workflow(initial_state: CircuitState | None = None) -> CircuitState:
     """Execute the full pipeline and return the final state."""
     app = compile_graph()
     return app.invoke(initial_state or {})
+
+
+def stream_workflow(
+    initial_state: CircuitState | None = None,
+) -> Generator[tuple[str, CircuitState], None, None]:
+    """Yield ``(node_name, state_snapshot)`` after each node completes.
+
+    This is the streaming counterpart to :func:`run_workflow`.  The
+    compiled LangGraph ``stream()`` method returns an iterator of
+    ``{node_name: partial_update}`` dicts.  We merge each update into a
+    running state copy and yield the pair so callers can serialise
+    progress events without touching the graph internals.
+    """
+    app = compile_graph()
+    state: CircuitState = dict(initial_state or {})
+
+    for chunk in app.stream(state):
+        # chunk is {node_name: partial_state_update}
+        for node_name, update in chunk.items():
+            if isinstance(update, dict):
+                for key, value in update.items():
+                    if key == "messages":
+                        state["messages"] = list(state.get("messages") or []) + list(value or [])
+                    elif key == "errors":
+                        try:
+                            from .state import _merge_errors
+                        except ImportError:
+                            from state import _merge_errors
+                        state["errors"] = _merge_errors(state.get("errors"), value)
+                    else:
+                        state[key] = value  # type: ignore[literal-required]
+            yield node_name, dict(state)
+

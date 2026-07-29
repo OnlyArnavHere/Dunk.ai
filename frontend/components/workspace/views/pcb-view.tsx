@@ -14,11 +14,19 @@ import { toast } from 'sonner'
 import { KiCanvasViewer } from './pcb/kicanvas-viewer'
 import { Board3D } from './pcb/board-3d'
 import { SAMPLE_BOARD, SAMPLE_BOARD_NAME } from './pcb/sample-board'
+import { useWorkspaceStore } from '@/lib/store'
 
 export function PcbView({ projectId: _projectId }: { projectId?: string } = {}) {
-  // Placeholder data source — the AI engine's generated .kicad_pcb artifact
-  // will be fetched per project later and dropped into the same state
-  const [source, setSource] = useState(SAMPLE_BOARD)
+  const aiOutput = useWorkspaceStore((s) => s.aiOutput)
+  const aiBoard = (aiOutput?.pcb_ir as any)?.board_file
+
+  // Use the AI generated board if available, otherwise fallback to sample
+  const [source, setSource] = useState(aiBoard || SAMPLE_BOARD)
+
+  // Update source if aiOutput changes after mount
+  useEffect(() => {
+    if (aiBoard) setSource(aiBoard)
+  }, [aiBoard])
 
   // KiCanvas is 2D-only (alpha) — the 3D view is our own three.js preview
   const [view, setView] = useState<'2d' | '3d'>('2d')

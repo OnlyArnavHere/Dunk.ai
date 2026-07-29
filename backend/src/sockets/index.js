@@ -136,3 +136,10 @@ export const emitAIStream = (io, jobId, chunk) => {
 export const emitAIComplete = (io, jobId, result) => {
   io.to(`job:${jobId}`).emit('ai:complete', { jobId, result });
 };
+
+/**
+ * Emit AI error to subscribers when the pipeline fails mid-stream.
+ */
+export const emitAIError = (io, jobId, error) => {
+  io.to(`job:${jobId}`).emit('ai:error', { jobId, error });
+};

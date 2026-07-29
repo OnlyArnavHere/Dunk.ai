@@ -57,23 +57,23 @@ export function fromEngineResult(json: Record<string, unknown>): HardwareSpec {
     nodes?: EngineNode[]
     edges?: EngineEdge[]
   }
-  const nodes: HardwareNodeSpec[] = (graph.nodes || []).map((n) => {
-    const category = n.data?.category || ''
+  const nodes: HardwareNodeSpec[] = (graph.nodes || []).map((n: any) => {
+    const category = n.data?.category || n.category || ''
     return {
       id: n.id,
       kind: CATEGORY_TO_KIND[category.toLowerCase()] || 'peripheral',
-      label: n.data?.label || n.id,
+      label: n.data?.label || n.label || n.id,
       category,
-      inferred: n.data?.inferred,
-      sourceRequirements: n.data?.sourceRequirements,
+      inferred: n.data?.inferred || n.inferred,
+      sourceRequirements: n.data?.sourceRequirements || n.sourceRequirements,
       position: n.position,
     }
   })
-  const edges: HardwareEdgeSpec[] = (graph.edges || []).map((e) => ({
+  const edges: HardwareEdgeSpec[] = (graph.edges || []).map((e: any) => ({
     id: e.id,
     source: e.source,
     target: e.target,
-    bus: e.data?.interface || String(e.label || 'GPIO'),
+    bus: e.data?.interface || e.interface || String(e.label || 'GPIO'),
     label: typeof e.label === 'string' ? e.label : undefined,
   }))
   return { meta: { name: 'AI architecture' }, nodes, edges }

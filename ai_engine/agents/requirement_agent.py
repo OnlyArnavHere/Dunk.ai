@@ -42,7 +42,7 @@ from typing import Any, Literal
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_groq import ChatGroq
-from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 __all__ = [
     "HardwareRequirements",
@@ -57,10 +57,10 @@ __all__ = [
 # Configuration (env-overridable; nothing here touches the network)
 # ---------------------------------------------------------------------------
 
-MODEL_NAME = os.getenv("GROQ_MODEL", "llama-3.3-70b-versatile")
+MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 TEMPERATURE = float(os.getenv("REQUIREMENT_AGENT_TEMPERATURE", "0.2"))
-MIN_INTERVIEW_TURNS = int(os.getenv("REQUIREMENT_AGENT_MIN_TURNS", "5"))
-MAX_INTERVIEW_TURNS = int(os.getenv("REQUIREMENT_AGENT_MAX_TURNS", "7"))
+MIN_INTERVIEW_TURNS = int(os.getenv("REQUIREMENT_AGENT_MIN_TURNS", "0"))
+MAX_INTERVIEW_TURNS = int(os.getenv("REQUIREMENT_AGENT_MAX_TURNS", "3"))
 # How many recent chat messages to send back to the model each turn. Keeps
 # per-call token cost (and therefore $ and latency) bounded on long interviews.
 HISTORY_WINDOW = int(os.getenv("REQUIREMENT_AGENT_HISTORY_WINDOW", "14"))
@@ -152,6 +152,13 @@ class InterviewResponse(BaseModel):
     question: str | None = None
     options: list[str] | None = None
     requirements: HardwareRequirements | None = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def infer_status(cls, data: dict) -> dict:
+        if "status" not in data:
+            data["status"] = "complete" if data.get("requirements") else "question"
+        return data
 
 
 class QuestionOptions(BaseModel):

@@ -47,7 +47,7 @@ from langchain_groq import ChatGroq
 # llama-3.3-70b-versatile, as requested. Note: Groq has this on a deprecation
 # path (announced June 17, 2026) in favor of openai/gpt-oss-120b /
 # qwen/qwen3.6-27b -- override via GROQ_MODEL if/when it's retired.
-DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "openai/gpt-oss-120b")
 
 ALLOWED_CATEGORIES = {
     "Processing", "Power", "Communication", "Input", "Output", "Sensor",
@@ -55,7 +55,7 @@ ALLOWED_CATEGORIES = {
 }
 ALLOWED_INTERFACES = {
     "GPIO", "UART", "SPI", "I2C", "USB", "CAN", "Ethernet", "PCIe",
-    "SDIO", "Power", "BLE", "WiFi", "RF", "Audio",
+    "SDIO", "Power", "BLE", "WiFi", "RF", "Audio", "Analog", "ADC", "PWM", "I2S",
 }
 
 SUBSYSTEM_INFERENCE_PROMPT = """\

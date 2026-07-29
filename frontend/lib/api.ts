@@ -183,6 +183,12 @@ export const aiApi = {
       body: JSON.stringify(data),
     }),
 
+  runStream: (data: { projectId?: string; action?: string; messages?: Array<{ role: string; content: string }> }) =>
+    request<{ jobId: string }>('/ai/run-stream', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
   status: (jobId: string) => request(`/ai/status/${jobId}`),
 
   cancel: (jobId: string) =>

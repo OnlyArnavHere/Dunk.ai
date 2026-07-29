@@ -9,6 +9,7 @@ import { ValidationView } from './views/validation-view'
 import { DocsView } from './views/docs-view'
 import { PcbView } from './views/pcb-view'
 import { NewProjectChat } from './new-project-chat'
+import { EdaViewer } from './views/eda-viewer'
 import { useWorkspaceStore } from '@/lib/store'
 
 const tabs = [
@@ -18,6 +19,7 @@ const tabs = [
   { id: 'architecture', label: 'Architecture' },
   { id: 'bom', label: 'BOM' },
   { id: 'validation', label: 'Validation' },
+  { id: 'eda', label: 'EDA' },
   { id: 'docs', label: 'Docs' },
 ]
 
@@ -29,20 +31,10 @@ export function MainEditor() {
     return <NewProjectChat />
   }
 
-  const viewComponents: Record<string, React.ReactNode> = {
-    chat: <ChatInterface projectId={activeProjectId} />,
-    requirements: <RequirementsView projectId={activeProjectId} />,
-    architecture: <ArchitectureView projectId={activeProjectId} />,
-    bom: <BOMView projectId={activeProjectId} />,
-    validation: <ValidationView projectId={activeProjectId} />,
-    docs: <DocsView projectId={activeProjectId} />,
-    pcb: <PcbView projectId={activeProjectId} />,
-  }
-
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background/50 via-background/40 to-background/50">
       {/* View Tabs */}
-      <div className="border-b border-foreground/10 px-8 pt-6">
+      <div className="border-b border-foreground/10 px-8 pt-6 shrink-0">
         <div className="flex items-center gap-2 pb-6 overflow-x-auto">
           {tabs.map((tab) => (
             <button
@@ -63,9 +55,34 @@ export function MainEditor() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 overflow-hidden">
-        {viewComponents[activeTab] || <ChatInterface projectId={activeProjectId} />}
+      {/* Content — ALL views stay mounted; only the active one is visible.
+          This preserves chat message history, loading state, and socket listeners
+          when the user switches to another tab and comes back. */}
+      <div className="flex-1 overflow-hidden relative">
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'chat' ? 'block' : 'hidden'}`}>
+          <ChatInterface projectId={activeProjectId} />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'pcb' ? 'block' : 'hidden'}`}>
+          <PcbView projectId={activeProjectId} />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'requirements' ? 'block' : 'hidden'}`}>
+          <RequirementsView projectId={activeProjectId} />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'architecture' ? 'block' : 'hidden'}`}>
+          <ArchitectureView projectId={activeProjectId} />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'bom' ? 'block' : 'hidden'}`}>
+          <BOMView projectId={activeProjectId} />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'validation' ? 'block' : 'hidden'}`}>
+          <ValidationView projectId={activeProjectId} />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'eda' ? 'block' : 'hidden'}`}>
+          <EdaViewer projectId={activeProjectId} />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'docs' ? 'block' : 'hidden'}`}>
+          <DocsView projectId={activeProjectId} />
+        </div>
       </div>
     </div>
   )

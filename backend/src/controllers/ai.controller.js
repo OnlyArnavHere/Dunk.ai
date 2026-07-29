@@ -3,6 +3,7 @@ import { send } from '../utils/response.js';
 import { getProject } from '../services/project.service.js';
 import {
   callSupervisor,
+  callSupervisorStream,
   getSupervisorStatus,
   cancelSupervisorJob,
 } from '../services/supervisor.service.js';
@@ -137,4 +138,45 @@ export const projectArtifacts = asyncHandler(async (req, res) => {
 export const cancel = asyncHandler(async (req, res) => {
   const result = await cancelSupervisorJob(req.body.jobId);
   send(res, { message: 'Job cancelled', data: result });
+});
+
+// POST /api/v1/ai/run-stream
+// Kicks off the streaming pipeline and returns immediately with a jobId.
+// The frontend subscribes to Socket.io room `job:<jobId>` and receives:
+//   ai:progress  — after each agent node completes
+//   ai:error     — if the pipeline fails mid-stream
+//   ai:complete  — when the full workflow finishes
+export const runStream = asyncHandler(async (req, res) => {
+  const project = req.body.projectId
+    ? await getProject(req.body.projectId, req.user, true)
+    : null;
+
+  const jobId = uuidv4();
+  const io = req.app.get('io');
+
+  // Fire-and-forget: the stream runs in the background and emits
+  // Socket.io events as progress arrives.  We don't await it here.
+  callSupervisorStream(io, {
+    action: req.body.action || 'run_workflow',
+    project: project ? project.toObject() : {},
+    messages: req.body.messages || [],
+    files: req.body.files || [],
+    jobId,
+  }).catch((err) => {
+    console.error(`[AI Stream] job ${jobId} failed:`, err.message);
+  });
+
+  await logActivity('ai_request', req.user._id, {
+    action: req.body.action || 'run_workflow',
+    agentType: req.body.agentType,
+    projectId: project?._id,
+    jobId,
+    streaming: true,
+  }, req);
+
+  send(res, {
+    status: 202,
+    message: 'Streaming workflow started — subscribe to Socket.io room job:<jobId>',
+    data: { jobId },
+  });
 });
