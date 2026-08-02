@@ -84,7 +84,10 @@ export function PricingSection() {
             Monthly
           </span>
           <button
+            type="button"
             onClick={() => setIsAnnual(!isAnnual)}
+            aria-pressed={isAnnual}
+            aria-label={isAnnual ? 'Switch to monthly billing' : 'Switch to annual billing'}
             className="relative w-14 h-7 bg-foreground/10 rounded-full p-1 transition-colors hover:bg-foreground/20"
           >
             <div
@@ -157,6 +160,7 @@ export function PricingSection() {
 
               {/* CTA */}
               <button
+                type="button"
                 className={`w-full py-4 flex items-center justify-center gap-2 text-sm font-medium transition-all group ${
                   plan.popular
                     ? "bg-foreground text-primary-foreground hover:bg-foreground/90"

@@ -1,6 +1,7 @@
 'use client'
 
 import { Suspense, useState } from 'react'
+import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { ArrowRight, Loader2 } from 'lucide-react'
 import { AuthShell } from '@/components/auth/auth-shell'
@@ -38,8 +39,8 @@ function ResetPasswordContent() {
   if (!token) {
     return (
       <AuthShell eyebrow="Account recovery" title="Invalid link" description="The reset link is invalid or has expired. Please request a new one.">
-        <Button onClick={() => router.push('/forgot-password')} className="h-12 w-full rounded-xl bg-foreground text-background hover:bg-foreground/90">
-          Request new link
+        <Button asChild className="h-12 w-full rounded-xl bg-foreground text-background hover:bg-foreground/90">
+          <Link href="/forgot-password">Request new link</Link>
         </Button>
       </AuthShell>
     )

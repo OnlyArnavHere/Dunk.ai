@@ -117,6 +117,8 @@ export function TestimonialsSection() {
               {testimonials.map((_, idx) => (
                 <button
                   key={idx}
+                  type="button"
+                  aria-label={`Show testimonial ${idx + 1}`}
                   onClick={() => {
                     setIsAnimating(true);
                     setTimeout(() => {

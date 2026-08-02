@@ -236,7 +236,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
   const composer = (
     <div className="mx-auto w-full max-w-[780px] px-5">
       <div className="flex h-[58px] items-center gap-2 rounded-full border border-foreground/15 bg-card/90 px-3 shadow-[0_14px_50px_rgba(0,0,0,0.22)] backdrop-blur-md transition-colors focus-within:border-foreground/35">
-        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Attach a file">
+        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Attach a file" aria-label="Attach a file">
           <Paperclip className="h-4 w-4" />
         </Button>
         <Input
@@ -246,10 +246,11 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           placeholder={placeholder || placeholderPrompts[0]}
           className="h-10 flex-1 border-0 bg-transparent px-1 text-sm shadow-none placeholder:text-muted-foreground/80 focus-visible:ring-0"
         />
-        <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Use voice input">
+        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Use voice input" aria-label="Use voice input">
           <Mic className="h-4 w-4" />
         </Button>
         <Button
+          type="button"
           onClick={send}
           disabled={!input.trim() || loading}
           size="icon"
@@ -283,6 +284,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           {suggestions.map((s) => (
             <button
               key={s}
+                type="button"
               onClick={() => setInput(s)}
               className="rounded-full border border-border bg-secondary/50 px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground"
             >
@@ -316,6 +318,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
                     {message.options.map((opt) => (
                       <button
                         key={opt}
+                        type="button"
                         disabled={loading}
                         onClick={() => { setInput(''); runAgent(opt) }}
                         className="rounded-full border border-foreground/20 bg-secondary/60 px-3 py-1.5 text-xs text-foreground transition-all hover:bg-foreground hover:text-background active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"

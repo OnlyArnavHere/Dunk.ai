@@ -66,6 +66,8 @@ export function TopBar() {
           variant="ghost"
           size="icon"
           onClick={() => handleAction('Share')}
+          aria-label="Share project"
+          title="Share project"
           className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all duration-300 active:scale-90"
         >
           <Share2 className="w-4 h-4" />
@@ -76,6 +78,8 @@ export function TopBar() {
           variant="ghost"
           size="icon"
           onClick={() => handleAction('Git')}
+          aria-label="Open Git actions"
+          title="Open Git actions"
           className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all duration-300 active:scale-90"
         >
           <GitBranch className="w-4 h-4" />
@@ -86,6 +90,8 @@ export function TopBar() {
           variant="ghost"
           size="icon"
           onClick={() => setShowNotifications(true)}
+          aria-label="Open notifications"
+          title="Open notifications"
           className="relative h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all duration-300 active:scale-90"
         >
           <Bell className="w-4 h-4" />
@@ -101,6 +107,8 @@ export function TopBar() {
           variant="ghost"
           size="icon"
           onClick={() => router.push('/settings')}
+          aria-label="Open settings"
+          title="Open settings"
           className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all duration-300 active:scale-90"
         >
           <Settings className="w-4 h-4" />
@@ -112,6 +120,8 @@ export function TopBar() {
             <Button
               variant="ghost"
               size="icon"
+              aria-label="Project actions"
+              title="Project actions"
               className="h-10 w-10 text-muted-foreground hover:text-foreground hover:bg-background/40 transition-all duration-300 active:scale-90"
             >
               <MoreVertical className="w-4 h-4" />

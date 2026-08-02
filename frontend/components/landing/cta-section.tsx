@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { AnimatedTetrahedron } from "./animated-tetrahedron";
@@ -63,24 +64,15 @@ export function CtaSection() {
                 </p>
 
                 <div className="flex flex-col sm:flex-row items-start gap-4">
-                  <a href="/signup">
-                    <Button
-                      size="lg"
-                      className="bg-foreground hover:bg-foreground/90 text-background px-8 h-14 text-base rounded-full group"
-                    >
+                  <Button asChild size="lg" className="bg-foreground hover:bg-foreground/90 text-background px-8 h-14 text-base rounded-full group">
+                    <Link href="/signup">
                       Start building free
                       <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
-                    </Button>
-                  </a>
-                  <a href="/workspace">
-                    <Button
-                      size="lg"
-                      variant="outline"
-                      className="h-14 px-8 text-base rounded-full border-foreground/20 hover:bg-foreground/5"
-                    >
-                      Launch workspace
-                    </Button>
-                  </a>
+                    </Link>
+                  </Button>
+                  <Button asChild size="lg" variant="outline" className="h-14 px-8 text-base rounded-full border-foreground/20 hover:bg-foreground/5">
+                    <Link href="/workspace">Launch workspace</Link>
+                  </Button>
                 </div>
 
                 <p className="text-sm text-muted-foreground mt-8 font-mono">

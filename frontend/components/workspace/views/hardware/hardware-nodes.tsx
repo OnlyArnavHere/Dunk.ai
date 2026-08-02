@@ -20,34 +20,34 @@ import type { HardwareFlowNode, HardwareKind } from './types'
 
 const ACCENT: Record<HardwareKind, { border: string; text: string; glow: string; chip: string }> = {
   mcu: {
-    border: 'border-cyan-400/50',
-    text: 'text-cyan-500 dark:text-cyan-400',
-    glow: 'shadow-[0_0_24px_-4px_rgba(34,211,238,0.55)]',
-    chip: 'bg-cyan-400/10 border-cyan-400/30',
+    border: 'border-cyan-500/30 dark:border-cyan-400/50',
+    text: 'text-cyan-600 dark:text-cyan-400',
+    glow: 'shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.28)]',
+    chip: 'border-cyan-500/15 bg-cyan-50 text-cyan-700 dark:border-cyan-400/25 dark:bg-cyan-400/10 dark:text-cyan-300',
   },
   sensor: {
-    border: 'border-emerald-400/50',
-    text: 'text-emerald-500 dark:text-emerald-400',
-    glow: 'shadow-[0_0_24px_-4px_rgba(52,211,153,0.55)]',
-    chip: 'bg-emerald-400/10 border-emerald-400/30',
+    border: 'border-emerald-500/30 dark:border-emerald-400/50',
+    text: 'text-emerald-600 dark:text-emerald-400',
+    glow: 'shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.28)]',
+    chip: 'border-emerald-500/15 bg-emerald-50 text-emerald-700 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-300',
   },
   memory: {
-    border: 'border-violet-400/50',
-    text: 'text-violet-500 dark:text-violet-400',
-    glow: 'shadow-[0_0_24px_-4px_rgba(167,139,250,0.55)]',
-    chip: 'bg-violet-400/10 border-violet-400/30',
+    border: 'border-violet-500/30 dark:border-violet-400/50',
+    text: 'text-violet-600 dark:text-violet-400',
+    glow: 'shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.28)]',
+    chip: 'border-violet-500/15 bg-violet-50 text-violet-700 dark:border-violet-400/25 dark:bg-violet-400/10 dark:text-violet-300',
   },
   power: {
-    border: 'border-amber-400/50',
-    text: 'text-amber-500 dark:text-amber-400',
-    glow: 'shadow-[0_0_24px_-4px_rgba(251,191,36,0.55)]',
-    chip: 'bg-amber-400/10 border-amber-400/30',
+    border: 'border-amber-500/30 dark:border-amber-400/50',
+    text: 'text-amber-600 dark:text-amber-400',
+    glow: 'shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.28)]',
+    chip: 'border-amber-500/15 bg-amber-50 text-amber-700 dark:border-amber-400/25 dark:bg-amber-400/10 dark:text-amber-300',
   },
   peripheral: {
-    border: 'border-pink-400/50',
-    text: 'text-pink-500 dark:text-pink-400',
-    glow: 'shadow-[0_0_24px_-4px_rgba(244,114,182,0.55)]',
-    chip: 'bg-pink-400/10 border-pink-400/30',
+    border: 'border-pink-500/30 dark:border-pink-400/50',
+    text: 'text-pink-600 dark:text-pink-400',
+    glow: 'shadow-[0_8px_24px_rgba(15,23,42,0.08)] dark:shadow-[0_12px_32px_rgba(0,0,0,0.28)]',
+    chip: 'border-pink-500/15 bg-pink-50 text-pink-700 dark:border-pink-400/25 dark:bg-pink-400/10 dark:text-pink-300',
   },
 }
 
@@ -88,27 +88,29 @@ function Shell({
   const a = ACCENT[kind]
   return (
     <div
-      className={`w-[220px] rounded-lg border bg-background/95 backdrop-blur transition-all duration-300 ${a.border} ${a.text} ${
-        selected ? `${a.glow} scale-[1.02]` : 'shadow-lg'
+      className={`group w-[220px] overflow-hidden rounded-lg border bg-white text-slate-900 backdrop-blur transition-[transform,border-color,background-color,box-shadow,opacity] duration-200 dark:bg-[#111315] dark:text-foreground/95 ${a.border} ${
+        selected
+          ? `${a.glow} border-current bg-slate-50 dark:bg-[#14171a]`
+          : 'shadow-[0_8px_24px_rgba(15,23,42,0.08)] hover:-translate-y-px hover:border-slate-300 hover:bg-slate-50 hover:shadow-[0_10px_28px_rgba(15,23,42,0.12)] dark:shadow-[0_1px_0_rgba(255,255,255,0.03),0_10px_24px_rgba(0,0,0,0.26)] dark:hover:border-white/12 dark:hover:bg-[#131519] dark:hover:shadow-[0_1px_0_rgba(255,255,255,0.04),0_14px_28px_rgba(0,0,0,0.3)]'
       } ${dimmed ? 'opacity-30' : 'opacity-100'}`}
     >
       <Pins accent={a.text} />
       {/* Header strip */}
-      <div className={`flex items-center justify-between gap-2 border-b px-3 py-1.5 ${a.border}`}>
-        <span className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.18em]">
+      <div className={`flex items-center justify-between gap-2 border-b border-slate-200 bg-white px-3 py-1.5 dark:border-white/8 dark:bg-white/[0.02] ${a.border}`}>
+        <span className={`flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-[0.24em] ${a.text}`}>
           <Icon className="h-3 w-3" />
           {tag}
         </span>
         {inferred && (
-          <span className="rounded-sm border border-dashed border-current px-1 font-mono text-[8px] uppercase opacity-70">
+          <span className="rounded-full border border-slate-200 bg-slate-50 px-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-slate-400 dark:border-white/10 dark:bg-white/[0.03] dark:text-muted-foreground">
             inferred
           </span>
         )}
       </div>
       {/* Body */}
       <div className="px-3 py-2.5">
-        <p className="text-sm font-medium text-foreground">{title}</p>
-        {part && <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{part}</p>}
+        <p className="text-[15px] font-semibold leading-5 text-slate-900 dark:text-foreground">{title}</p>
+        {part && <p className="mt-0.5 font-mono text-[10px] text-slate-500 dark:text-muted-foreground">{part}</p>}
         {children}
       </div>
     </div>
@@ -117,7 +119,7 @@ function Shell({
 
 function Chip({ kind, children }: { kind: HardwareKind; children: React.ReactNode }) {
   return (
-    <span className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 font-mono text-[9px] ${ACCENT[kind].chip}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] ${ACCENT[kind].chip}`}>
       {children}
     </span>
   )
@@ -150,7 +152,7 @@ export const SensorNode = memo(({ data, selected }: NodeProps<HardwareFlowNode>)
       <div className="mt-2 flex items-center justify-between gap-2">
         {s.signal && <Chip kind="sensor">{s.signal}</Chip>}
         {s.reading && (
-          <span className="flex items-center gap-1.5 font-mono text-[10px] text-foreground/80">
+          <span className="flex items-center gap-1.5 font-mono text-[10px] text-slate-600 dark:text-foreground/80">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
             {s.reading}
           </span>
@@ -187,7 +189,7 @@ export const PowerNode = memo(({ data, selected }: NodeProps<HardwareFlowNode>) 
         ))}
       </div>
       {s.draw && s.draw !== '—' && (
-        <p className="mt-1.5 font-mono text-[9px] text-muted-foreground">draw: {s.draw}</p>
+        <p className="mt-1.5 font-mono text-[9px] text-slate-500 dark:text-muted-foreground">draw: {s.draw}</p>
       )}
     </Shell>
   )

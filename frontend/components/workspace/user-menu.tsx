@@ -44,6 +44,8 @@ export function UserMenu() {
         <Button
           variant="ghost"
           size="icon"
+          aria-label="Open user menu"
+          title="Open user menu"
           className="h-9 w-9 rounded-full hover:bg-background/40 transition-all duration-300 active:scale-90"
         >
           <Avatar className="h-8 w-8">

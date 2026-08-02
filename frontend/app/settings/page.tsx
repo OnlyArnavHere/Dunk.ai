@@ -125,6 +125,8 @@ function SettingsContent() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        type="button"
+                        aria-label={visible[provider.id] ? 'Hide key' : 'Show key'}
                         onClick={() => setVisible((v) => ({ ...v, [provider.id]: !v[provider.id] }))}
                         className="h-10 w-10 text-muted-foreground hover:text-foreground"
                         title={visible[provider.id] ? 'Hide key' : 'Show key'}
@@ -134,6 +136,8 @@ function SettingsContent() {
                       <Button
                         variant="ghost"
                         size="icon"
+                        type="button"
+                        aria-label="Remove key"
                         onClick={() => handleRemoveKey(provider.id)}
                         className="h-10 w-10 text-destructive hover:bg-destructive/10"
                         title="Remove key"
@@ -185,6 +189,7 @@ function SettingsContent() {
               <Button
                 variant="outline"
                 size="sm"
+                type="button"
                 onClick={() => setTheme(light ? 'dark' : 'light')}
                 className="text-xs border-foreground/10"
               >
@@ -208,6 +213,7 @@ function SettingsContent() {
             <Button
               variant="outline"
               size="sm"
+              type="button"
               onClick={() => router.push('/profile')}
               className="text-xs border-foreground/10"
             >

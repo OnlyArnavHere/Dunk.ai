@@ -101,6 +101,8 @@ function ProfileContent() {
           <Button
             variant="ghost"
             size="icon"
+            type="button"
+            aria-label="Back to workspace"
             onClick={() => router.push('/workspace')}
             className="h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
           >
@@ -247,6 +249,7 @@ function ProfileContent() {
             </div>
             <Button
               variant="outline"
+              type="button"
               onClick={handleLogout}
               disabled={loggingOut}
               className="rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
