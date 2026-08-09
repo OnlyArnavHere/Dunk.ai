@@ -26,6 +26,9 @@ interface WorkspaceState {
   aiOutput: AiOutput | null
   pipelineProgress: PipelineProgress
 
+  // Counter incremented by sidebar "New Chat" to signal chat-interface to reset
+  chatResetCounter: number
+
   setActiveProjectId: (id: string | null) => void
   setActiveTab: (tab: string) => void
   toggleSidebar: () => void
@@ -35,6 +38,7 @@ interface WorkspaceState {
   clearAiOutput: () => void
   setPipelineProgress: (progress: PipelineProgress) => void
   clearPipelineProgress: () => void
+  triggerChatReset: () => void
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
@@ -44,6 +48,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   pendingPrompt: null,
   aiOutput: null,
   pipelineProgress: { activeNode: '', completedNodes: [] },
+  chatResetCounter: 0,
 
   setActiveProjectId: (id) => set({ activeProjectId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
@@ -54,4 +59,5 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   clearAiOutput: () => set({ aiOutput: null }),
   setPipelineProgress: (progress) => set({ pipelineProgress: progress }),
   clearPipelineProgress: () => set({ pipelineProgress: { activeNode: '', completedNodes: [] } }),
+  triggerChatReset: () => set((state) => ({ chatResetCounter: state.chatResetCounter + 1 })),
 }))

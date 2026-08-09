@@ -88,29 +88,29 @@ function Shell({
   const a = ACCENT[kind]
   return (
     <div
-      className={`group w-[230px] overflow-hidden rounded-xl border bg-slate-900/95 text-slate-100 backdrop-blur-xl transition-[transform,border-color,background-color,box-shadow,opacity] duration-200 dark:bg-[#16191d] dark:text-slate-100 ${a.border} ${
+      className={`group w-[230px] overflow-hidden rounded-xl border bg-white/95 text-slate-900 backdrop-blur-xl transition-[transform,border-color,background-color,box-shadow,opacity] duration-200 dark:bg-[#16191d] dark:text-slate-100 ${a.border} ${
         selected
-          ? `${a.glow} border-current bg-slate-850 dark:bg-[#1d2126]`
-          : 'shadow-[0_8px_24px_rgba(0,0,0,0.3)] hover:-translate-y-0.5 hover:border-slate-400 dark:hover:border-white/30 dark:hover:bg-[#1a1e23]'
+          ? `${a.glow} border-current bg-slate-50 dark:bg-[#1d2126]`
+          : 'shadow-[0_6px_20px_rgba(0,0,0,0.06)] hover:-translate-y-0.5 hover:border-slate-400 dark:shadow-[0_8px_24px_rgba(0,0,0,0.3)] dark:hover:border-white/30 dark:hover:bg-[#1a1e23]'
       } ${dimmed ? 'opacity-30' : 'opacity-100'}`}
     >
       <Pins accent={a.text} />
       {/* Header strip */}
-      <div className={`flex items-center justify-between gap-2 border-b border-slate-700/60 bg-slate-800/80 px-3 py-2 dark:border-white/10 dark:bg-white/[0.05] ${a.border}`}>
+      <div className={`flex items-center justify-between gap-2 border-b border-slate-200/80 bg-slate-100/80 px-3 py-2 dark:border-white/10 dark:bg-white/[0.05] ${a.border}`}>
         <span className={`flex items-center gap-1.5 font-mono text-[10px] font-bold uppercase tracking-[0.24em] ${a.text}`}>
           <Icon className="h-3.5 w-3.5" />
           {tag}
         </span>
         {inferred && (
-          <span className="rounded-full border border-slate-600 bg-slate-700/60 px-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-slate-300 dark:border-white/15 dark:bg-white/[0.08] dark:text-slate-300">
+          <span className="rounded-full border border-slate-300 bg-slate-200/80 px-1.5 font-mono text-[8px] uppercase tracking-[0.18em] text-slate-700 dark:border-white/15 dark:bg-white/[0.08] dark:text-slate-300">
             inferred
           </span>
         )}
       </div>
       {/* Body */}
       <div className="px-3.5 py-3">
-        <p className="text-[14px] font-semibold leading-5 text-white dark:text-slate-100">{title}</p>
-        {part && <p className="mt-1 font-mono text-[11px] font-medium text-slate-300 dark:text-slate-300">{part}</p>}
+        <p className="text-[14px] font-semibold leading-5 text-slate-900 dark:text-slate-100">{title}</p>
+        {part && <p className="mt-1 font-mono text-[11px] font-medium text-slate-600 dark:text-slate-300">{part}</p>}
         {children}
       </div>
     </div>
@@ -152,8 +152,8 @@ export const SensorNode = memo(({ data, selected }: NodeProps<HardwareFlowNode>)
       <div className="mt-2.5 flex items-center justify-between gap-2">
         {s.signal && <Chip kind="sensor">{s.signal}</Chip>}
         {s.reading && (
-          <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium text-emerald-400 dark:text-emerald-300">
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+          <span className="flex items-center gap-1.5 font-mono text-[10px] font-medium text-emerald-600 dark:text-emerald-300">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500 dark:bg-emerald-400" />
             {s.reading}
           </span>
         )}
@@ -189,7 +189,7 @@ export const PowerNode = memo(({ data, selected }: NodeProps<HardwareFlowNode>) 
         ))}
       </div>
       {s.draw && s.draw !== '—' && (
-        <p className="mt-2 font-mono text-[10px] font-medium text-amber-300/90 dark:text-amber-300">draw: {s.draw}</p>
+        <p className="mt-2 font-mono text-[10px] font-medium text-amber-700 dark:text-amber-300">draw: {s.draw}</p>
       )}
     </Shell>
   )

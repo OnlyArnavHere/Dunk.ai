@@ -1,55 +1,39 @@
-import type { ApiResponse } from './types'
-
-const API_BASE = '/api/v1'
-
-class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-    public errors: unknown[] = []
-  ) {
-    super(message)
-  }
-}
+import { api, ApiError } from './axios-client'
 
 async function request<T = unknown>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const url = `${API_BASE}${path}`
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+  const method = (options.method || 'GET').toLowerCase()
+  let bodyData: unknown = undefined
+  if (options.body) {
+    if (typeof options.body === 'string') {
+      try {
+        bodyData = JSON.parse(options.body)
+      } catch {
+        bodyData = options.body
+      }
+    } else {
+      bodyData = options.body
+    }
   }
-  // Merge caller-provided headers if they're a plain object
+  const config: Record<string, unknown> = {}
   if (options.headers && typeof options.headers === 'object' && !(options.headers instanceof Headers)) {
-    Object.assign(headers, options.headers)
-  } else if (options.headers instanceof Headers) {
-    options.headers.forEach((value, key) => {
-      headers[key] = value
-    })
+    config.headers = options.headers
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include', // Send cookies for auth
-  })
-
-  const data: ApiResponse<T> = await response.json().catch(() => ({
-    success: false,
-    message: 'Network error',
-    data: null as T,
-    errors: [],
-    timestamp: new Date().toISOString(),
-  }))
-
-  if (!response.ok || !data.success) {
-    const message = data.message || `Request failed with status ${response.status}`
-    throw new ApiError(response.status, message, data.errors)
+  if (method === 'get') {
+    return api.get<unknown, T>(path, config)
+  } else if (method === 'post') {
+    return api.post<unknown, T>(path, bodyData, config)
+  } else if (method === 'patch') {
+    return api.patch<unknown, T>(path, bodyData, config)
+  } else if (method === 'put') {
+    return api.put<unknown, T>(path, bodyData, config)
+  } else if (method === 'delete') {
+    return api.delete<unknown, T>(path, config)
   }
-
-  return data.data
+  return api.request<unknown, T>({ url: path, method, data: bodyData, ...config })
 }
 
 // ---- Auth API ----
@@ -173,6 +157,9 @@ export const chatApi = {
 
   delete: (chatId: string) =>
     request(`/chats/${chatId}`, { method: 'DELETE' }),
+
+  clearMessages: (chatId: string) =>
+    request(`/chats/${chatId}/messages`, { method: 'DELETE' }),
 }
 
 // ---- AI API ----

@@ -59,14 +59,10 @@ __all__ = [
 
 MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 TEMPERATURE = float(os.getenv("REQUIREMENT_AGENT_TEMPERATURE", "0.2"))
-MIN_INTERVIEW_TURNS = min(10, max(1, int(os.getenv("REQUIREMENT_AGENT_MIN_TURNS", "2"))))
-# Ten is a product limit, not a deployment default. The dynamic per-project
-# budget below normally completes much sooner; this is the absolute guardrail.
+MIN_INTERVIEW_TURNS = min(10, max(1, int(os.getenv("REQUIREMENT_AGENT_MIN_TURNS", "4"))))
+# Ten is a product limit, not a deployment default.
 MAX_INTERVIEW_TURNS = 10
-# How many recent chat messages to send back to the model each turn. Keeps
-# per-call token cost (and therefore $ and latency) bounded on long interviews.
-# Keep enough context for the current decision while avoiding the rapidly
-# growing prompt that can exhaust a provider's token-per-minute allowance.
+# How many recent chat messages to send back to the model each turn.
 HISTORY_WINDOW = min(8, max(4, int(os.getenv("REQUIREMENT_AGENT_HISTORY_WINDOW", "8"))))
 
 
@@ -155,7 +151,7 @@ class InterviewResponse(BaseModel):
     status: Literal["question", "complete"]
     question: str | None = None
     options: list[str] | None = None
-    selection_mode: Literal["single", "multiple"] = "single"
+    selection_mode: Literal["single", "multiple"] = "multiple"
     requirements: HardwareRequirements | None = None
 
     @model_validator(mode="before")
@@ -187,7 +183,7 @@ class InterviewResponse(BaseModel):
                 label = item.strip()
                 if label and label not in labels:
                     labels.append(label)
-        return labels[:4] if labels else None
+        return labels[:6] if labels else None
 
     @model_validator(mode="after")
     def validate_interview_shape(self) -> "InterviewResponse":
@@ -197,16 +193,23 @@ class InterviewResponse(BaseModel):
             if self.requirements is not None:
                 raise ValueError("question status cannot include final requirements")
             
-            # Ensure 2 to 4 options are ALWAYS present for user interaction
+            # Ensure 3 to 6 separated options are ALWAYS present for multi-select interaction
             opts = list(self.options or [])
-            if len(opts) < 2:
-                defaults = ["Standard baseline configuration", "High-performance / custom setup", "Low-power / compact mode", "Full-featured expansion mode"]
+            if len(opts) < 3:
+                defaults = [
+                    "Standard Baseline",
+                    "High Performance Mode",
+                    "Ultra Low-Power Mode",
+                    "Modular Expansion Support",
+                    "Rugged Outdoor Protection",
+                    "Compact Form-Factor"
+                ]
                 for default_opt in defaults:
                     if default_opt not in opts:
                         opts.append(default_opt)
-                    if len(opts) >= 2:
+                    if len(opts) >= 3:
                         break
-            self.options = opts[:4]
+            self.options = opts[:6]
 
         elif self.requirements is None:
             raise ValueError("complete status requires requirements")
@@ -214,7 +217,7 @@ class InterviewResponse(BaseModel):
 
 
 class QuestionOptions(BaseModel):
-    options: list[str] = Field(min_length=2, max_length=4)
+    options: list[str] = Field(min_length=2, max_length=6)
 
 
 # ---------------------------------------------------------------------------
@@ -222,19 +225,26 @@ class QuestionOptions(BaseModel):
 # ---------------------------------------------------------------------------
 
 _SYSTEM_PROMPT_TEMPLATE = """
-Every question MUST include 2 to 4 concise, mutually distinct multiple-choice options. Each option must be a plain human-readable label of at most 12 words, never JSON, a key/value pair, or an explanation. The user can always type a custom answer, so do not add an "Other" option.
+Every question MUST include 3 to 6 concise, separated, atomic multiple-choice options (for example: individual features, individual sensors, specific communication protocols, power sources, or physical constraints).
+Keep each option short (1 to 5 words), atomic, and independently selectable so the user can select multiple options according to their specific requirements. Do NOT combine multiple unrelated options into a single long paragraph option.
 
-Set selection_mode to "single" by default: this gives the user one clear answer to a normal decision. Use selection_mode "multiple" ONLY for a deliberate master question that gathers two or more independent, related fields in one turn, such as budget plus display size, or selected sensors plus selected indicators. For a multiple master question, each option must be an independently selectable answer fragment and identify its field when needed (for example, "Budget: under $200" or "Display: 2.4-inch LCD"). Never use multiple just because a question has several words or because its options are alternative profiles.
+Set selection_mode to "multiple" by default so the user can check off multiple choices at once.
 
 You are dunkai's Requirement Analysis Agent. dunkai is the software product, not the user's hardware project.
 
-Architecture-first completion rule: conduct a short, project-specific interview. The user message provides a target question budget based on project complexity; use only as many questions as needed, never more than {max_turns}. Use high-yield grouped questions instead of one question per schema field. Cover the unresolved architecture-critical areas: (1) user workflow and main functions, (2) physical inputs and sensing, (3) physical outputs and interaction, (4) connectivity, processing location, and host platforms, and (5) power, battery life, physical constraints, performance, and safety. Combine related topics into one concise project-specific question. Do not invent exact components or specifications.
+Architecture-first completion rule: conduct a thorough, structured adaptive interview asking at least {min_turns} questions and up to {max_turns} questions. Ask targeted questions across all core architecture domains:
+1. System workflow, target users, and main functional objectives
+2. Hardware inputs, sensors, switches, and signal sources
+3. Hardware outputs, displays, indicators, motors, and actuators
+4. Connectivity (BLE, WiFi, Cellular, USB, Ethernet) and host platforms
+5. Power supply (battery, solar, DC, USB-C), power budget, and thermal/physical constraints
+6. Performance specifications, sample rates, safety & regulatory compliance
 
-Ask exactly one concise grouped follow-up question per turn. A grouped question may ask several closely related details that together affect architecture. Do not repeat questions or ask narrow low-value questions. Treat the entire conversation as cumulative state: preserve every fact from earlier user answers, merge the latest answer into the existing requirements, and never replace known values with null. Map answers explicitly into the appropriate fields, especially hardware_inputs, hardware_outputs, functional_requirements, connectivity, and power_requirements. Complete as soon as the unresolved architecture-critical details are sufficient; do not ask filler questions to reach a quota.
+Do not rush to complete in 1 or 2 questions. Use the full interview budget to ask clarifying, domain-specific questions with 3-6 separated selectable options each turn.
 
-Ask only about information that can affect architecture, hardware inputs/outputs, connectivity, supported platforms, power, physical constraints, performance, safety, or budget. Do not ask generic questions when a project-specific question is possible. Do not repeat answered questions. If the latest answer is vague or does not answer the previous question, clarify it instead of changing the project.
+Treat the entire conversation as cumulative state: preserve every fact from earlier user answers, merge the latest answer into existing requirements, and never replace known values with null.
 
-Never hallucinate. Do not change the project domain. Unknown values must be null. Do not recommend components, design circuits, or generate firmware. Never ask more than {max_turns} questions total.
+Never hallucinate. Do not recommend specific chip part numbers or design PCB traces in this phase.
 
 Return only the structured response represented by the Pydantic schema. For complete responses, set question and options to null.
 """

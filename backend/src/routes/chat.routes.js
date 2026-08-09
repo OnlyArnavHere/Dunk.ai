@@ -19,4 +19,5 @@ chatRoutes.post('/:id/messages', sendMessageValidation, validate, c.sendMessage)
 chatRoutes.post('/:id/messages/save', c.saveMessage);
 chatRoutes.patch('/:id', renameChatValidation, validate, c.rename);
 chatRoutes.post('/:id/pin', c.togglePin);
+chatRoutes.delete('/:id/messages', c.clearMessages);
 chatRoutes.delete('/:id', c.remove);

@@ -39,6 +39,10 @@ export const remove = asyncHandler(async (req, res) => {
   send(res, { message: 'Chat deleted' });
 });
 
+export const clearMessages = asyncHandler(async (req, res) => {
+  send(res, { message: 'Messages cleared', data: await service.clearMessages(req.params.id, req.user) });
+});
+
 export const togglePin = asyncHandler(async (req, res) => {
   send(res, { data: await service.togglePin(req.params.id, req.user) });
 });

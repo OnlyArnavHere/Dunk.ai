@@ -151,6 +151,17 @@ export const deleteChat = async (id, user) => {
   return chat;
 };
 
+// ---- Clear all messages from a chat (New Chat) ----
+
+export const clearMessages = async (chatId, user) => {
+  const chat = await getOwnedChat(chatId, user);
+  await Message.deleteMany({ chat: chat._id });
+  chat.messageCount = 0;
+  chat.lastMessageAt = new Date();
+  await chat.save();
+  return chat;
+};
+
 // ---- Pin/unpin chat ----
 
 export const togglePin = async (id, user) => {

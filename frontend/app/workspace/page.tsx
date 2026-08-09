@@ -30,7 +30,7 @@ function WorkspaceContent() {
 
   useEffect(() => {
     if (activeProjectId) {
-      setSidebarCollapsed(false)
+      setSidebarCollapsed(true)
     }
   }, [activeProjectId, setSidebarCollapsed])
 
@@ -85,7 +85,7 @@ function WorkspaceContent() {
       <TopBar />
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        <aside className={`h-full min-h-0 shrink-0 border-r border-foreground/10 transition-[width] duration-300 ${sidebarCollapsed ? 'w-[64px]' : 'w-[248px]'}`}>
+        <aside className={`h-full min-h-0 shrink-0 border-r border-foreground/10 transition-[width] duration-300 ${sidebarCollapsed ? 'w-[64px]' : 'w-[270px]'}`}>
           <Sidebar />
         </aside>
         <main className="relative h-full min-h-0 min-w-0 flex-1 overflow-hidden">

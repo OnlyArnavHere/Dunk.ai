@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import {
   Plus,
   MessageSquare,
+  MessageSquarePlus,
   Zap,
   Package,
   CheckCircle,
@@ -45,8 +46,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useWorkspaceStore } from '@/lib/store'
-import { useProjects, useToggleFavourite, useArchiveProject, useDuplicateProject, useDeleteProject } from '@/hooks/use-projects'
+import { useProjects, useToggleFavourite, useArchiveProject, useDuplicateProject, useDeleteProject, useUpdateProject } from '@/hooks/use-projects'
 import type { Project } from '@/lib/types'
+import { chatApi } from '@/lib/api'
 import { toast } from 'sonner'
 
 const PROJECT_ICONS = [Zap, Package, CheckCircle, FileText]
@@ -95,16 +97,18 @@ function projectStatusTone(project: Project): string {
 }
 
 export function Sidebar() {
-  const { activeProjectId, setActiveProjectId, activeTab, setActiveTab, sidebarCollapsed, toggleSidebar } = useWorkspaceStore()
+  const { activeProjectId, setActiveProjectId, activeTab, setActiveTab, sidebarCollapsed, toggleSidebar, clearAiOutput, clearPipelineProgress, triggerChatReset } = useWorkspaceStore()
   const { data, isLoading, isError } = useProjects()
   const toggleFavourite = useToggleFavourite()
   const archiveProject = useArchiveProject()
   const duplicateProject = useDuplicateProject()
   const deleteProject = useDeleteProject()
+  const updateProject = useUpdateProject()
   const router = useRouter()
 
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
+  const [clearingChat, setClearingChat] = useState(false)
 
   const allProjects = data?.items || []
   const filteredProjects = search
@@ -124,6 +128,55 @@ export function Sidebar() {
     setActiveProjectId(null)
     setActiveTab('chat')
   }
+
+  // New Chat: clear messages, AI artifacts, and reset the chat interface
+  const handleNewChat = useCallback(async () => {
+    if (!activeProjectId) {
+      setActiveProjectId(null)
+      setActiveTab('chat')
+      return
+    }
+    if (clearingChat) return
+    setClearingChat(true)
+    try {
+      // Fetch the chat for this project and clear its messages
+      const chatsRes = (await chatApi.list(activeProjectId)) as { items?: Array<{ _id: string }> }
+      const chatId = chatsRes?.items?.[0]?._id
+      if (chatId) {
+        await chatApi.clearMessages(chatId)
+      }
+      // Clear AI artifacts from the project in MongoDB
+      updateProject.mutate({
+        id: activeProjectId,
+        data: {
+          requirements: {},
+          architecture: {},
+          bom: {},
+          eda_data: {},
+          pcb_ir: {},
+          validation: {},
+          documentation: {},
+        } as Record<string, unknown>,
+      })
+      // Clear local store state
+      clearAiOutput()
+      clearPipelineProgress()
+      // Signal the chat interface to reset
+      triggerChatReset()
+      setActiveTab('chat')
+      toast.success('Chat cleared — start fresh!')
+    } catch {
+      toast.error('Failed to clear chat')
+    } finally {
+      setClearingChat(false)
+    }
+  }, [activeProjectId, clearingChat, clearAiOutput, clearPipelineProgress, triggerChatReset, setActiveTab, updateProject, setActiveProjectId])
+
+  // Select project: set active ID and switch tab to chat so conversation history is immediately visible
+  const handleSelectProject = useCallback((id: string) => {
+    setActiveProjectId(id)
+    setActiveTab('chat')
+  }, [setActiveProjectId, setActiveTab])
 
   const handleProjectAction = (action: ProjectMenuAction, project: Project) => {
     if (action === 'favorite') {
@@ -171,7 +224,7 @@ export function Sidebar() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden bg-transparent w-full min-w-0">
       <div className="shrink-0 border-b border-sidebar-border/80 px-4 py-4">
         <div className={`flex items-center gap-2 ${sidebarCollapsed ? 'justify-center' : 'justify-between'}`}>
           {!sidebarCollapsed && (
@@ -238,7 +291,7 @@ export function Sidebar() {
                         <Button
                           type="button"
                           variant="ghost"
-                          onClick={() => setActiveProjectId(project._id)}
+                          onClick={() => handleSelectProject(project._id)}
                           aria-label={project.title}
                           className={`h-10 w-10 rounded-xl border p-0 transition-all duration-200 ${
                             isActive
@@ -318,8 +371,8 @@ export function Sidebar() {
           </ScrollArea>
         </TooltipProvider>
       ) : (
-        <ScrollArea className="min-h-0 flex-1">
-          <div className="space-y-4 p-4">
+        <ScrollArea className="min-h-0 flex-1 w-full min-w-0 overflow-hidden">
+          <div className="space-y-4 p-4 w-full min-w-0 overflow-hidden">
             <section className="rounded-2xl border border-sidebar-border/80 bg-sidebar-accent/20 px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -359,55 +412,40 @@ export function Sidebar() {
               </div>
             )}
 
-            <section className="space-y-2">
+            <section className="space-y-1 w-full min-w-0">
               {filteredProjects.map((project, index) => {
                 const Icon = getProjectIcon(project._id, index)
                 const isActive = activeProjectId === project._id
-                const stageLabel = formatProjectStage(project)
+                const rawTopic = project.description?.trim() || formatProjectStage(project)
+                const topic = rawTopic.length > 25 ? rawTopic.slice(0, 25) + '…' : rawTopic
+
                 return (
-                  <div key={project._id} className="group flex items-start gap-1 rounded-2xl border border-transparent transition-colors hover:border-sidebar-border/80">
+                  <div key={project._id} className="group flex items-center gap-0.5 rounded-xl transition-colors w-full min-w-0 overflow-hidden">
                     <button
                       type="button"
-                      onClick={() => setActiveProjectId(project._id)}
-                      className={`flex-1 rounded-2xl px-3 py-3 text-left transition-all duration-200 active:scale-[0.99] ${
+                      onClick={() => handleSelectProject(project._id)}
+                      className={`flex-1 min-w-0 overflow-hidden flex items-center justify-between gap-1.5 rounded-xl px-2.5 py-2 text-left transition-all duration-200 cursor-pointer select-none active:scale-[0.99] ${
                         isActive
-                          ? 'border border-sidebar-border bg-sidebar-accent text-sidebar-foreground shadow-sm'
-                          : 'border border-transparent bg-transparent text-sidebar-foreground/75 hover:border-sidebar-border/80 hover:bg-sidebar-accent/50 active:bg-sidebar-accent'
+                          ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
+                          : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
                       }`}
                     >
-                      <div className="flex items-start gap-3">
-                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-sidebar-border/80 bg-background/70 text-sidebar-foreground">
-                          <Icon className="h-4 w-4" />
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1 overflow-hidden">
+                        <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border ${isActive ? 'border-sidebar-border bg-background/80' : 'border-sidebar-border/60 bg-background/50'}`}>
+                          <Icon className="h-3.5 w-3.5" />
                         </div>
-                        <div className="min-w-0 flex-1 space-y-2">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="truncate text-sm font-semibold leading-5">{project.title}</span>
-                                {project.isFavourite && <Star className="h-3.5 w-3.5 shrink-0 fill-amber-500 text-amber-500" />}
-                              </div>
-                              <p className="mt-1 line-clamp-2 text-xs leading-5 text-sidebar-foreground/60">
-                                {project.description || 'No description provided'}
-                              </p>
-                            </div>
-                            {isActive && <ChevronRight className="mt-0.5 h-4 w-4 shrink-0 text-sidebar-foreground/50" />}
+                        <div className="min-w-0 flex-1 overflow-hidden">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="truncate text-xs font-semibold leading-5 text-sidebar-foreground block min-w-0">{project.title}</span>
+                            {project.isFavourite && <Star className="h-3 w-3 shrink-0 fill-amber-500 text-amber-500" />}
                           </div>
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] ${projectStatusTone(project)}`}>
-                              {stageLabel}
-                            </span>
-                            <span className="inline-flex items-center rounded-full border border-sidebar-border bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/55">
-                              {project.tags.length ? `${project.tags.length} tags` : 'No tags'}
-                            </span>
-                            <span className="inline-flex items-center rounded-full border border-sidebar-border bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/55">
-                              Updated {formatRelativeTime(project.updatedAt)}
-                            </span>
-                          </div>
+                          <p className="truncate text-[11px] leading-4 text-sidebar-foreground/50 block min-w-0 w-full" title={rawTopic}>{topic}</p>
                         </div>
                       </div>
+                      {isActive && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-sidebar-foreground/40" />}
                     </button>
 
-                    <div className="pt-2 pr-2 opacity-90 transition-opacity hover:opacity-100 group-focus-within:opacity-100">
+                    <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
@@ -416,9 +454,9 @@ export function Sidebar() {
                             type="button"
                             aria-label={`Project actions for ${project.title}`}
                             title={`Project actions for ${project.title}`}
-                            className="h-7 w-7 rounded-lg text-sidebar-foreground/50 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                            className="h-6 w-6 rounded-md text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-foreground"
                           >
-                            <MoreVertical className="h-3.5 w-3.5" />
+                            <MoreVertical className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="border border-sidebar-border bg-background/95 backdrop-blur-xl">
@@ -462,8 +500,23 @@ export function Sidebar() {
             <section className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-sidebar-foreground/50">Views</p>
-                <span className="text-[10px] text-sidebar-foreground/40">Navigation</span>
               </div>
+
+              {/* Always visible New Chat button */}
+              <button
+                type="button"
+                onClick={handleNewChat}
+                disabled={clearingChat}
+                className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-sidebar-border/80 px-3 py-2 text-xs font-medium text-sidebar-foreground/70 transition-all duration-200 hover:border-sidebar-foreground/30 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+              >
+                {clearingChat ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <MessageSquarePlus className="h-4 w-4" />
+                )}
+                New Chat
+              </button>
+
               <div className="space-y-1">
                 {VIEW_ITEMS.map((tab) => {
                   const Icon = tab.icon
@@ -501,16 +554,16 @@ export function Sidebar() {
                     <button
                       key={project._id}
                       type="button"
-                      onClick={() => setActiveProjectId(project._id)}
-                      className="w-full rounded-xl px-3 py-2.5 text-left text-xs text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      onClick={() => handleSelectProject(project._id)}
+                      className="w-full rounded-xl px-3 py-2 text-left text-xs text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate font-medium text-sidebar-foreground">{project.title}</p>
-                        <span className="shrink-0 rounded-full border border-sidebar-border bg-background/60 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-sidebar-foreground/45">
+                      <div className="flex items-center justify-between gap-2 min-w-0">
+                        <p className="truncate min-w-0 font-medium text-sidebar-foreground">{project.title}</p>
+                        <span className="shrink-0 text-[10px] text-sidebar-foreground/45">
                           {formatRelativeTime(project.updatedAt)}
                         </span>
                       </div>
-                      <p className="mt-1 truncate text-[11px] text-sidebar-foreground/50">{formatProjectStage(project)}</p>
+                      <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/50">{formatProjectStage(project)}</p>
                     </button>
                   ))
                 ) : (

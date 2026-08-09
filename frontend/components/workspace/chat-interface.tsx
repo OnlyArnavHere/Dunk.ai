@@ -79,7 +79,7 @@ function humanOptions(value: unknown): string[] {
     const clean = label.trim()
     if (clean && !/^(other|custom)(\b|\s|[-—:])/i.test(clean) && !choices.includes(clean)) choices.push(clean)
     return choices
-  }, []).slice(0, 4)
+  }, []).slice(0, 8)
 }
 
 const suggestions = [
@@ -95,7 +95,7 @@ const placeholderPrompts = [
 ]
 
 export function ChatInterface({ projectId }: { projectId: string }) {
-  const { pendingPrompt, setPendingPrompt, setAiOutput, setActiveTab, setPipelineProgress, clearPipelineProgress } = useWorkspaceStore()
+  const { pendingPrompt, setPendingPrompt, setAiOutput, setActiveTab, setPipelineProgress, clearPipelineProgress, chatResetCounter } = useWorkspaceStore()
   const updateProject = useUpdateProject()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
@@ -149,66 +149,67 @@ export function ChatInterface({ projectId }: { projectId: string }) {
   // ---- Load Chat History & Saved Artifacts from MongoDB ----
   useEffect(() => {
     let isMounted = true
+    // Reset messages when active project changes so previous project messages are not retained
+    setMessages([])
+
     async function loadChatAndHistory() {
       if (!projectId) return
       try {
         // 1. Fetch saved project artifacts from MongoDB
         const projectData = (await projectApi.get(projectId)) as Record<string, unknown>
         if (projectData && isMounted) {
-          const hasArtifacts =
-            projectData.requirements ||
-            projectData.architecture ||
-            projectData.bom ||
-            projectData.eda_data ||
-            projectData.pcb_ir ||
-            projectData.validation ||
-            projectData.documentation
+          const isPopulated = (val: unknown) =>
+            val && typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length > 0
 
-          if (hasArtifacts) {
-            setAiOutput({
-              requirements: (projectData.requirements as Record<string, unknown>) ?? null,
-              architecture: (projectData.architecture as Record<string, unknown>) ?? null,
-              bom: (projectData.bom as Record<string, unknown>) ?? null,
-              eda_data: (projectData.eda_data as Record<string, unknown>) ?? null,
-              pcb_ir: (projectData.pcb_ir as Record<string, unknown>) ?? null,
-              validation: (projectData.validation as Record<string, unknown>) ?? null,
-              documentation: (projectData.documentation as Record<string, unknown>) ?? null,
-            } satisfies AiOutput)
-          }
+          setAiOutput({
+            requirements: isPopulated(projectData.requirements) ? (projectData.requirements as Record<string, unknown>) : null,
+            architecture: isPopulated(projectData.architecture) ? (projectData.architecture as Record<string, unknown>) : null,
+            bom: isPopulated(projectData.bom) ? (projectData.bom as Record<string, unknown>) : null,
+            eda_data: isPopulated(projectData.eda_data) ? (projectData.eda_data as Record<string, unknown>) : null,
+            pcb_ir: isPopulated(projectData.pcb_ir) ? (projectData.pcb_ir as Record<string, unknown>) : null,
+            validation: isPopulated(projectData.validation) ? (projectData.validation as Record<string, unknown>) : null,
+            documentation: isPopulated(projectData.documentation) ? (projectData.documentation as Record<string, unknown>) : null,
+          } satisfies AiOutput)
         }
 
         // 2. Fetch conversation history from MongoDB
-        const chatsRes = (await chatApi.list(projectId)) as { items?: Array<{ _id: string }> }
+        const chatsRes = (await chatApi.list(projectId)) as { items?: Array<{ _id: string; messageCount?: number }> }
         const chatList = chatsRes?.items || []
-        let chatId = chatList[0]?._id
+        const primaryChat = chatList.find((c) => (c.messageCount || 0) > 0) || chatList[0]
+        let chatId = primaryChat?._id
+
         if (!chatId) {
           const newChat = (await chatApi.create(projectId, 'Project Chat')) as { _id: string }
           chatId = newChat?._id
         }
-        if (chatId && isMounted) {
-          setActiveChatId(chatId)
-          const msgRes = (await chatApi.messages(chatId)) as {
-            items?: Array<{ type: string; content: string; metadata?: { options?: string[] } }>
+
+        if (isMounted) {
+          if (chatId) setActiveChatId(chatId)
+
+          // Fetch messages across all chats for this project
+          const allMsgs: Array<{ type: string; content: string; metadata?: { options?: string[] } }> = []
+          for (const c of chatList) {
+            try {
+              const msgRes = (await chatApi.messages(c._id)) as {
+                items?: Array<{ type: string; content: string; metadata?: { options?: string[] } }>
+              }
+              if (msgRes?.items?.length) {
+                allMsgs.push(...msgRes.items)
+              }
+            } catch {
+              // Ignore single chat failure
+            }
           }
-          const historyMsgs = msgRes?.items || []
+
           if (isMounted) {
-            const parsed: Message[] = historyMsgs.map((m, idx) => ({
+            const parsed: Message[] = allMsgs.map((m, idx) => ({
               id: `history-${idx}`,
               role: (m.type === 'user' ? 'user' : 'assistant') as MessageRole,
               content: m.content,
               options: m.metadata?.options,
             }))
-            
-            setMessages((current) => {
-              const pendingUserMsgs = current.filter((c) => !c.id.startsWith('history-'))
-              const combined = [...parsed]
-              for (const p of pendingUserMsgs) {
-                if (!combined.some((c) => c.content === p.content)) {
-                  combined.push(p)
-                }
-              }
-              return combined.length > 0 ? combined : parsed
-            })
+
+            setMessages(parsed)
 
             const lastAssistant = parsed.filter((m) => m.role === 'assistant').pop()
             if (lastAssistant?.options) {
@@ -236,6 +237,31 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     }
   }, [projectId, clearPipelineProgress, setAiOutput])
 
+  // ---- Watch for "New Chat" reset signal from sidebar ----
+  useEffect(() => {
+    if (chatResetCounter === 0) return // Skip initial mount
+    setMessages([])
+    setInput('')
+    setLoading(false)
+    setSelectedOptions([])
+    setActiveQuestionId(null)
+    setCompletedNodes([])
+    setActiveNode('')
+    setActiveChatId(null)
+    // Re-initialize the chat session
+    async function reinitChat() {
+      try {
+        const chatsRes = (await chatApi.list(projectId)) as { items?: Array<{ _id: string }> }
+        const chatId = chatsRes?.items?.[0]?._id
+        if (chatId) setActiveChatId(chatId)
+      } catch {
+        // Soft fallback
+      }
+    }
+    reinitChat()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatResetCounter])
+
   // ---- Core agent runner ----
   const runAgent = useCallback(
     async (request: string) => {
@@ -248,9 +274,31 @@ export function ChatInterface({ projectId }: { projectId: string }) {
       setCompletedNodes([])
       setActiveNode('supervisor')
 
+      // Dynamically resolve targetChatId if state hasn't populated yet
+      let targetChatId = activeChatId
+      if (!targetChatId && projectId) {
+        try {
+          const chatsRes = (await chatApi.list(projectId)) as { items?: Array<{ _id: string }> }
+          targetChatId = chatsRes?.items?.[0]?._id
+          if (!targetChatId) {
+            const newChat = (await chatApi.create(projectId, 'Project Chat')) as { _id: string }
+            targetChatId = newChat?._id
+          }
+          if (targetChatId) {
+            setActiveChatId(targetChatId)
+          }
+        } catch {
+          // Soft fallback
+        }
+      }
+
       // Save user message to MongoDB
-      if (activeChatId) {
-        chatApi.saveMessage(activeChatId, 'user', request).catch(() => {})
+      if (targetChatId) {
+        try {
+          await chatApi.saveMessage(targetChatId, 'user', request)
+        } catch {
+          // Ignore save error to allow streaming
+        }
       }
 
       try {
@@ -271,8 +319,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             ...prev,
             { id: `${Date.now()}-assistant`, role: 'assistant', content: replyText },
           ])
-          if (activeChatId) {
-            chatApi.saveMessage(activeChatId, 'assistant', replyText).catch(() => {})
+          if (targetChatId) {
+            chatApi.saveMessage(targetChatId, 'assistant', replyText).catch(() => {})
           }
           setLoading(false)
           setActiveNode('')
@@ -321,8 +369,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             setSelectedOptions([])
             setActiveQuestionId(messageId)
 
-            if (activeChatId) {
-              chatApi.saveMessage(activeChatId, 'assistant', question, options).catch(() => {})
+            if (targetChatId) {
+              chatApi.saveMessage(targetChatId, 'assistant', question, options).catch(() => {})
             }
             return
           }
@@ -380,8 +428,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             { id: `${Date.now()}-assistant`, role: 'assistant', content: cleanReply },
           ])
 
-          if (activeChatId) {
-            chatApi.saveMessage(activeChatId, 'assistant', cleanReply).catch(() => {})
+          if (targetChatId) {
+            chatApi.saveMessage(targetChatId, 'assistant', cleanReply).catch(() => {})
           }
         }
 
@@ -399,8 +447,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             { id: `${Date.now()}-assistant`, role: 'assistant', content: reply },
           ])
 
-          if (activeChatId) {
-            chatApi.saveMessage(activeChatId, 'assistant', reply).catch(() => {})
+          if (targetChatId) {
+            chatApi.saveMessage(targetChatId, 'assistant', reply).catch(() => {})
           }
         }
 
@@ -546,27 +594,31 @@ export function ChatInterface({ projectId }: { projectId: string }) {
                   {message.content}
                 </div>
                 {message.options && message.options.length > 0 && (
-                  <div className="mt-1 ml-0">
+                  <div className="mt-2 ml-0">
                     <div className="flex flex-wrap gap-2">
-                      {message.options.map((opt) => (
-                        <button
-                          key={opt}
-                          type="button"
-                          disabled={loading || activeQuestionId !== message.id}
-                          aria-pressed={selectedOptions.includes(opt)}
-                          onClick={() => toggleOption(opt)}
-                          className={`rounded-full border px-3 py-1.5 text-xs transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
-                            selectedOptions.includes(opt)
-                              ? 'border-foreground bg-foreground text-background'
-                              : 'border-foreground/20 bg-secondary/60 text-foreground hover:bg-foreground hover:text-background'
-                          }`}
-                        >
-                          {opt}
-                        </button>
-                      ))}
+                      {message.options.map((opt) => {
+                        const isSelected = selectedOptions.includes(opt)
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            disabled={loading || activeQuestionId !== message.id}
+                            aria-pressed={isSelected}
+                            onClick={() => toggleOption(opt)}
+                            className={`flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-xs font-medium transition-all active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 ${
+                              isSelected
+                                ? 'border-foreground bg-foreground text-background shadow-sm'
+                                : 'border-foreground/20 bg-secondary/60 text-foreground hover:border-foreground/40 hover:bg-secondary'
+                            }`}
+                          >
+                            <span className="font-bold text-[11px]">{isSelected ? '✓' : '+'}</span>
+                            <span>{opt}</span>
+                          </button>
+                        )
+                      })}
                     </div>
-                    <p className="mt-2 text-xs text-muted-foreground">
-                      Select one or more, then send — or type a custom answer below.
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Select one or multiple options above, then click send — or type custom details below.
                     </p>
                   </div>
                 )}
