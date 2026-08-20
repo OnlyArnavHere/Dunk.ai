@@ -49,6 +49,7 @@ import os
 os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
 
 import io
+import time
 import requests
 import numpy as np
 import pandas as pd
@@ -74,12 +75,60 @@ HF_TOKEN = os.environ.get("HF_TOKEN_READ")
 
 _HEADERS = {"Authorization": f"Bearer {HF_TOKEN}"} if HF_TOKEN else {}
 
+# (connect, read) seconds. The read budget is generous because these payloads are
+# large -- the parquet and the embeddings are hundreds of MB -- but it is FINITE,
+# which is the entire point: see the comment in _fetch_bytes.
+_FETCH_TIMEOUT = (10, 120)
+_FETCH_ATTEMPTS = 3
+_FETCH_BACKOFF_SECONDS = 5
+
+
 def _fetch_bytes(filename: str) -> bytes:
-    """Stream a file's raw bytes from the HF dataset repo — nothing touches disk."""
+    """Stream a file's raw bytes from the HF dataset repo — nothing touches disk.
+
+    The timeout is load-bearing, not defensive boilerplate. This call previously
+    had none, and `requests` with no timeout blocks forever. Against this HF
+    stream that produced two different symptoms of one bug:
+
+      * a surfaced error -- ConnectionResetError(54, 'Connection reset by peer')
+        mid-transfer, which the pipeline reported honestly and recovered from;
+      * a silent freeze -- the peer half-closed (socket left in CLOSE_WAIT) and
+        the read blocked indefinitely. Observed twice, once for 24 minutes and
+        once for 2h48m, both at 0% CPU with RSS flat, log stuck on the line
+        before the fetch. Nothing timed out, nothing errored, nothing logged.
+
+    A hang is strictly worse than a failure: it cannot be retried, reported, or
+    even distinguished from slow progress without inspecting the process. With a
+    finite read timeout the second symptom collapses into the first, and the
+    retry below then covers the transient case.
+    """
     url = hf_hub_url(repo_id=HF_REPO_ID, filename=filename, repo_type=HF_REPO_TYPE)
-    resp = requests.get(url, headers=_HEADERS)
-    resp.raise_for_status()
-    return resp.content
+
+    last_error: Exception | None = None
+    for attempt in range(1, _FETCH_ATTEMPTS + 1):
+        try:
+            resp = requests.get(url, headers=_HEADERS, timeout=_FETCH_TIMEOUT)
+            resp.raise_for_status()
+            return resp.content
+        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as exc:
+            # Do not retry a definitive client-side rejection: a bad token or a
+            # missing file will fail identically every time, and retrying only
+            # delays a clear error. 5xx and 429 are worth another attempt.
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status is not None and 400 <= status < 500 and status != 429:
+                raise
+            last_error = exc
+            if attempt < _FETCH_ATTEMPTS:
+                delay = _FETCH_BACKOFF_SECONDS * attempt
+                print(
+                    f"HF fetch of {filename!r} failed ({type(exc).__name__}: {exc}); "
+                    f"retrying in {delay}s [attempt {attempt}/{_FETCH_ATTEMPTS}]"
+                )
+                time.sleep(delay)
+
+    raise RuntimeError(
+        f"HF fetch of {filename!r} failed after {_FETCH_ATTEMPTS} attempts: {last_error}"
+    ) from last_error
 
 # =============================================================================
 # Dataset (loaded fully in memory)
