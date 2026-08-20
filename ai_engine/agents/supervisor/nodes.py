@@ -496,12 +496,32 @@ def validation_node(state: CircuitState) -> dict[str, Any]:
 
     issues: list[dict[str, str]] = []
 
+    # MISSING_SYMBOL / MISSING_FOOTPRINT / MISSING_PINS are ERRORS, not warnings.
+    #
+    # `passed` below is computed as "no issue has severity == error", so while
+    # these three were warnings a design could report validation.passed = True
+    # with no symbol, no footprint and no pinout for a SINGLE component -- let
+    # alone all of them. That is not a hypothetical: the first real end-to-end
+    # capture (2026-08-20, 11 components) reported passed = True carrying 11x
+    # MISSING_SYMBOL and 11x MISSING_PINS, i.e. every component in the design.
+    # The downstream PCB module independently rated the same design
+    # compilable = false with 22 errors.
+    #
+    # These three share one shape: each fires on essentially every component on
+    # every run, because the backing dataset has no pinout data at all (0 of
+    # 490,894 rows carry pins_json/pinout/symbol). Flipping only one of them
+    # would leave passed = True reachable through the other two, so all three
+    # move together.
+    #
+    # A design missing symbols, footprints or pin mappings cannot be
+    # manufactured. Reporting it as passed is self-certification, not
+    # validation.
     for item in eda_items:
         ref = str(item.get("reference") or "?")
         if not item.get("symbol"):
             issues.append(
                 {
-                    "severity": "warning",
+                    "severity": "error",
                     "code": "MISSING_SYMBOL",
                     "message": f"{ref}: no KiCad/EasyEDA symbol found in EDA dataset.",
                 }
@@ -509,7 +529,7 @@ def validation_node(state: CircuitState) -> dict[str, Any]:
         if not item.get("footprint"):
             issues.append(
                 {
-                    "severity": "warning",
+                    "severity": "error",
                     "code": "MISSING_FOOTPRINT",
                     "message": f"{ref}: no PCB footprint resolved.",
                 }
@@ -517,7 +537,7 @@ def validation_node(state: CircuitState) -> dict[str, Any]:
         if not item.get("pins_json"):
             issues.append(
                 {
-                    "severity": "warning",
+                    "severity": "error",
                     "code": "MISSING_PINS",
                     "message": f"{ref}: pinout (pins_json) unavailable.",
                 }
