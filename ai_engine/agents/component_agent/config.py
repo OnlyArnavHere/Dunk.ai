@@ -4,12 +4,59 @@ Configuration
 """
 
 import os
+
+# ---------------------------------------------------------------------------
+# OpenMP duplicate-runtime guard -- MUST run before faiss/torch are imported.
+#
+# NOT a generic "for stability" tweak. Do not remove, reorder, or "clean up"
+# without reading this and re-running the repro below.
+#
+# Three packages here each bundle their own OpenMP runtime:
+#     faiss/.dylibs/libomp.dylib      (libfaiss.dylib -> @loader_path/.dylibs/libomp.dylib)
+#     torch/lib/libomp.dylib          (libtorch_cpu.dylib -> @rpath/libomp.dylib)
+#     sklearn/.dylibs/libomp.dylib
+#
+# Loading two of them into one process on macOS/arm64 kills the supervisor
+# pipeline at retrieval.py `_search_index` -> index.search(), on the FIRST
+# component, every time. Two distinct failure modes, both fatal and NEITHER
+# raising a Python exception -- so nothing upstream can catch or report them,
+# and the pipeline dies writing no output at all:
+#     * SIGABRT (exit 134) "OMP: Error #15: ... libomp.dylib already initialized"
+#     * SIGSEGV (exit 139) in __kmp_suspend_initialize_thread
+# Original incident: crash report Python-2026-08-20-130527.ips, PID 2230,
+# 2026-08-20.
+#
+# Measured over 5 trials each, reproduced without the HF dataset (import torch
+# + faiss, one matmul, one 200k x 384 IndexFlatIP search):
+#     nothing set .................. 0/5 pass  (5x SIGABRT 134)
+#     OMP_NUM_THREADS=1 alone ...... 0/5 pass  (5x SIGABRT 134)
+#     KMP_DUPLICATE_LIB_OK alone ... 0/5 pass  (5x SIGSEGV 139)
+#     both of the above ............ 5/5 pass
+#     this combination below ....... 5/5 pass
+# NEITHER SETTING WORKS ALONE. KMP_DUPLICATE_LIB_OK lets the second runtime
+# load instead of aborting; capping faiss's threads stops the parallel region
+# that then segfaults. Both halves are load-bearing.
+#
+# Set via os.environ rather than .env because OpenMP reads its config at
+# library-load time, and load_dotenv() below runs after these imports -- a
+# value in .env arrives far too late. setdefault() so a real environment
+# value still wins.
+#
+# The thread cap is applied to faiss ONLY (faiss.omp_set_num_threads(1) after
+# the imports), not via a global OMP_NUM_THREADS=1, so torch keeps full
+# threading for embedding: measured torch_threads=4, faiss_threads=1.
+# ---------------------------------------------------------------------------
+os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
+
 import io
 import requests
 import numpy as np
 import pandas as pd
 import faiss
 import torch
+
+# Second half of the OpenMP guard above -- see that comment block.
+faiss.omp_set_num_threads(1)
 from dotenv import load_dotenv
 from huggingface_hub import hf_hub_url
 load_dotenv() 
