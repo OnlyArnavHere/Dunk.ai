@@ -109,7 +109,65 @@ def _score_semantic_similarity(candidate: Dict[str, Any]) -> float:
     return max(0.0, min(1.0, similarity))
 
 
+# Values a catalogue attribute uses to mean "not populated". Treated as ABSENT
+# evidence, never as a negative answer.
+_ATTR_PLACEHOLDERS = {"", "-", "--", "n/a", "na", "none", "null", "unknown"}
+
+# Confidence tiers for interface evidence. Full marks require STRUCTURED proof;
+# free text can never reach 1.0, because a datasheet blurb mentioning "I2C" is
+# marketing copy, not a capability claim.
+_IFACE_STRUCTURED_MATCH = 1.00   # attribute names the interface -> believe it
+_IFACE_TEXT_ONLY = 0.60          # only free text mentions it -> weak, unverified
+_IFACE_NO_EVIDENCE = 0.30        # nothing either way -> unknown, not a failure
+_IFACE_STRUCTURED_CONTRADICTS = 0.15  # attribute lists interfaces, ours absent
+
+
+def _structured_interfaces(candidate: Dict[str, Any]) -> Optional[str]:
+    """Interface text from STRUCTURED catalogue attributes only.
+
+    Returns None when the part carries no populated interface attribute — which
+    means *unknown*, not *absent*. Distinguishing those two is the whole point of
+    this function: only 18 of 240 real candidates surveyed carried a populated
+    `Interface` attribute (all in one subsystem), so treating its absence as a
+    negative would fail ~92% of parts for lacking a field the catalogue simply
+    does not fill in.
+    """
+    attributes = utils.get_attributes(candidate)
+    if not isinstance(attributes, dict):
+        return None
+
+    values = [
+        str(value)
+        for key, value in attributes.items()
+        if "interface" in str(key).lower()
+        and str(value).strip().lower() not in _ATTR_PLACEHOLDERS
+    ]
+    return " ".join(values).lower() if values else None
+
+
 def _score_interface_match(candidate: Dict[str, Any], request: Dict[str, Any]) -> float:
+    """Score how well a candidate satisfies the requested interfaces.
+
+    Previously this substring-matched the request against
+    `utils.get_searchable_text()` — description, title, subcategory, category,
+    mfr_part and every attribute value flattened into one blob. At 25 points
+    (tied heaviest weight) that rewarded a part for MENTIONING an interface
+    rather than having one: any datasheet blurb containing "I2C" scored full
+    marks. That is very likely part of why parts lacking a requested function
+    kept winning their role.
+
+    Structured attribute data is now required for full marks. Three states are
+    kept genuinely distinct, because collapsing them is how a "don't know"
+    becomes a false claim:
+
+      confirmed by attribute .. 1.00  the catalogue says it has this
+      free text only ......... 0.60  plausible, unverified — cannot reach 1.0
+      no evidence ............ 0.30  unknown; NOT scored as absent
+      attribute contradicts .. 0.15  the one sound negative
+
+    Note the last is 0.15 rather than 0.0: a populated interface attribute is
+    not guaranteed exhaustive, so it is strong evidence against, not proof.
+    """
     required = set(
         i.strip().lower()
         for i in (request.get("interfaces") or []) + (request.get("power_interfaces") or [])
@@ -119,9 +177,21 @@ def _score_interface_match(candidate: Dict[str, Any], request: Dict[str, Any]) -
         # Nothing specific was required, so nothing to fail on.
         return 1.0
 
+    structured = _structured_interfaces(candidate)
+    if structured is not None:
+        matched = sum(1 for interface in required if interface in structured)
+        if matched:
+            # Partial credit scales, but a full match earns the full score.
+            return _IFACE_STRUCTURED_MATCH * (matched / len(required))
+        return _IFACE_STRUCTURED_CONTRADICTS
+
+    # No structured interface data for this part. Fall back to free text, but
+    # capped — this is a hint, not a capability claim.
     text = utils.get_searchable_text(candidate)
     matched = sum(1 for interface in required if interface in text)
-    return matched / len(required)
+    if matched:
+        return _IFACE_TEXT_ONLY * (matched / len(required))
+    return _IFACE_NO_EVIDENCE
 
 
 def _score_stock_availability(candidate: Dict[str, Any]) -> float:
