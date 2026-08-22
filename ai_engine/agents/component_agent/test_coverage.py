@@ -26,6 +26,8 @@ if "config" not in sys.modules:
 import coverage  # noqa: E402
 import ranking  # noqa: E402
 
+_IFACE_ABSENT_TIER = ranking._IFACE_VERIFIED_ABSENT
+
 FAILURES: list[str] = []
 
 
@@ -122,6 +124,79 @@ use_table({"C666": {"pad_count": 48, "named_pads": 5, "naming_complete": False,
 partial = candidate("C666", description="a microcontroller")
 check("partial naming does not produce a negative score (0.30)",
       round(ranking._score_interface_match(partial, req), 2), 0.30)
+
+
+print("\n=== REGRESSION: verified-absence-outranking-unknown ===")
+
+# THE GUARD, stated as a rule rather than a number:
+#
+#   A part with a VERIFIED absence on ANY required interface must score at or
+#   below a part with NO EVIDENCE at all on that interface. A proven "no" can
+#   never outrank an "unknown", however many other required interfaces the
+#   part confirms.
+#
+# The original defect: interface_match aggregated Tier 0 as
+# `matched / len(required)`, which counted confirmed interfaces and DISCARDED
+# verified-absent ones. Requesting I2C + Power, a part with confirmed Power and
+# a proven-absent I2C scored 1.00 * (1/2) = 0.50 -- ahead of an unscanned part
+# at 0.30. Averaging let a verified capability launder a verified incapability.
+#
+# Captured live: dunkai_real_v3_rankedcoverage.json, subsystem U2. AD4057 is a
+# linear charger, 6 of 6 pads named, interfaces_confirmed ["Power"], no I2C. It
+# won U2 against an I2C net and produced two PART_CAPABILITY_MISMATCH errors
+# downstream. Both entries below are the real coverage-table rows.
+
+BOTH_REQUIRED = {"interfaces": ["I2C"], "power_interfaces": ["Power"]}
+
+use_table({
+    # Verified ABSENT on I2C, verified PRESENT on Power.
+    "C395461": {
+        "mfr_part": "AD4057", "pad_count": 6, "named_pads": 6,
+        "naming_complete": True, "interfaces_confirmed": ["Power"],
+    },
+    # HY2111-GB is simply not in the table -> unknown on BOTH interfaces.
+})
+
+ad4057 = ranking._score_interface_match(candidate("C395461"), BOTH_REQUIRED)
+hy2111 = ranking._score_interface_match(candidate("C82747"), BOTH_REQUIRED)
+
+check("AD4057 I2C is a verified absence, not an unknown",
+      coverage.interface_confidence(candidate("C395461"), "I2C"), 0.0)
+check("HY2111-GB I2C is unknown, not an absence",
+      coverage.interface_confidence(candidate("C82747"), "I2C"), None)
+
+# The rule itself. Not `== 0.05`: the constants may be retuned, but the
+# ORDERING is the invariant and must hold whatever the numbers become.
+check("proven-absent scores at or below merely-unknown",
+      ad4057 <= hy2111, True)
+check("proven-absent scores STRICTLY below merely-unknown (no middle ground)",
+      ad4057 < hy2111, True)
+check("a confirmed Power rail cannot launder the absent I2C back up to 0.50",
+      ad4057 < 0.50, True)
+
+# Generalisation: the guard must not depend on there being exactly two required
+# interfaces. The more interfaces a part confirms, the more the old average
+# rewarded it -- so widen the request and re-assert.
+MANY = {"interfaces": ["I2C", "SPI", "UART"], "power_interfaces": ["Power"]}
+use_table({"C777": {
+    "mfr_part": "CONFIRMS-THREE-OF-FOUR", "pad_count": 20, "named_pads": 20,
+    "naming_complete": True, "interfaces_confirmed": ["Power", "SPI", "UART"],
+}})
+three_of_four = ranking._score_interface_match(candidate("C777"), MANY)
+check("3 of 4 confirmed but 1 proven absent still scores at the absent tier",
+      three_of_four, _IFACE_ABSENT_TIER)
+check("3-of-4-with-a-proven-gap does not outrank a wholly unknown part",
+      three_of_four <= ranking._IFACE_NO_EVIDENCE, True)
+
+# The positive counterpart must NOT be dragged down by the same change: some
+# confirmed and the rest merely unknown is better than nothing known at all.
+use_table({"C888": {
+    "mfr_part": "PARTIAL-POSITIVE", "pad_count": 20, "named_pads": 5,
+    "naming_complete": False, "interfaces_confirmed": ["Power"],
+}})
+partial_positive = ranking._score_interface_match(candidate("C888"), MANY)
+check("1 confirmed + 3 unknown is never worse than 4 unknown",
+      partial_positive >= ranking._IFACE_NO_EVIDENCE, True)
 
 
 print("\n=== fetch path degrades instead of blocking ===")

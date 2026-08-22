@@ -190,24 +190,40 @@ def _score_interface_match(candidate: Dict[str, Any], request: Dict[str, Any]) -
     # incomplete so absence is unproven). None falls through to the tiers below
     # rather than becoming a score — collapsing "not checked" into "absent" is
     # the false negative this whole scoring function exists to avoid.
-    verified = [
-        confidence
-        for confidence in (
-            coverage.interface_confidence(candidate, interface) for interface in required
-        )
-        if confidence is not None
-    ]
-    if verified:
-        # Some interfaces may be verified while others stay unknown; score on
-        # what was actually verified rather than assuming the rest.
-        if all(confidence >= 1.0 for confidence in verified) and len(verified) == len(required):
+    confidences = {
+        interface: coverage.interface_confidence(candidate, interface)
+        for interface in required
+    }
+
+    # A verified ABSENCE on any required interface is disqualifying, and is
+    # applied as a ceiling rather than as one term in an average.
+    #
+    # This previously averaged: `matched / len(required)` counted the confirmed
+    # interfaces and silently DISCARDED the verified-absent ones. A part proven
+    # to lack a required bus therefore scored 1.00 * (1/2) = 0.50 whenever it
+    # confirmed some other required interface — beating a part where that bus
+    # was merely unknown (0.30). Real instance: AD4057, a linear charger with a
+    # fully-named 6-pad footprint and no I2C, won U2 against an I2C net because
+    # its confirmed Power rail averaged the proven absence away.
+    #
+    # Partial credit is meaningless here: if the part cannot carry a required
+    # net, the other interfaces it does have will not make the design build. So
+    # a proven "no" can never outrank an "unknown", no matter how many other
+    # required interfaces the part confirms.
+    if any(c is not None and c <= 0.0 for c in confidences.values()):
+        return _IFACE_VERIFIED_ABSENT
+
+    confirmed = [i for i, c in confidences.items() if c is not None and c >= 1.0]
+    if confirmed:
+        if len(confirmed) == len(required):
             return _IFACE_VERIFIED_MATCH
-        if all(confidence <= 0.0 for confidence in verified) and len(verified) == len(required):
-            # Confirmed absent on a fully-named part: the one sound hard negative.
-            return _IFACE_VERIFIED_ABSENT
-        matched = sum(1 for confidence in verified if confidence >= 1.0)
-        if matched:
-            return _IFACE_VERIFIED_MATCH * (matched / len(required))
+        # The rest are unknown, not absent. Scale by what was actually proven,
+        # but never below the no-evidence score: having confirmed SOME required
+        # interface must not rank worse than having confirmed none.
+        return max(
+            _IFACE_NO_EVIDENCE,
+            _IFACE_VERIFIED_MATCH * (len(confirmed) / len(required)),
+        )
 
     structured = _structured_interfaces(candidate)
     if structured is not None:
