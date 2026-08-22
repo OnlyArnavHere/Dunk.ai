@@ -33,6 +33,7 @@ import math
 from typing import Any, Dict, List, Optional
 
 import config
+import coverage
 import utils
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
@@ -116,6 +117,8 @@ _ATTR_PLACEHOLDERS = {"", "-", "--", "n/a", "na", "none", "null", "unknown"}
 # Confidence tiers for interface evidence. Full marks require STRUCTURED proof;
 # free text can never reach 1.0, because a datasheet blurb mentioning "I2C" is
 # marketing copy, not a capability claim.
+_IFACE_VERIFIED_MATCH = 1.00     # real resolved pins confirm it -> strongest
+_IFACE_VERIFIED_ABSENT = 0.05    # every pad named, interface genuinely absent
 _IFACE_STRUCTURED_MATCH = 1.00   # attribute names the interface -> believe it
 _IFACE_TEXT_ONLY = 0.60          # only free text mentions it -> weak, unverified
 _IFACE_NO_EVIDENCE = 0.30        # nothing either way -> unknown, not a failure
@@ -160,6 +163,8 @@ def _score_interface_match(candidate: Dict[str, Any], request: Dict[str, Any]) -
     kept genuinely distinct, because collapsing them is how a "don't know"
     becomes a false claim:
 
+      verified pins .......... 1.00  resolved footprint confirms it (strongest)
+      verified absent ........ 0.05  every pad named, interface genuinely absent
       confirmed by attribute .. 1.00  the catalogue says it has this
       free text only ......... 0.60  plausible, unverified — cannot reach 1.0
       no evidence ............ 0.30  unknown; NOT scored as absent
@@ -176,6 +181,33 @@ def _score_interface_match(candidate: Dict[str, Any], request: Dict[str, Any]) -
     if not required:
         # Nothing specific was required, so nothing to fail on.
         return 1.0
+
+    # Tier 0 — verified pin data from the downstream PCB module. This is the
+    # only evidence derived from the part's REAL resolved footprint, so it
+    # outranks both catalogue attributes and free text.
+    #
+    # Returns None for every unknown case (part not resolved, or naming
+    # incomplete so absence is unproven). None falls through to the tiers below
+    # rather than becoming a score — collapsing "not checked" into "absent" is
+    # the false negative this whole scoring function exists to avoid.
+    verified = [
+        confidence
+        for confidence in (
+            coverage.interface_confidence(candidate, interface) for interface in required
+        )
+        if confidence is not None
+    ]
+    if verified:
+        # Some interfaces may be verified while others stay unknown; score on
+        # what was actually verified rather than assuming the rest.
+        if all(confidence >= 1.0 for confidence in verified) and len(verified) == len(required):
+            return _IFACE_VERIFIED_MATCH
+        if all(confidence <= 0.0 for confidence in verified) and len(verified) == len(required):
+            # Confirmed absent on a fully-named part: the one sound hard negative.
+            return _IFACE_VERIFIED_ABSENT
+        matched = sum(1 for confidence in verified if confidence >= 1.0)
+        if matched:
+            return _IFACE_VERIFIED_MATCH * (matched / len(required))
 
     structured = _structured_interfaces(candidate)
     if structured is not None:
