@@ -32,3 +32,6 @@ Thumbs.db
 coverage/
 dist/
 build/
+
+# Fetched pin-coverage table (refreshed from the PCB module on every run).
+ai_engine/data/pin-coverage.json
