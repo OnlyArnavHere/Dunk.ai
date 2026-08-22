@@ -10,6 +10,7 @@ import json
 import logging
 import sys
 import tempfile
+from datetime import datetime, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -113,6 +114,63 @@ def _project_name(state: CircuitState) -> str:
     if state.get("design_name"):
         return str(state["design_name"])
     return "dunkai_design"
+
+
+# ---------------------------------------------------------------------------
+# Shortlist log
+# ---------------------------------------------------------------------------
+
+# Where the append-only shortlist log lives. The downstream PCB module reads it
+# to know which catalogue parts are worth resolving ahead of time.
+SHORTLIST_LOG = AGENTS_ROOT.parent / "data" / "shortlist-log.jsonl"
+
+
+def _shortlisted_ids(ranked_results: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Every catalogue part the retriever put in front of the ranker.
+
+    Keyed on the JLCPCB catalogue number (`extra_params.number`, e.g. "C82227"),
+    NOT on `mfr_part`: the same manufacturer part in a different package is a
+    different footprint with different pads, so an MPN alone does not identify
+    what was actually resolved.
+    """
+    seen: dict[str, dict[str, str]] = {}
+    for result in ranked_results or []:
+        for candidate in result.get("ranked_candidates") or []:
+            extra = candidate.get("extra_params")
+            number = (extra or {}).get("number") if isinstance(extra, dict) else None
+            if not number:
+                continue
+            seen.setdefault(str(number), {
+                "lcsc": str(number),
+                "mfr_part": str(candidate.get("mfr_part") or ""),
+                "package": str(candidate.get("package") or ""),
+            })
+    return sorted(seen.values(), key=lambda row: row["lcsc"])
+
+
+def _append_shortlist_log(ranked_results: list[dict[str, Any]], design_name: str) -> int:
+    """Append this run's shortlist to the log. Never raises.
+
+    The shortlist previously existed only in memory: retrieval.py persists
+    nothing and logs counts rather than part numbers, and the BOM CSV records
+    only the ~10 SELECTED rows, not the ~145 that were considered. Without this
+    there is nothing for a batch resolver to work from.
+
+    Best-effort by design — a logging failure must never break a design run.
+    """
+    entries = _shortlisted_ids(ranked_results)
+    if not entries:
+        return 0
+    try:
+        SHORTLIST_LOG.parent.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).isoformat()
+        with SHORTLIST_LOG.open("a", encoding="utf-8") as handle:
+            for entry in entries:
+                handle.write(json.dumps({**entry, "design": design_name, "at": stamp}) + "\n")
+    except Exception as exc:  # noqa: BLE001 - never fatal
+        logger.warning("Could not append shortlist log: %s", exc)
+        return 0
+    return len(entries)
 
 
 # ---------------------------------------------------------------------------
@@ -240,6 +298,10 @@ def component_node(state: CircuitState) -> dict[str, Any]:
         tmp_dir = Path(tempfile.gettempdir())
         csv_path = tmp_dir / "circuitmind_bom.csv"
         bom_generator.to_csv(rows, str(csv_path))
+
+        logged = _append_shortlist_log(ranked_results, _project_name(state))
+        if logged:
+            logger.info("Recorded %d shortlisted catalogue part(s) to %s", logged, SHORTLIST_LOG)
 
         bom = {
             "rows": rows,
