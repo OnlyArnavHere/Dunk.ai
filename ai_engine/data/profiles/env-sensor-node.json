@@ -1,0 +1,47 @@
+{
+  "project_name": "Environmental Sensor Node",
+  "objective": "A mains-powered indoor environment monitor that samples temperature, humidity and air quality, shows readings on a local display, and reports them over Wi-Fi",
+  "target_users": [
+    "residential",
+    "commercial"
+  ],
+  "functional_requirements": [
+    "sample temperature and humidity from an I2C sensor",
+    "sample particulate/air-quality from a second I2C sensor",
+    "drive a small SPI display with current readings",
+    "accept a UART GPS module for site tagging",
+    "2 momentary push buttons for mode and reset",
+    "3 status LEDs for power, network and alert",
+    "report readings to a cloud endpoint over Wi-Fi"
+  ],
+  "hardware_inputs": [
+    "I2C temperature/humidity sensor",
+    "I2C air-quality sensor",
+    "UART GPS module",
+    "2 push buttons"
+  ],
+  "hardware_outputs": [
+    "SPI display",
+    "3 status LEDs"
+  ],
+  "connectivity": [
+    "Wi-Fi",
+    "I2C",
+    "SPI",
+    "UART"
+  ],
+  "power_requirements": "['5V USB mains adapter', '3.3V regulated rail']",
+  "physical_constraints": [
+    "wall mountable",
+    "enclosure under 100mm x 80mm"
+  ],
+  "performance_requirements": [
+    "one sample per second",
+    "readings visible without network connectivity"
+  ],
+  "safety_compliance": [
+    "CE",
+    "FCC"
+  ],
+  "budget": "$30-$60"
+}

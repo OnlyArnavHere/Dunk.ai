@@ -110,10 +110,23 @@ def _fetch_bytes(filename: str) -> bytes:
             resp = requests.get(url, headers=_HEADERS, timeout=_FETCH_TIMEOUT)
             resp.raise_for_status()
             return resp.content
-        except (requests.Timeout, requests.ConnectionError, requests.HTTPError) as exc:
-            # Do not retry a definitive client-side rejection: a bad token or a
-            # missing file will fail identically every time, and retrying only
-            # delays a clear error. 5xx and 429 are worth another attempt.
+        except requests.exceptions.RequestException as exc:
+            # The BASE class on purpose, not an enumerated tuple. This previously
+            # caught (Timeout, ConnectionError, HTTPError) and a real run still
+            # escaped it: a transfer that dies mid-body surfaces from
+            # `resp.content` as ChunkedEncodingError, which is a SIBLING of those
+            # three under RequestException, not a subclass of any of them -- so it
+            # bypassed the retry entirely and killed the Component Agent on a
+            # failure that was plainly transient:
+            #     Connection broken: IncompleteRead(393355889 bytes read,
+            #                                       360657423 more expected)
+            # Observed 2026-08-25 on a ~754MB parquet fetch. Enumerating one more
+            # type would just move the whack-a-mole one square over; the base class
+            # ends it. The status check below is what keeps the widening safe --
+            # anything definitively client-side still re-raises on attempt 1.
+            status = getattr(getattr(exc, "response", None), "status_code", None)
+            if status is not None and 400 <= status < 500 and status != 429:
+                raise
             status = getattr(getattr(exc, "response", None), "status_code", None)
             if status is not None and 400 <= status < 500 and status != 429:
                 raise
