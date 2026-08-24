@@ -173,9 +173,28 @@ def _score_interface_match(candidate: Dict[str, Any], request: Dict[str, Any]) -
     Note the last is 0.15 rather than 0.0: a populated interface attribute is
     not guaranteed exhaustive, so it is strong evidence against, not proof.
     """
+    # Prefer the structured requirements from parser.py, which have already had
+    # Power and the wireless three removed by interface_taxonomy. Scoring those
+    # was never meaningful: "has Power" is true of every part in the catalogue
+    # (and Power was more than half of all observed edges), and BLE/WiFi/RF
+    # describe a link through the air, so no board-level part requirement
+    # exists for them at all.
+    #
+    # Falls back to the flat lists when `interface_requirements` is absent, so a
+    # hand-built request (tests, the __main__ demo) still scores as before.
+    structured = request.get("interface_requirements")
+    if structured is not None:
+        source = [
+            entry.get("interface")
+            for entry in structured
+            if entry.get("relationship") != "not_applicable"
+        ]
+    else:
+        source = (request.get("interfaces") or []) + (request.get("power_interfaces") or [])
+
     required = set(
         i.strip().lower()
-        for i in (request.get("interfaces") or []) + (request.get("power_interfaces") or [])
+        for i in source
         if i and str(i).strip()
     )
     if not required:

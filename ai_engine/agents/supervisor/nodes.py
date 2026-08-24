@@ -30,6 +30,12 @@ COMPONENT_AGENT_DIR = AGENTS_ROOT / "component_agent"
 if str(AGENTS_ROOT) not in sys.path:
     sys.path.insert(0, str(AGENTS_ROOT))
 
+# The interface taxonomy lives beside its heaviest consumers (parser/ranking).
+# Imported at module level -- it is a pure table module with no heavy deps, so
+# this does NOT drag in `config` and its dataset download.
+if str(COMPONENT_AGENT_DIR) not in sys.path:
+    sys.path.insert(0, str(COMPONENT_AGENT_DIR))
+
 
 # ---------------------------------------------------------------------------
 # Lazy imports for heavy / optional dependencies
@@ -463,49 +469,15 @@ def eda_enrichment_node(state: CircuitState) -> dict[str, Any]:
 
 SCHEMA_VERSION_V2 = "2.0"
 
-# Roles legal for each interface. Anything not listed is rejected upstream by
-# the handoff validator rather than being silently mapped to something.
-INTERFACE_ROLES: dict[str, tuple[str, ...]] = {
-    "I2C": ("CLOCK", "DATA"),
-    "SPI": ("CLOCK", "MOSI", "MISO", "CHIP_SELECT"),
-    "UART": ("TX", "RX"),
-    "USB": ("DP", "DM", "VBUS"),
-    "CAN": ("CAN_H", "CAN_L"),
-    "Ethernet": ("TXP", "TXN", "RXP", "RXN"),
-    "SDIO": ("CLOCK", "CMD", "DATA"),
-    "PCIe": ("TXP", "TXN", "RXP", "RXN", "CLOCK"),
-    "I2S": ("BIT_CLOCK", "WORD_CLOCK", "DATA"),
-    "Power": ("SUPPLY", "GROUND"),
-    "GPIO": ("GPIO",),
-    "PWM": ("PWM",),
-    "ADC": ("ANALOG_IN",),
-    "Analog": ("ANALOG_IN",),
-    "Audio": ("AUDIO",),
-    # Wireless links are not board nets -- see _WIRELESS below.
-    "BLE": (),
-    "WiFi": (),
-    "RF": (),
-}
-
-# Interfaces that describe a link through the air, not copper between two parts.
-# v1 mapped these to an "ANT" pin on BOTH endpoints, inventing a connection that
-# does not physically exist. They are recorded as logical links instead.
-_WIRELESS = frozenset({"BLE", "WiFi", "RF"})
-
-# Buses where every participant shares the same wire per signal. Edges sharing a
-# component are merged into ONE bus, which is what prevents split half-nets.
-_SHARED_BUS = {
-    "I2C": ("CLOCK", "DATA"),
-    "SPI": ("CLOCK", "MOSI", "MISO"),
-    "I2S": ("BIT_CLOCK", "WORD_CLOCK", "DATA"),
-}
-
-# Point-to-point links where the two ends take COMPLEMENTARY roles.
-_COMPLEMENTARY = {
-    "UART": (("TX", "RX"), ("RX", "TX")),
-    "CAN": (("CAN_H", "CAN_H"), ("CAN_L", "CAN_L")),
-    "USB": (("DP", "DP"), ("DM", "DM")),
-}
+# These tables now live in component_agent/interface_taxonomy.py so that the
+# retrieval/ranking path can classify interfaces from the SAME source rather
+# than reimplementing it. Imported (not re-declared) to keep one definition.
+from interface_taxonomy import (  # noqa: E402
+    INTERFACE_ROLES,
+    _COMPLEMENTARY,
+    _SHARED_BUS,
+    _WIRELESS,
+)
 
 
 def _merge_buses(edges: list[tuple[str, str]]) -> list[set[str]]:

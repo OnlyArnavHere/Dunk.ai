@@ -12,6 +12,8 @@ Responsibility:
 import json
 from typing import Dict, List, Any
 
+import interface_taxonomy
+
 
 class ArchitectureParser:
 
@@ -188,9 +190,27 @@ class ArchitectureParser:
 
             "category": category,
 
+            # Kept as-is: retrieval._build_query embeds these as query TEXT,
+            # which is a separate job from scoring. Dropping "WiFi" from the
+            # query would lose a genuinely useful semantic signal for finding a
+            # Wi-Fi module, even though it is not a scoreable board requirement.
             "interfaces": sorted(interfaces),
 
             "power_interfaces": sorted(power_interfaces),
+
+            # Structured requirements for ranking. Power and the wireless three
+            # are excluded here and ONLY here -- see interface_taxonomy.
+            "interface_requirements": [
+                interface_taxonomy.build_requirement(i)
+                for i in sorted(interfaces | power_interfaces)
+                if interface_taxonomy.is_scoreable(i)
+            ],
+
+            # Dropped requirements, recorded rather than silently vanished.
+            "interfaces_not_applicable": sorted(
+                i for i in interfaces | power_interfaces
+                if not interface_taxonomy.is_scoreable(i)
+            ),
 
             "connections": connections,
 
