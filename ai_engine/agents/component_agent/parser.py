@@ -213,6 +213,13 @@ class ArchitectureParser:
 
             "communication": "communication",
 
+            # "Sensor" is in the architecture agent's ALLOWED_CATEGORIES but was
+            # missing here, so every sensor node fell through to "generic" and
+            # was retrieved with a meaningless `Type: generic` token in its
+            # embedded query. Only "input" mapped to "sensor", which reads like
+            # this table was written against an earlier category set.
+            "sensor": "sensor",
+
             "input": "sensor",
 
             "output": "output",
