@@ -55,7 +55,11 @@ class ComponentRetriever:
 
         self.model = self._load_embedding_model()
 
-        self.category_labels, self.category_embeddings = self._build_category_index()
+        (
+            self.category_labels,
+            self.category_embeddings,
+            self.category_row_counts,
+        ) = self._build_category_index()
 
         logger.info("Retriever initialized successfully.")
 
@@ -73,28 +77,71 @@ class ComponentRetriever:
     # Dynamic Category Index
     # ------------------------------------------------------------------
 
-    def _build_category_index(self) -> Tuple[List[str], np.ndarray]:
+    def _build_category_index(self) -> Tuple[List[str], np.ndarray, np.ndarray]:
+        """Build the taxonomy label index, merging case-variant duplicates.
 
-        values: List[str] = []
+        The catalogue carries the SAME label under several casings -- 46 groups
+        of them, including 'Inductors/Coils/Transformers'(24259) vs
+        'inductors/coils/transformers'(1), 'Switches'(11471) vs 'switches'(1),
+        and 'Pre-ordered MCUs'(1029) vs 'Pre-Ordered MCUs'(2). Deduping on the
+        exact string (the previous behaviour) kept both, and because their
+        embeddings are near-identical they rank adjacently -- so one concept
+        consumed TWO slots of a top-N window. The MCU query lost four of its
+        top ten slots to two such pairs.
 
-        if "category" in self.dataset.columns:
-            values.extend(
-                str(v) for v in self.dataset["category"].dropna().unique()
+        Merging is safe because the only consumer that MATCHES on these strings
+        (_filter_candidates) already lowercases both sides, so a canonical
+        'WiFi Modules' still matches a candidate labelled 'WIFI Modules'. The
+        canonical casing is therefore cosmetic; it is chosen as the variant
+        covering the most rows so the label shown in logs and in the query's
+        "Likely taxonomy:" line is the one that actually describes the
+        catalogue.
+
+        Row counts are summed across merged variants and returned alongside, so
+        callers can weigh how much catalogue a label actually covers.
+        """
+        counts: Dict[str, int] = {}
+        for column in ("category", "subcategory"):
+            if column not in self.dataset.columns:
+                continue
+            series = self.dataset[column].dropna().astype(str).str.strip()
+            for label, n in series.value_counts().items():
+                if label:
+                    counts[label] = counts.get(label, 0) + int(n)
+
+        # Group by casefolded form; one canonical entry per concept.
+        groups: Dict[str, List[str]] = {}
+        for label in counts:
+            groups.setdefault(label.lower(), []).append(label)
+
+        unique_labels: List[str] = []
+        row_counts: List[int] = []
+        for key in sorted(groups):
+            variants = groups[key]
+            # Most-covered variant wins; the label itself breaks ties so the
+            # choice is deterministic across runs.
+            canonical = max(variants, key=lambda v: (counts[v], v))
+            unique_labels.append(canonical)
+            row_counts.append(sum(counts[v] for v in variants))
+
+        merged = sum(len(v) - 1 for v in groups.values())
+        if merged:
+            logger.info(
+                "Taxonomy index: merged %d case-variant label(s) into their "
+                "canonical form (%d concepts from %d raw labels).",
+                merged, len(unique_labels), len(counts),
             )
-
-        if "subcategory" in self.dataset.columns:
-            values.extend(
-                str(v) for v in self.dataset["subcategory"].dropna().unique()
-            )
-
-        unique_labels = sorted({v.strip() for v in values if v and v.strip()})
 
         if not unique_labels:
             logger.warning(
                 "No category/subcategory values found in dataset -- "
                 "category resolution will be a no-op."
             )
-            return [], np.zeros((0, self.embeddings.shape[1]), dtype=np.float32)
+            return (
+                [],
+                np.zeros((0, self.embeddings.shape[1]), dtype=np.float32),
+                np.zeros((0,), dtype=np.int64),
+            )
 
         logger.info(
             "Building category index over %d unique taxonomy labels...",
@@ -108,7 +155,7 @@ class ComponentRetriever:
             show_progress_bar=False,
         ).astype(np.float32)
 
-        return unique_labels, label_embeddings
+        return unique_labels, label_embeddings, np.asarray(row_counts, dtype=np.int64)
 
     def _resolve_category(
         self,
