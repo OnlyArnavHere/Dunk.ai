@@ -12,6 +12,8 @@ import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 
+import curated_taxonomy
+
 from config import (
     DATASET_DF,
     EMBEDDINGS,
@@ -54,6 +56,10 @@ class ComponentRetriever:
         self.index = FAISS_INDEX
 
         self.model = self._load_embedding_model()
+
+        # Set by _filter_candidates; surfaced on every retrieve() result so the
+        # weaker embedding path is visible downstream rather than assumed good.
+        self._last_resolution = None
 
         (
             self.category_labels,
@@ -123,6 +129,14 @@ class ComponentRetriever:
             canonical = max(variants, key=lambda v: (counts[v], v))
             unique_labels.append(canonical)
             row_counts.append(sum(counts[v] for v in variants))
+
+        # Verify the curated table against the catalogue as it exists RIGHT NOW.
+        # The dataset is a third-party snapshot re-fetched every run, so a label
+        # can vanish or be re-bucketed between runs. Report, never silently drop.
+        for finding in curated_taxonomy.verify(dict(zip(unique_labels, row_counts))):
+            (logger.error if finding["severity"] == "error" else logger.warning)(
+                "Curated taxonomy staleness [%s]: %s", finding["kind"], finding["message"]
+            )
 
         merged = sum(len(v) - 1 for v in groups.values())
         if merged:
@@ -315,9 +329,27 @@ class ComponentRetriever:
             )
             return literal_matches
 
-        resolved = self._resolve_category(
-            f"{request.get('subsystem', '')} {request_category}".strip()
-        )
+        # Curated table first. Seven of the twelve ALLOWED_CATEGORIES have ZERO
+        # catalogue rows whose category contains their name, so the literal path
+        # above can never fire for them and they land here -- on the embedding
+        # resolver that Phase 11e documents as unreliable. Three of those seven
+        # are cleanly curatable and are handled from a fixed table instead.
+        resolved, resolution_source = curated_taxonomy.resolve(request_category)
+        if resolved is None:
+            resolution_source = curated_taxonomy.RESOLUTION_EMBEDDING
+            resolved = self._resolve_category(
+                f"{request.get('subsystem', '')} {request_category}".strip()
+            )
+        self._last_resolution = {
+            "source": resolution_source,
+            "category": request_category,
+            "labels": list(resolved or []),
+            # Only the curated path is trusted; the embedding path is the one
+            # five mechanism families failed to make reliable.
+            "confidence": (
+                "high" if resolution_source == curated_taxonomy.RESOLUTION_CURATED else "low"
+            ),
+        }
         if resolved:
             resolved_lower = {r.lower() for r in resolved}
             semantic_matches = [
@@ -332,12 +364,26 @@ class ComponentRetriever:
                 )
                 return semantic_matches
 
-        logger.warning(
-            "Category '%s' matched 0 candidates literally or via resolved "
-            "taxonomy %s -- falling back to unfiltered semantic results "
-            "(ranking will score relevance).",
-            request_category, resolved,
-        )
+        # Two different failures, deliberately reported differently. A CURATED
+        # miss is suspicious -- the table was built from real row counts, so
+        # matching nothing suggests the catalogue vocabulary moved under it. An
+        # EMBEDDING miss is the already-known-flaky path doing its usual thing.
+        if resolution_source == curated_taxonomy.RESOLUTION_CURATED:
+            logger.warning(
+                "CURATED taxonomy for category '%s' matched 0 of %d candidates "
+                "(labels: %s). The curated table may be STALE -- these labels were "
+                "verified against the catalogue at curation time. Falling back to "
+                "unfiltered results; ranking will score relevance.",
+                request_category, len(candidates), resolved,
+            )
+        else:
+            logger.warning(
+                "Category '%s' matched 0 candidates literally or via EMBEDDING "
+                "resolution %s (low confidence; this category is not in the curated "
+                "table) -- falling back to unfiltered semantic results "
+                "(ranking will score relevance).",
+                request_category, resolved,
+            )
         return candidates
 
     # ------------------------------------------------------------------
@@ -362,7 +408,10 @@ class ComponentRetriever:
             "request": request,
             "query": query,
             "candidate_count": len(candidates),
-            "candidates": candidates
+            "candidates": candidates,
+            # curated vs embedding, so a low-confidence shortlist is never
+            # mistaken for a trusted one further down the pipeline.
+            "category_resolution": self._last_resolution,
         }
 
     # ------------------------------------------------------------------
