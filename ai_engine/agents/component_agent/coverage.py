@@ -22,7 +22,9 @@ repeatedly (MISSING_PINS as a warning, mockedPinCount defaulting to 0). So:
 
     part absent from table          -> UNKNOWN. Never "no interfaces".
     naming_complete = False         -> a missing interface is UNKNOWN, not absent.
-    naming_complete = True          -> only here is absence a real negative.
+    naming_complete = True          -> absence is a real negative, UNLESS the table lists
+                                       the interface in absence_unclaimable_for
+                                       (generic port naming; see capabilityCheck.js).
 
 `interface_confidence()` returns ``None`` for every unknown case. Callers must
 fall through to their own weaker evidence rather than substituting a number.
@@ -177,6 +179,33 @@ def interface_confidence(candidate: Dict[str, Any], interface: str) -> Optional[
     # Absent from the confirmed list. That is only a real negative when every
     # pad on the part is named; otherwise the interface may sit on an unnamed
     # pad and we simply do not know.
+    #
+    # ...and complete naming is not sufficient on its own. A part whose pads are
+    # named GENERICALLY (PA0, DIO3, P02 -- port positions, not functions) can be
+    # fully named and still say nothing about protocol: such a pin is
+    # mux-assignable and may carry I2C/SPI/UART without ever declaring it.
+    # STM32WLE5CCU6 is the proof -- 49 of 49 pads named, interfaces_confirmed
+    # empty -- and read literally it was "proven" to lack I2C, SPI and UART,
+    # which is the strongest negative this module can emit, asserted about a
+    # part that plainly has all three.
+    #
+    # The table now says which interfaces its own naming cannot speak to. That
+    # decision is made ONCE, in capabilityCheck.js
+    # (`absenceUnclaimableInterfaces`), next to the positional-naming guard that
+    # already existed; this is a lookup, not a second implementation of the
+    # rule. Power is deliberately NOT in that list -- generic I/O cannot conjure
+    # a supply rail -- so power negatives survive unchanged, as do parts named
+    # by function (AD4057: BAT, CHRG, GND, PROG, STDBY, VCC).
+    #
+    # An OLD table without the key keeps the previous behaviour rather than
+    # silently suppressing every negative: a stale artefact must not quietly
+    # neuter genuine absences.
+    unclaimable = {
+        str(i).upper() for i in (entry.get("absence_unclaimable_for") or [])
+    }
+    if str(interface).upper() in unclaimable:
+        return None
+
     if entry.get("naming_complete") is True:
         return 0.0
     return None
