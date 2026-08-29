@@ -228,11 +228,9 @@ class ComponentRetriever:
         if power_interfaces:
             parts.append("Power interfaces: " + ", ".join(power_interfaces))
 
-        resolved_categories = self._resolve_category(
-            f"{subsystem or ''} {category or ''}".strip()
-        )
-        if resolved_categories:
-            parts.append("Likely taxonomy: " + ", ".join(resolved_categories[:3]))
+        taxonomy_hint = self._taxonomy_hint(subsystem, category)
+        if taxonomy_hint:
+            parts.append("Likely taxonomy: " + ", ".join(taxonomy_hint))
 
         if connections:
             neighbour_descriptions = [
@@ -248,6 +246,66 @@ class ComponentRetriever:
         logger.debug("Semantic Query:\n%s", query)
 
         return query
+
+
+    # Labels below this many catalogue rows are dropped from the QUERY HINT.
+    #
+    # This is de-minimis noise removal, not the admit/exclude boundary that five
+    # mechanism families failed on in Phase 11e. Those needed a correctness
+    # threshold where 0.002 flipped a decision; this drops labels that describe
+    # 1-4 parts and therefore cannot characterise a category of hundreds.
+    # The safe range is MEASURED, not assumed: bounded below by the largest junk
+    # label that must go (Wireless Modules, 4 rows) and above by the smallest
+    # real label that must stay (Pushbutton Switches & Relays, 16). So (4, 16],
+    # and 10 sits in it with 6 rows of margin either side -- narrower than a
+    # first estimate of "~5 to ~40", which overlooked the 12-16 row labels and
+    # was caught by the regression test rather than by inspection.
+    #
+    # A wrong value degrades steering slightly; it cannot lose a candidate,
+    # because this text never gates admission.
+    TAXONOMY_HINT_MIN_ROWS = 10
+
+    # How many labels to put in the query. The hint STEERS the embedding; it does
+    # not enumerate what is admissible, so it wants the few most representative
+    # labels rather than the complete set _filter_candidates uses.
+    TAXONOMY_HINT_LABELS = 3
+
+    def _taxonomy_hint(self, subsystem, category) -> List[str]:
+        """Labels to steer the embedding with, from the SAME source as the filter.
+
+        Before this, _build_query called the raw uncurated resolver while
+        _filter_candidates used the curated table, so the two call sites
+        disagreed about what a category IS. For an MCU request the query was
+        steered by `NXP MCU` while the filter admitted on generic labels, and the
+        FAISS top-20 came back 20/20 NXP Semiconductors -- a single-vendor pool
+        the filter then faithfully preserved.
+
+        Curated categories inject their curated labels, ordered by catalogue
+        coverage. Uncurated ones keep embedding resolution but drop de-minimis
+        labels first: measured, the raw top-3 was steering Expansion with
+        `I/O Expansion` (1 row), Input with `Pushbutton Switch` (2), Memory with
+        `Memory Controllers` (3) and Communication with `Wireless Modules` (4).
+        """
+        curated = curated_taxonomy.curated_labels(category)
+        if curated:
+            counts = curated_taxonomy.CURATED[str(category).strip().lower()]["labels"]
+            ordered = sorted(curated, key=lambda label: -counts.get(label, 0))
+            return ordered[:self.TAXONOMY_HINT_LABELS]
+
+        resolved = self._resolve_category(
+            f"{subsystem or ''} {category or ''}".strip()
+        )
+        if not resolved:
+            return []
+
+        rows = dict(zip(self.category_labels, self.category_row_counts.tolist()))
+        substantial = [
+            label for label in resolved
+            if rows.get(label, 0) >= self.TAXONOMY_HINT_MIN_ROWS
+        ]
+        # If the floor removes everything, inject NOTHING rather than junk. The
+        # query still carries subsystem, category, type and interface text.
+        return substantial[:self.TAXONOMY_HINT_LABELS]
 
     # ------------------------------------------------------------------
     # Query Embedding
