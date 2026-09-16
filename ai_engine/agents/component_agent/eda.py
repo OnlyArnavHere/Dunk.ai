@@ -46,6 +46,11 @@ class DynamicPCBIRGenerator:
         pkg_col = next((c for c in ['package', 'footprint'] if c in df.columns), None)
         cat_col = next((c for c in ['category', 'subsystem', 'type', 'part_class'] if c in df.columns), None)
         qty_col = next((c for c in ['build_quantity', 'quantity', 'qty'] if c in df.columns), None)
+        # Distinct from `part_col` above, which may fall back to an lcsc column
+        # as a NAME when no MPN column exists. This is the catalogue NUMBER,
+        # forwarded so the downstream PCB module can resolve by a known-good
+        # identifier rather than re-deriving it from the MPN string.
+        lcsc_col = next((c for c in ['lcsc', 'lcsc_part', 'jlcpcb_part'] if c in df.columns), None)
 
         components = []
         for _, row in df.iterrows():
@@ -63,13 +68,26 @@ class DynamicPCBIRGenerator:
             # Priority: Live API Package -> CSV Package -> Default
             final_package = meta["package"] if meta["package"] else csv_package
 
-            components.append({
+            lcsc = None
+            if lcsc_col:
+                raw_lcsc = str(row[lcsc_col]).strip()
+                if raw_lcsc and raw_lcsc.lower() != 'nan':
+                    lcsc = raw_lcsc
+
+            component = {
                 "ref_id": ref,
                 "part_class": str(row[cat_col]).lower().strip() if cat_col and str(row[cat_col]) != 'nan' else "ic",
                 "part_number": meta["mfr_part"],
                 "package": final_package,
                 "quantity": int(row[qty_col]) if qty_col and str(row[qty_col]).isdigit() else 1
-            })
+            }
+            # OPTIONAL and additive: emitted only when actually known, so a BOM
+            # without the column produces exactly the record shape as before and
+            # downstream consumers that do not read it are unaffected.
+            if lcsc:
+                component["lcsc"] = lcsc
+
+            components.append(component)
             
         return components
 

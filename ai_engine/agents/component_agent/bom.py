@@ -46,6 +46,14 @@ BOM_COLUMNS = [
     "candidate_category",
     "manufacturer",
     "mfr_part",
+    # The JLCPCB/LCSC catalogue number. Carried so the DOWNSTREAM PCB module can
+    # resolve a part by a known-good identifier instead of re-deriving it from
+    # the MPN string. That re-derivation goes through jlcsearch's free-text
+    # index, which does not retrieve short hyphenated module names by their own
+    # name at all: "ESP-F" (C19949062, 853 in stock) returns LM393DR2G and other
+    # comparators at any result limit, so the part resolved as
+    # COMPONENT_NOT_FOUND despite existing. Same for ESP-M1 and BLE-SER-A-ANT.
+    "lcsc",
     "package",
     "build_quantity",
     "unit_price_usd",
@@ -117,6 +125,7 @@ class BOMGenerator:
                 "candidate_category": None,
                 "manufacturer": None,
                 "mfr_part": None,
+                "lcsc": None,
                 "package": None,
                 "build_quantity": build_quantity,
                 "unit_price_usd": None,
@@ -178,6 +187,9 @@ class BOMGenerator:
             "candidate_category": candidate.get("category"),
             "manufacturer": candidate.get("manufacturer"),
             "mfr_part": utils.get_mfr_part(candidate),
+            # Already present on every candidate -- nodes.py::_shortlisted_ids
+            # reads exactly this field to build the shortlist log.
+            "lcsc": (candidate.get("extra_params") or {}).get("number"),
             "package": candidate.get("package"),
             "build_quantity": build_quantity,
             "unit_price_usd": unit_price,
