@@ -18,6 +18,9 @@ backend/logs/
 # Python/AI engine artifacts
 ai_engine/.venv/
 ai_engine/venv/
+# Opt-in local mirror of the HF dataset (DUNKAI_HF_CACHE). ~850MB of data that
+# belongs to the dataset repo, not to this one.
+ai_engine/.hf-cache/
 ai_engine/__pycache__/
 ai_engine/**/*.pyc
 .pytest_cache/
