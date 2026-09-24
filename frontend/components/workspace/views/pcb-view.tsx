@@ -30,6 +30,7 @@ import { ArtifactSvg } from './pcb/artifact-svg'
 import { BoardGltf } from './pcb/board-gltf'
 import { useWorkspaceStore } from '@/lib/store'
 import { useBoardGeneration } from '@/hooks/use-board-generation'
+import { ProviderPicker } from '@/components/workspace/provider-picker'
 
 type Pane = 'schematic' | 'pcb' | '3d'
 
@@ -61,7 +62,7 @@ const DOWNLOADS: Array<{ key: string; label: string }> = [
 export function PcbView({ projectId }: { projectId?: string } = {}) {
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId)
   const setActiveTab = useWorkspaceStore((s) => s.setActiveTab)
-  const { board, job, generate, canGenerate, componentCount } = useBoardGeneration(
+  const { board, job, generate, canGenerate, componentCount, provider, setProvider } = useBoardGeneration(
     projectId ?? activeProjectId
   )
 
@@ -190,10 +191,15 @@ export function PcbView({ projectId }: { projectId?: string } = {}) {
               {componentCount} component{componentCount === 1 ? '' : 's'} are ready. Generate the board to see
               the schematic, layout and 3D view.
             </p>
-            <Button size="sm" className="mt-1 rounded-lg text-xs" onClick={generate} disabled={!canGenerate}>
-              <CircuitBoard className="mr-1.5 h-3.5 w-3.5" />
-              Generate PCB
-            </Button>
+            <div className="mt-1 flex items-center gap-2">
+              {/* No `disabled` here: this branch only renders when a run is not
+                  in flight, so the picker is always live. */}
+              <ProviderPicker value={provider} onChange={setProvider} />
+              <Button size="sm" className="rounded-lg text-xs" onClick={generate} disabled={!canGenerate}>
+                <CircuitBoard className="mr-1.5 h-3.5 w-3.5" />
+                Generate PCB
+              </Button>
+            </div>
           </>
         ) : (
           <>

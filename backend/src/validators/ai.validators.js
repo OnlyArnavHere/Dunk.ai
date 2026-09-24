@@ -14,6 +14,12 @@ export const runValidation = [
   body('files').optional().isArray(),
   // The pcb_ir handoff, forwarded by the client for board generation.
   body('pcbIr').optional().isObject(),
+  // Board-generation provider chosen in the UI. The list mirrors
+  // dunkai-designer's provider registry; an unknown name would be rejected
+  // there anyway, but failing here gives the user a 400 instead of a job that
+  // dies three stages in.
+  body('provider').optional().isIn(['claude-code', 'gemini', 'groq', 'ollama']),
+  body('model').optional().isString().isLength({ max: 120 }),
 ];
 
 export const cancelValidation = [

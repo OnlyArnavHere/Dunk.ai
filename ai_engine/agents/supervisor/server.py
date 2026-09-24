@@ -84,6 +84,11 @@ class SupervisorRequest(BaseModel):
     files: list[Any] = Field(default_factory=list)
     jobId: str | None = None
     agentType: str | None = None
+    # Board-generation provider/model, chosen per request. Validated against the
+    # designer's registry downstream; an unknown name fails the run with the
+    # registry's own "available: ..." message rather than being ignored.
+    provider: str | None = None
+    model: str | None = None
 
 
 def _latest_user_message(messages: list[dict[str, Any]]) -> str:
@@ -158,6 +163,11 @@ def _build_initial_state(payload: SupervisorRequest) -> CircuitState:
 
     if isinstance(project.get("bom_csv_path"), str):
         state["bom_csv_path"] = project["bom_csv_path"]
+
+    if isinstance(payload.provider, str) and payload.provider.strip():
+        state["designer_provider"] = payload.provider.strip()
+    if isinstance(payload.model, str) and payload.model.strip():
+        state["designer_model"] = payload.model.strip()
 
     user_input = _latest_user_message(payload.messages)
     if user_input:

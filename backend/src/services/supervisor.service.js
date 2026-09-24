@@ -22,11 +22,53 @@ export const deleteJobStatus = (jobId) => {
 };
 
 /**
+ * The request body sent to the Python supervisor, in one place.
+ *
+ * Both callers used to inline `JSON.stringify({ action, project, messages,
+ * files, jobId })`, which silently discarded anything not in that list —
+ * `agentType` was being passed in by the controller and dropped here for every
+ * chat request, even though SupervisorRequest declares it and _handle_chat
+ * depends on it. Optional fields are omitted rather than sent as null so the
+ * Pydantic defaults on the other side still apply.
+ *
+ * @param {object} fields - action, project, messages, files, jobId, agentType, provider, model
+ * @returns {object} body for the supervisor, optional keys omitted when unset
+ */
+const buildSupervisorBody = ({
+  action,
+  project,
+  messages,
+  files,
+  jobId,
+  agentType,
+  provider,
+  model,
+}) => ({
+  action,
+  project,
+  messages,
+  files,
+  jobId,
+  ...(agentType ? { agentType } : {}),
+  ...(provider ? { provider } : {}),
+  ...(model ? { model } : {}),
+});
+
+/**
  * Security boundary: Node.js talks ONLY to the Supervisor Agent.
  * Downstream AI agents (Requirement, Architecture, Component, PCB, Validation, Documentation)
  * are internal to the Python engine and are never addressed directly here.
  */
-export const callSupervisor = async ({ action, project, messages = [], files = [], jobId = null }) => {
+export const callSupervisor = async ({
+  action,
+  project,
+  messages = [],
+  files = [],
+  jobId = null,
+  agentType = null,
+  provider = null,
+  model = null,
+}) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
 
@@ -43,7 +85,11 @@ export const callSupervisor = async ({ action, project, messages = [], files = [
       method: 'POST',
       headers,
       signal: controller.signal,
-      body: JSON.stringify({ action, project, messages, files, jobId }),
+      // Built with buildSupervisorBody so a field added to the contract cannot
+      // be silently dropped here — which is exactly what happened to agentType.
+      body: JSON.stringify(
+        buildSupervisorBody({ action, project, messages, files, jobId, agentType, provider, model })
+      ),
     });
 
     const body = await response.json().catch(() => ({}));
@@ -190,7 +236,19 @@ const parseSSEBuffer = (buffer) => {
  * @param {object} opts - { action, project, messages, files, jobId }
  * @returns {Promise<object>} final serialised state (from the ``complete`` event)
  */
-export const callSupervisorStream = async (io, { action, project, messages = [], files = [], jobId }) => {
+export const callSupervisorStream = async (
+  io,
+  {
+    action,
+    project,
+    messages = [],
+    files = [],
+    jobId,
+    agentType = null,
+    provider = null,
+    model = null,
+  }
+) => {
   setJobStatus(jobId, 'running');
 
   const headers = { 'content-type': 'application/json' };
@@ -204,7 +262,9 @@ export const callSupervisorStream = async (io, { action, project, messages = [],
       method: 'POST',
       headers,
       // No signal / no timeout — the stream lives as long as the pipeline runs.
-      body: JSON.stringify({ action, project, messages, files, jobId }),
+      body: JSON.stringify(
+        buildSupervisorBody({ action, project, messages, files, jobId, agentType, provider, model })
+      ),
     });
   } catch (error) {
     setJobStatus(jobId, 'failed', { error: 'Supervisor Agent is unavailable' });

@@ -47,6 +47,12 @@ class CircuitState(TypedDict, total=False):
     interview_question: str | None
     interview_options: list[str] | None
     build_quantity: int
+    # Which dunkai-designer provider generates the board, chosen per request in
+    # the UI. Kept in state rather than passed as an argument so the streaming
+    # (stream_board) and non-streaming (board_node) paths read it the same way.
+    # Unset means "fall back to DESIGNER_PROVIDER, then claude-code".
+    designer_provider: str
+    designer_model: str
     bom_csv_path: str
     design_name: str
     current_node: str

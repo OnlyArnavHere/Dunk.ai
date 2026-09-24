@@ -142,3 +142,69 @@ but it is bytes on the wire, which is what resets the timer.
 Fixed here rather than in the backend because a keepalive is the standard SSE
 answer and needs no dependency; raising undici's `bodyTimeout` would fix this
 one caller and leave the next one to rediscover it.
+
+## D-008 — The board provider is chosen per request, and API providers write their own files
+
+**Status:** Accepted
+
+The generator was `claude-code` and nothing else. The registry in
+`dunkai-designer/src/providers/index.mjs` had one entry, `DESIGNER_PROVIDER` was
+unset so it always resolved to that default, and the three-vendor "BYOK" panel in
+`frontend/app/settings/page.tsx` wrote keys to `localStorage` that nothing ever
+read. Every board therefore cost Claude Code usage, with no way to trade quality
+for price on a run the user knew was a throwaway.
+
+Provider and model now travel **with the request** — `run-stream` body →
+`SupervisorRequest` → `state["designer_provider"]` → `board.py` → `--provider`.
+Carried in the LangGraph state rather than as a new argument because
+`stream_board(state, job_id)` and `board_node(state)` both need it and only state
+reaches both. `DESIGNER_PROVIDER` survives as the server-wide fallback, so a
+caller that sends nothing still gets the old behaviour: verified, an omitted
+provider still reports `provider claude-code`.
+
+`buildSupervisorBody` now builds that body in one place. The two call sites each
+inlined `JSON.stringify({ action, project, messages, files, jobId })`, which
+silently dropped anything else — `agentType` was being passed by
+`ai.controller.js` and discarded on every chat request even though
+`SupervisorRequest` declares it and `_handle_chat` depends on it. That bug is
+fixed here as a side effect, and the shared builder is what stops the next field
+from repeating it.
+
+**The real asymmetry is agency, not model quality.** `claude-code` is handed the
+project directory and writes `src/board.tsx` itself; Gemini, Groq and Ollama are
+chat APIs that cannot touch a filesystem. `openai-compatible.mjs` therefore asks
+for `{"files": {...}}` and writes them, which means it also owns the checks the
+agentic path got for free. Three consequences, each from an observed failure:
+
+- **A worked skeleton is mandatory.** Without it, gpt-oss-120b returned a `<>`
+  fragment and an invented `<component ref part />` element — a file that reads
+  fine and builds nothing. `TSCIRCUIT_SKELETON` fixed it on the next run.
+  `claude-code` does not get this text: it already knows the shape.
+- **Syntax is validated before anything lands on disk.** A Groq repair pass
+  returned `board.tsx` with a duplicated `);` on line 42, replacing a file that
+  had parsed and killing the run at the next build. Files are now parsed with the
+  TypeScript already in the designer's dependencies, all-or-nothing, so a bad
+  reply cannot half-replace a working board. Only syntax — the generated
+  `./imports/` are invisible to that parser, so type errors are expected.
+- **A failed repair keeps the previous board.** `cli.mjs` ran `provider.repair`
+  unguarded, so a rejected reply or a rate limit threw away a board that already
+  built. It now notes the failure and stops repairing.
+
+Retries are deliberately patient — 5s/15s/45s, honouring `Retry-After` — because
+by stage D the pipeline has already spent minutes resolving components. Node's
+fetch reports every transport fault as a bare `TypeError: fetch failed`; one such
+fault ended a real run with no retry, so those are retried too and the message
+now carries `err.cause` (`ECONNRESET`, `ENOTFOUND`) instead of "fetch failed".
+
+Measured on the same 12-component fixture, end to end through the UI's own path:
+
+| provider | traces | DRC errors | outcome |
+|---|---|---|---|
+| `groq` (openai/gpt-oss-120b) | 16 | 9 | completed, glTF built |
+| `ollama` (gpt-oss:120b) | 15 | 15 | completed, glTF built |
+
+Both leave DRC errors that `claude-code` does not, which is the trade this switch
+exists to expose rather than hide — D-006 already shows and labels such a board.
+`gemini` is implemented and its transport verified, but no free-tier model could
+serve a real brief: every flash model answered 503 "high demand" and
+`gemini-3.1-pro-preview` reported `limit: 0` on the free tier.

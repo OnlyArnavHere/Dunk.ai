@@ -188,6 +188,8 @@ export const aiApi = {
     action?: string
     messages?: Array<{ role: string; content: string }>
     pcbIr?: Record<string, unknown>
+    provider?: string
+    model?: string
   }) =>
     request<{ jobId: string }>('/ai/run-stream', {
       method: 'POST',
@@ -200,11 +202,25 @@ export const aiApi = {
    * Same endpoint, same Socket.io relay and same jobId contract as the chat
    * pipeline — only the action differs. The pcb_ir is sent along because
    * run-stream persists nothing, so the browser holds the only copy.
+   *
+   * `provider` and `model` are omitted when unset so the server-side
+   * DESIGNER_PROVIDER default still applies; sending an explicit null would
+   * override it with nothing.
    */
-  generateBoard: (projectId: string, pcbIr: Record<string, unknown>) =>
+  generateBoard: (
+    projectId: string,
+    pcbIr: Record<string, unknown>,
+    opts: { provider?: string; model?: string } = {}
+  ) =>
     request<{ jobId: string }>('/ai/run-stream', {
       method: 'POST',
-      body: JSON.stringify({ projectId, action: 'generate_board', pcbIr }),
+      body: JSON.stringify({
+        projectId,
+        action: 'generate_board',
+        pcbIr,
+        ...(opts.provider ? { provider: opts.provider } : {}),
+        ...(opts.model ? { model: opts.model } : {}),
+      }),
     }),
 
   status: (jobId: string) => request(`/ai/status/${jobId}`),
