@@ -1,5 +1,62 @@
 import { create } from 'zustand'
 
+// ---- Generated board artifacts (dunkai-designer output) ----
+export interface BoardArtifact {
+  design_name: string | null
+  out_dir: string
+  urls: {
+    circuitJson?: string
+    schematicSvg?: string
+    pcbSvg?: string
+    bomCsv?: string
+    pickAndPlaceCsv?: string
+    gerbersDir?: string
+    gerbersZip?: string
+    boardGlb?: string
+    boardGltfJson?: string
+    designBrief?: string
+    resolution?: string
+  }
+  sizes: Record<string, number>
+  stats: {
+    elements?: number
+    errors?: number
+    warnings?: number
+    components?: number
+    traces?: number
+    bomRows?: number
+    errorTypes?: string[]
+    resolvedComponents?: number
+    unresolvedComponents?: number
+    placeholderPinComponents?: number
+    substitutedComponents?: number
+    gltf?: { glbBytes?: number; rawBytes?: number; cadComponents?: number; meshes?: number } | null
+  }
+  generated_at: string
+}
+
+/** Live progress for a board-generation job, mirrored from ai:progress. */
+export interface BoardJob {
+  status: 'idle' | 'running' | 'done' | 'error'
+  jobId: string | null
+  stage: string | null
+  label: string | null
+  detail: string | null
+  error: string | null
+  /** Per-stage log, so the UI can show what happened rather than just a spinner. */
+  log: Array<{ stage: string | null; label: string; detail: string | null; at: number }>
+}
+
+const idleBoardJob: BoardJob = {
+  status: 'idle',
+  jobId: null,
+  stage: null,
+  label: null,
+  detail: null,
+  error: null,
+  log: [],
+}
+
 // ---- Shape of the AI pipeline output (mirrors CircuitState from Python) ----
 export interface AiOutput {
   requirements: Record<string, unknown> | null
@@ -9,6 +66,10 @@ export interface AiOutput {
   pcb_ir: Record<string, unknown> | null
   validation: Record<string, unknown> | null
   documentation: Record<string, unknown> | null
+  // Present only after "Generate PCB" has run. Lives inside AiOutput on purpose:
+  // a fresh pipeline run replaces the whole object, which clears a board that
+  // belongs to a previous BOM rather than showing it against new components.
+  board: BoardArtifact | null
 }
 
 interface WorkspaceState {
@@ -19,6 +80,7 @@ interface WorkspaceState {
 
   // Live AI pipeline output — populated when the supervisor stream completes
   aiOutput: AiOutput | null
+  boardJob: BoardJob
 
   setActiveProjectId: (id: string | null) => void
   setActiveTab: (tab: string) => void
@@ -27,6 +89,12 @@ interface WorkspaceState {
   setPendingPrompt: (prompt: string | null) => void
   setAiOutput: (output: AiOutput) => void
   clearAiOutput: () => void
+
+  startBoardJob: (jobId: string) => void
+  pushBoardProgress: (update: { stage?: string | null; label?: string | null; detail?: string | null }) => void
+  completeBoardJob: (board: BoardArtifact) => void
+  failBoardJob: (error: string) => void
+  resetBoardJob: () => void
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
@@ -35,12 +103,44 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   sidebarCollapsed: true,
   pendingPrompt: null,
   aiOutput: null,
+  boardJob: idleBoardJob,
 
   setActiveProjectId: (id) => set({ activeProjectId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
-  setAiOutput: (output) => set({ aiOutput: output }),
-  clearAiOutput: () => set({ aiOutput: null }),
+  setAiOutput: (output) => set({ aiOutput: output, boardJob: idleBoardJob }),
+  clearAiOutput: () => set({ aiOutput: null, boardJob: idleBoardJob }),
+
+  startBoardJob: (jobId) =>
+    set({ boardJob: { ...idleBoardJob, status: 'running', jobId, label: 'Starting board generation' } }),
+
+  pushBoardProgress: (update) =>
+    set((state) => {
+      const label = update.label ?? state.boardJob.label ?? ''
+      return {
+        boardJob: {
+          ...state.boardJob,
+          status: 'running',
+          stage: update.stage ?? state.boardJob.stage,
+          label,
+          detail: update.detail ?? null,
+          log: label
+            ? [...state.boardJob.log, { stage: update.stage ?? null, label, detail: update.detail ?? null, at: Date.now() }]
+            : state.boardJob.log,
+        },
+      }
+    }),
+
+  completeBoardJob: (board) =>
+    set((state) => ({
+      boardJob: { ...state.boardJob, status: 'done', detail: null, error: null },
+      aiOutput: state.aiOutput ? { ...state.aiOutput, board } : state.aiOutput,
+    })),
+
+  failBoardJob: (error) =>
+    set((state) => ({ boardJob: { ...state.boardJob, status: 'error', error } })),
+
+  resetBoardJob: () => set({ boardJob: idleBoardJob }),
 }))

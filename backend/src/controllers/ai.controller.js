@@ -154,11 +154,22 @@ export const runStream = asyncHandler(async (req, res) => {
   const jobId = uuidv4();
   const io = req.app.get('io');
 
+  // The workflow's pcb_ir is never persisted — runStream writes no Document, so
+  // after a run it exists only in the browser's workspace store. Board
+  // generation needs it, so the client sends back the handoff it is holding.
+  // This is the user's own design data for a project they already passed the
+  // getProject access check on, so it crosses no privilege boundary; it is
+  // simply the only copy there is.
+  const projectPayload = project ? project.toObject() : {};
+  if (req.body.pcbIr && typeof req.body.pcbIr === 'object') {
+    projectPayload.pcb_ir = req.body.pcbIr;
+  }
+
   // Fire-and-forget: the stream runs in the background and emits
   // Socket.io events as progress arrives.  We don't await it here.
   callSupervisorStream(io, {
     action: req.body.action || 'run_workflow',
-    project: project ? project.toObject() : {},
+    project: projectPayload,
     messages: req.body.messages || [],
     files: req.body.files || [],
     jobId,

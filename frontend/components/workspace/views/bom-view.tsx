@@ -3,7 +3,7 @@
 import React from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
-import { Download, Copy, PackageOpen } from 'lucide-react';
+import { Download, Copy, PackageOpen, CircuitBoard, Loader2, AlertTriangle, ArrowRight } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -13,6 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useWorkspaceStore } from '@/lib/store';
+import { useBoardGeneration } from '@/hooks/use-board-generation';
 
 interface BOMViewProps {
   projectId: string;
@@ -42,9 +43,20 @@ interface BomData {
   summary?: string;
 }
 
-export function BOMView({ projectId: _projectId }: BOMViewProps) {
+export function BOMView({ projectId }: BOMViewProps) {
   const aiOutput = useWorkspaceStore((s) => s.aiOutput);
+  const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
   const bom = aiOutput?.bom as BomData | null | undefined;
+
+  // Component selection finishes here, so this is where the board gets built.
+  const { generate, canGenerate, componentCount, job, board } = useBoardGeneration(projectId);
+
+  const startGeneration = () => {
+    // Switch to the PCB tab so the run is visible: that view renders the live
+    // per-stage log, and a long job with no visible progress reads as a hang.
+    setActiveTab('pcb');
+    generate();
+  };
 
   // Normalise rows from whatever key the Python agent used
   const rows: BomRow[] = bom?.rows ?? bom?.components ?? [];
@@ -134,8 +146,49 @@ export function BOMView({ projectId: _projectId }: BOMViewProps) {
                 <Download className="w-4 h-4 mr-2" />
                 Export
               </Button>
+              {board ? (
+                <Button size="sm" onClick={() => setActiveTab('pcb')}>
+                  View PCB
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  onClick={startGeneration}
+                  disabled={!canGenerate}
+                  title={
+                    componentCount === 0
+                      ? 'The pipeline has not produced a PCB handoff for this BOM yet'
+                      : 'Generate the schematic, PCB layout and 3D view'
+                  }
+                >
+                  {job.status === 'running' ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <CircuitBoard className="w-4 h-4 mr-2" />
+                  )}
+                  {job.status === 'running' ? 'Generating…' : 'Generate PCB'}
+                </Button>
+              )}
             </div>
           </div>
+
+          {job.status === 'error' && (
+            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
+              <div className="min-w-0">
+                <p className="text-xs text-foreground">Board generation failed.</p>
+                <p className="mt-0.5 break-words font-mono text-[10px] text-muted-foreground">{job.error}</p>
+              </div>
+            </div>
+          )}
+
+          {componentCount === 0 && job.status === 'idle' && (
+            <p className="rounded-lg border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
+              The pipeline has not produced a PCB handoff for this BOM yet, so the board cannot be generated.
+              Re-run the pipeline from the Chat tab.
+            </p>
+          )}
 
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4">

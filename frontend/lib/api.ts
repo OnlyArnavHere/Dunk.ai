@@ -183,10 +183,28 @@ export const aiApi = {
       body: JSON.stringify(data),
     }),
 
-  runStream: (data: { projectId?: string; action?: string; messages?: Array<{ role: string; content: string }> }) =>
+  runStream: (data: {
+    projectId?: string
+    action?: string
+    messages?: Array<{ role: string; content: string }>
+    pcbIr?: Record<string, unknown>
+  }) =>
     request<{ jobId: string }>('/ai/run-stream', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  /**
+   * Run dunkai-designer over an existing pcb_ir handoff.
+   *
+   * Same endpoint, same Socket.io relay and same jobId contract as the chat
+   * pipeline — only the action differs. The pcb_ir is sent along because
+   * run-stream persists nothing, so the browser holds the only copy.
+   */
+  generateBoard: (projectId: string, pcbIr: Record<string, unknown>) =>
+    request<{ jobId: string }>('/ai/run-stream', {
+      method: 'POST',
+      body: JSON.stringify({ projectId, action: 'generate_board', pcbIr }),
     }),
 
   status: (jobId: string) => request(`/ai/status/${jobId}`),

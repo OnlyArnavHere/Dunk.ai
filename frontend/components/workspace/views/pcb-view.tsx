@@ -1,42 +1,77 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { Box, Check, Copy, Download, FileCode2, Layers2, Maximize2, Minimize2, RotateCcw } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+  AlertTriangle,
+  Box,
+  CircuitBoard,
+  Download,
+  FileCode2,
+  Layers2,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  Waypoints,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from '@/components/ui/sheet'
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { toast } from 'sonner'
 import { KiCanvasViewer } from './pcb/kicanvas-viewer'
 import { Board3D } from './pcb/board-3d'
 import { SAMPLE_BOARD, SAMPLE_BOARD_NAME } from './pcb/sample-board'
+import { ArtifactSvg } from './pcb/artifact-svg'
+import { BoardGltf } from './pcb/board-gltf'
 import { useWorkspaceStore } from '@/lib/store'
+import { useBoardGeneration } from '@/hooks/use-board-generation'
 
-export function PcbView({ projectId: _projectId }: { projectId?: string } = {}) {
-  const aiOutput = useWorkspaceStore((s) => s.aiOutput)
-  const aiBoard = (aiOutput?.pcb_ir as any)?.board_file
+type Pane = 'schematic' | 'pcb' | '3d'
 
-  // Use the AI generated board if available, otherwise fallback to sample
-  const [source, setSource] = useState(aiBoard || SAMPLE_BOARD)
+const PANES: Array<{ id: Pane; label: string; icon: typeof Layers2 }> = [
+  { id: 'schematic', label: 'Schematic', icon: Waypoints },
+  { id: 'pcb', label: 'PCB', icon: Layers2 },
+  { id: '3d', label: '3D', icon: Box },
+]
 
-  // Update source if aiOutput changes after mount
-  useEffect(() => {
-    if (aiBoard) setSource(aiBoard)
-  }, [aiBoard])
+const formatBytes = (n?: number) => {
+  if (!n || n <= 0) return '—'
+  if (n < 1024) return `${n} B`
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`
+  return `${(n / (1024 * 1024)).toFixed(2)} MB`
+}
 
-  // KiCanvas is 2D-only (alpha) — the 3D view is our own three.js preview
-  const [view, setView] = useState<'2d' | '3d'>('2d')
+const DOWNLOADS: Array<{ key: string; label: string }> = [
+  { key: 'circuitJson', label: 'Circuit JSON' },
+  { key: 'schematicSvg', label: 'Schematic SVG' },
+  { key: 'pcbSvg', label: 'PCB SVG' },
+  { key: 'boardGlb', label: '3D model (.glb)' },
+  { key: 'bomCsv', label: 'Bill of materials (.csv)' },
+  { key: 'pickAndPlaceCsv', label: 'Pick and place (.csv)' },
+  { key: 'gerbersZip', label: 'Gerbers + drill (.zip)' },
+  { key: 'designBrief', label: 'Design brief (.md)' },
+  { key: 'resolution', label: 'Component resolution (.json)' },
+]
 
-  // Source editor drawer
-  const [editorOpen, setEditorOpen] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [copied, setCopied] = useState(false)
+export function PcbView({ projectId }: { projectId?: string } = {}) {
+  const activeProjectId = useWorkspaceStore((s) => s.activeProjectId)
+  const setActiveTab = useWorkspaceStore((s) => s.setActiveTab)
+  const { board, job, generate, canGenerate, componentCount } = useBoardGeneration(
+    projectId ?? activeProjectId
+  )
 
-  // Native fullscreen on the viewer container
+  const [pane, setPane] = useState<Pane>('pcb')
+  const [showSample, setShowSample] = useState(false)
+  // The sample board is a .kicad_pcb, so it keeps the original viewers:
+  // KiCanvas for 2D and board-3d.tsx's s-expression renderer for 3D. Generated
+  // boards are tscircuit artifacts and take the SVG / glTF path instead.
+  const [sampleView, setSampleView] = useState<'2d' | '3d'>('2d')
+
   const containerRef = useRef<HTMLDivElement>(null)
   const [isFullscreen, setIsFullscreen] = useState(false)
 
@@ -48,136 +83,273 @@ export function PcbView({ projectId: _projectId }: { projectId?: string } = {}) 
 
   const toggleFullscreen = useCallback(async () => {
     try {
-      if (document.fullscreenElement) {
-        await document.exitFullscreen()
-      } else {
-        await containerRef.current?.requestFullscreen()
-      }
+      if (document.fullscreenElement) await document.exitFullscreen()
+      else await containerRef.current?.requestFullscreen()
     } catch {
       toast.error('Fullscreen is not available in this browser')
     }
   }, [])
 
-  const openEditor = () => {
-    setDraft(source)
-    setEditorOpen(true)
+  const stats = board?.stats
+  const drcErrors = stats?.errors ?? 0
+
+  const available = useMemo(
+    () => DOWNLOADS.filter((d) => board?.urls?.[d.key as keyof typeof board.urls]),
+    [board]
+  )
+
+  // ---- generating -----------------------------------------------------------
+  if (job.status === 'running') {
+    return (
+      <div className="force-dark dark flex h-full w-full flex-col items-center justify-center bg-[#131318] px-6 text-foreground">
+        <div className="w-full max-w-md">
+          <div className="mb-6 flex items-center gap-3">
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <div className="min-w-0">
+              <p className="truncate text-sm">{job.label ?? 'Generating board…'}</p>
+              {job.detail && (
+                <p className="mt-0.5 truncate font-mono text-[10px] text-muted-foreground">{job.detail}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="max-h-64 overflow-auto rounded-lg border border-border bg-background/40 p-3">
+            {job.log.slice(-14).map((entry, i) => (
+              <div key={i} className="flex gap-2 py-0.5 font-mono text-[10px] leading-relaxed">
+                <span className="w-4 shrink-0 text-muted-foreground/60">{entry.stage ?? '·'}</span>
+                <span className="text-muted-foreground">{entry.label}</span>
+                {entry.detail && <span className="truncate text-muted-foreground/60">— {entry.detail}</span>}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const applyDraft = () => {
-    const trimmed = draft.trim()
-    if (!trimmed.startsWith('(kicad_pcb')) {
-      toast.error('Not a KiCad board — the file must start with (kicad_pcb …)')
-      return
+  // ---- no board yet ---------------------------------------------------------
+  if (!board) {
+    if (showSample) {
+      return (
+        <div
+          ref={containerRef}
+          className="force-dark dark relative h-full w-full overflow-hidden bg-[#131318] text-foreground"
+        >
+          {sampleView === '2d' ? (
+            <KiCanvasViewer source={SAMPLE_BOARD} name={SAMPLE_BOARD_NAME} type="board" controls="full" />
+          ) : (
+            <Board3D source={SAMPLE_BOARD} />
+          )}
+          <div className="absolute left-4 top-4 flex flex-col gap-2">
+            <p className="pointer-events-none select-none font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+              Sample board · not your design
+            </p>
+            <div className="flex gap-2">
+              <div className="flex overflow-hidden rounded-lg border border-border bg-background/90 backdrop-blur">
+                {(['2d', '3d'] as const).map((v) => (
+                  <button
+                    key={v}
+                    onClick={() => setSampleView(v)}
+                    className={`flex h-8 items-center gap-1.5 px-3 text-xs uppercase transition-colors ${
+                      sampleView === v ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {v === '2d' ? <Layers2 className="h-3.5 w-3.5" /> : <Box className="h-3.5 w-3.5" />}
+                    {v}
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 w-fit rounded-lg bg-background/90 text-xs backdrop-blur"
+                onClick={() => setShowSample(false)}
+              >
+                Back
+              </Button>
+            </div>
+          </div>
+        </div>
+      )
     }
-    setSource(draft)
-    toast.success('Board re-rendered from source')
+
+    return (
+      <div className="force-dark dark flex h-full w-full flex-col items-center justify-center gap-4 bg-[#131318] px-6 text-center text-muted-foreground">
+        <CircuitBoard className="h-10 w-10 opacity-40" />
+        {job.status === 'error' ? (
+          <>
+            <p className="max-w-md text-sm text-foreground">Board generation failed.</p>
+            <p className="max-w-lg font-mono text-[10px] leading-relaxed">{job.error}</p>
+            <Button size="sm" className="mt-2 rounded-lg text-xs" onClick={generate} disabled={!canGenerate}>
+              Try again
+            </Button>
+          </>
+        ) : componentCount > 0 ? (
+          <>
+            <p className="max-w-md text-sm">
+              {componentCount} component{componentCount === 1 ? '' : 's'} are ready. Generate the board to see
+              the schematic, layout and 3D view.
+            </p>
+            <Button size="sm" className="mt-1 rounded-lg text-xs" onClick={generate} disabled={!canGenerate}>
+              <CircuitBoard className="mr-1.5 h-3.5 w-3.5" />
+              Generate PCB
+            </Button>
+          </>
+        ) : (
+          <>
+            <p className="max-w-md text-sm">
+              Run the AI pipeline from the Chat tab, then generate the board from the BOM tab.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-1 rounded-lg text-xs"
+              onClick={() => setActiveTab('chat')}
+            >
+              Go to Chat
+            </Button>
+          </>
+        )}
+        <button
+          onClick={() => setShowSample(true)}
+          className="mt-4 font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground/60 underline-offset-4 transition-colors hover:text-muted-foreground hover:underline"
+        >
+          View sample board
+        </button>
+      </div>
+    )
   }
 
-  const copyDraft = async () => {
-    await navigator.clipboard.writeText(draft)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1500)
-  }
-
-  const downloadBoard = () => {
-    const blob = new Blob([source], { type: 'text/plain' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = SAMPLE_BOARD_NAME
-    a.click()
-    URL.revokeObjectURL(url)
-  }
+  // ---- real board -----------------------------------------------------------
+  const urls = board.urls
 
   return (
-    // Forced dark surface: KiCanvas always renders a dark canvas, so the PCB
-    // view re-applies the dark tokens (.force-dark) even when the app is in
-    // light mode — buttons and text stay dark-styled to match the viewer
-    <div ref={containerRef} className="force-dark dark relative h-full w-full overflow-hidden bg-[#131318] text-foreground">
-      {view === '2d' ? (
-        /* Full-page KiCanvas viewer (WebGL) with its complete control sidebar */
-        <KiCanvasViewer source={source} name={SAMPLE_BOARD_NAME} type="board" controls="full" />
-      ) : (
-        <Board3D source={source} />
+    <div
+      ref={containerRef}
+      className="force-dark dark relative h-full w-full overflow-hidden bg-[#131318] text-foreground"
+    >
+      {pane === 'schematic' && urls.schematicSvg && (
+        <ArtifactSvg src={urls.schematicSvg} label="schematic" />
       )}
+      {pane === 'pcb' && urls.pcbSvg && <ArtifactSvg src={urls.pcbSvg} label="PCB layout" />}
+      {pane === '3d' &&
+        (urls.boardGlb ? (
+          <BoardGltf src={urls.boardGlb} />
+        ) : (
+          <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Box className="h-8 w-8 opacity-40" />
+            <p className="text-sm">No 3D model was produced for this board.</p>
+          </div>
+        ))}
 
-      {/* Top-left meta + actions — KiCanvas owns the top-right corner and the
-          right-edge activity bar, so all of our controls live on the left */}
+      {/* Top-left meta + controls — the viewers own the rest of the surface */}
       <div className="absolute left-4 top-4 flex flex-col gap-2">
         <p className="pointer-events-none select-none font-mono text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-          Design artifact / PCB · {SAMPLE_BOARD_NAME}{view === '3d' ? ' · 3D preview' : ''}
+          Design artifact / PCB · {board.design_name ?? 'board'}
+          {stats?.components ? ` · ${stats.components} parts` : ''}
+          {stats?.traces ? ` · ${stats.traces} traces` : ''}
         </p>
+
         <div className="flex flex-wrap gap-2">
           <div className="flex overflow-hidden rounded-lg border border-border bg-background/90 backdrop-blur">
-            <button
-              onClick={() => setView('2d')}
-              className={`flex h-8 items-center gap-1.5 px-3 text-xs transition-colors ${view === '2d' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              <Layers2 className="h-3.5 w-3.5" />
-              2D
-            </button>
-            <button
-              onClick={() => setView('3d')}
-              className={`flex h-8 items-center gap-1.5 px-3 text-xs transition-colors ${view === '3d' ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-            >
-              <Box className="h-3.5 w-3.5" />
-              3D
-            </button>
+            {PANES.map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setPane(id)}
+                className={`flex h-8 items-center gap-1.5 px-3 text-xs transition-colors ${
+                  pane === id ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {label}
+              </button>
+            ))}
           </div>
-          <Button variant="outline" size="sm" className="h-8 rounded-lg bg-background/90 text-xs backdrop-blur" onClick={downloadBoard}>
-            <Download className="mr-1.5 h-3.5 w-3.5" />
-            Export
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 rounded-lg bg-background/90 text-xs backdrop-blur" onClick={openEditor}>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 rounded-lg bg-background/90 text-xs backdrop-blur"
+              >
+                <Download className="mr-1.5 h-3.5 w-3.5" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="border-border bg-background/95 backdrop-blur-xl">
+              <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                Manufacturing outputs
+              </DropdownMenuLabel>
+              <DropdownMenuSeparator className="bg-border" />
+              {available.map(({ key, label }) => (
+                <DropdownMenuItem key={key} asChild className="cursor-pointer text-sm">
+                  <a href={urls[key as keyof typeof urls]} download>
+                    <span className="flex-1">{label}</span>
+                    <span className="ml-3 font-mono text-[10px] text-muted-foreground">
+                      {formatBytes(board.sizes?.[key])}
+                    </span>
+                  </a>
+                </DropdownMenuItem>
+              ))}
+              {/* The Gerber set is offered as `gerbersZip` in the list above.
+                  It used to link `gerbersDir`, but express.static does not list
+                  directories, so that answered 301 and then 404. */}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-lg bg-background/90 text-xs backdrop-blur"
+            onClick={generate}
+            disabled={!canGenerate}
+            title="Regenerate the board from the current BOM"
+          >
             <FileCode2 className="mr-1.5 h-3.5 w-3.5" />
-            Edit source
+            Regenerate
           </Button>
-          <Button variant="outline" size="sm" className="h-8 rounded-lg bg-background/90 text-xs backdrop-blur" onClick={toggleFullscreen}>
-            {isFullscreen ? <Minimize2 className="mr-1.5 h-3.5 w-3.5" /> : <Maximize2 className="mr-1.5 h-3.5 w-3.5" />}
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 rounded-lg bg-background/90 text-xs backdrop-blur"
+            onClick={toggleFullscreen}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="mr-1.5 h-3.5 w-3.5" />
+            ) : (
+              <Maximize2 className="mr-1.5 h-3.5 w-3.5" />
+            )}
             {isFullscreen ? 'Exit' : 'Fullscreen'}
           </Button>
         </div>
-      </div>
 
-      {/* KiCad source editor drawer */}
-      <Sheet open={editorOpen} onOpenChange={setEditorOpen}>
-        <SheetContent side="right" className="flex w-full flex-col gap-0 border-border bg-background/95 backdrop-blur-xl sm:max-w-xl">
-          <SheetHeader className="border-b border-border pb-4">
-            <SheetTitle className="flex items-center gap-2 font-display text-xl">
-              <FileCode2 className="h-4 w-4" />
-              Board source
-            </SheetTitle>
-            <SheetDescription className="font-mono text-[10px] uppercase tracking-[0.18em]">
-              Edit the .kicad_pcb live — Apply re-renders the viewer
-            </SheetDescription>
-          </SheetHeader>
-          <textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            spellCheck={false}
-            className="mt-4 flex-1 resize-none rounded-lg border border-border bg-secondary/30 p-3 font-mono text-[11px] leading-relaxed text-foreground outline-none focus:border-foreground/30"
-          />
-          <div className="mt-4 flex items-center gap-2">
-            <Button size="sm" className="rounded-lg text-xs" onClick={applyDraft}>
-              <Check className="mr-1.5 h-3.5 w-3.5" />
-              Apply
-            </Button>
-            <Button variant="outline" size="sm" className="rounded-lg text-xs" onClick={copyDraft}>
-              {copied ? <Check className="mr-1.5 h-3.5 w-3.5" /> : <Copy className="mr-1.5 h-3.5 w-3.5" />}
-              {copied ? 'Copied' : 'Copy'}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="ml-auto rounded-lg text-xs text-muted-foreground"
-              onClick={() => setDraft(source)}
-            >
-              <RotateCcw className="mr-1.5 h-3.5 w-3.5" />
-              Reset
-            </Button>
+        {/* A board that built WITH DRC errors is still shown — the layout is how
+            you see what went wrong — but it is never shown as if it were clean. */}
+        {drcErrors > 0 && (
+          <div className="flex w-fit items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2">
+            <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+            <div className="text-[11px] leading-relaxed">
+              <p className="text-foreground">
+                {drcErrors} design-rule error{drcErrors === 1 ? '' : 's'} — not ready to fabricate
+              </p>
+              {stats?.errorTypes?.length ? (
+                <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">
+                  {stats.errorTypes.slice(0, 3).join(', ')}
+                </p>
+              ) : null}
+            </div>
           </div>
-        </SheetContent>
-      </Sheet>
+        )}
+
+        {(stats?.unresolvedComponents ?? 0) > 0 && (
+          <p className="w-fit rounded-lg border border-border bg-background/90 px-3 py-1.5 text-[11px] text-muted-foreground backdrop-blur">
+            {stats?.unresolvedComponents} component
+            {stats?.unresolvedComponents === 1 ? '' : 's'} could not be resolved and were omitted
+          </p>
+        )}
+      </div>
     </div>
   )
 }

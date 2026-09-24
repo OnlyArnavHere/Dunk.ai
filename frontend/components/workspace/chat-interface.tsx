@@ -151,6 +151,10 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             pcb_ir: (payload.pcb_ir as Record<string, unknown>) ?? null,
             validation: (payload.validation as Record<string, unknown>) ?? null,
             documentation: (payload.documentation as Record<string, unknown>) ?? null,
+            // A fresh pipeline run invalidates any previously generated board:
+            // it belongs to the old BOM, and showing it beside new components
+            // would be a different design than the one on screen.
+            board: (payload.board as AiOutput['board']) ?? null,
           } satisfies AiOutput)
         }
 

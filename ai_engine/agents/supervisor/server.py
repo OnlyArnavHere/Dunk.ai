@@ -9,7 +9,9 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import uuid
+from queue import Empty, Queue
 from typing import Any
 
 from dotenv import load_dotenv
@@ -19,6 +21,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 try:
+    from .board import board_node, stream_board
     from .graph import compile_graph, run_workflow, stream_workflow
     from .nodes import (
         architecture_node,
@@ -31,6 +34,7 @@ try:
     )
     from .state import CircuitState, _merge_errors
 except ImportError:
+    from board import board_node, stream_board
     from graph import compile_graph, run_workflow, stream_workflow
     from nodes import (
         architecture_node,
@@ -66,6 +70,10 @@ SINGLE_NODE_ACTIONS = {
     "generate_pcb": pcb_node,
     "generate_validation": validation_node,
     "generate_documentation": documentation_node,
+    # Runs dunkai-designer over an existing pcb_ir. Deliberately NOT a node in
+    # the linear graph: the board is built when the user asks for it, not on
+    # every chat turn, and it costs minutes and a provider call.
+    "generate_board": board_node,
 }
 
 
@@ -143,7 +151,7 @@ def _build_initial_state(payload: SupervisorRequest) -> CircuitState:
     if architecture:
         state["architecture"] = architecture
 
-    for key in ("bom", "eda_data", "pcb_ir", "validation", "handoff_validation", "documentation"):
+    for key in ("bom", "eda_data", "pcb_ir", "validation", "handoff_validation", "documentation", "board"):
         value = project.get(key)
         if isinstance(value, dict) and value:
             state[key] = value  # type: ignore[literal-required]
@@ -183,6 +191,8 @@ def _serialize_state(state: CircuitState) -> dict[str, Any]:
         # well_formed != passed, and neither means "buildable" -- see nodes.py.
         "handoff_validation": state.get("handoff_validation"),
         "documentation": state.get("documentation"),
+        # Generated board artifacts, when "Generate PCB" has been run.
+        "board": state.get("board"),
         "messages": messages,
         "errors": state.get("errors") or [],
         "workflow_status": state.get("workflow_status"),
@@ -301,6 +311,56 @@ def _sse_event(data: dict[str, Any], event: str = "progress") -> str:
     return f"event: {event}\ndata: {payload}\n\n"
 
 
+def _stream_board_events(state: CircuitState, job_id: str):
+    """Relay dunkai-designer's stage events as SSE, then one final state."""
+    board: dict[str, Any] | None = None
+    errors: list[str] = []
+
+    try:
+        for event in stream_board(state, job_id):
+            kind = event.get("kind")
+            if kind == "progress":
+                yield _sse_event(
+                    {
+                        "jobId": job_id,
+                        "node": "board",
+                        "stage": event.get("stage"),
+                        "label": event.get("label"),
+                        "detail": event.get("detail"),
+                        "ref_id": event.get("ref_id"),
+                        "tier": event.get("tier"),
+                        "status": event.get("status", "running"),
+                        "errors": [],
+                    },
+                    event="progress",
+                )
+            elif kind == "complete":
+                board = event.get("board")
+            elif kind == "error":
+                errors.append(str(event.get("error")))
+    except Exception as exc:
+        logger.exception("Board generation failed")
+        yield _sse_event({"jobId": job_id, "error": str(exc), "node": "board"}, event="error")
+        return
+
+    if board is None:
+        yield _sse_event(
+            {"jobId": job_id, "error": "; ".join(errors) or "Board generation failed.", "node": "board"},
+            event="error",
+        )
+        return
+
+    final_state: CircuitState = dict(state)
+    final_state["board"] = board
+    final_state["current_node"] = "board"
+    final_state["workflow_status"] = "completed"
+
+    yield _sse_event(
+        {"jobId": job_id, "data": _serialize_state(final_state), "status": "completed"},
+        event="complete",
+    )
+
+
 def _stream_generator(payload: SupervisorRequest):
     """Yield SSE text chunks as the LangGraph pipeline progresses.
 
@@ -311,6 +371,14 @@ def _stream_generator(payload: SupervisorRequest):
     """
     job_id = payload.jobId or str(uuid.uuid4())
     initial_state = _build_initial_state(payload)
+
+    # Board generation is its own streaming shape: dunkai-designer reports six
+    # named stages plus per-component resolution detail, none of which maps onto
+    # a LangGraph node. It is relayed on the SAME `progress`/`complete` events so
+    # nothing downstream needs a second code path.
+    if (payload.action or "") == "generate_board":
+        yield from _stream_board_events(initial_state, job_id)
+        return
 
     # Tell the client we're starting.
     yield _sse_event({"jobId": job_id, "node": "__start__", "label": "Pipeline starting"}, event="progress")
@@ -352,6 +420,72 @@ def _stream_generator(payload: SupervisorRequest):
     )
 
 
+#: How long the stream may stay silent before a keepalive comment is sent.
+#: Node's fetch (undici) enforces a 300s *body* timeout that is separate from
+#: any AbortSignal, so this must stay comfortably under it.
+_KEEPALIVE_SECONDS = 20.0
+
+#: Pushed onto the queue by the pump thread when the source generator ends.
+_STREAM_DONE = object()
+
+
+def _with_keepalive(source, interval: float = _KEEPALIVE_SECONDS):
+    """
+    Yield from ``source``, emitting an SSE comment whenever it goes quiet.
+
+    Why this is not optional
+    ------------------------
+    ``callSupervisorStream`` in the Node backend documents "No signal / no
+    timeout — the stream lives as long as the pipeline runs", and sets none.
+    But undici applies its own ``bodyTimeout`` (300s by default) to the
+    *response body*, which no AbortController setting touches. A stage that
+    reports nothing for longer than that has its stream torn down mid-run and
+    the backend logs:
+
+        [AI Stream] job <id> failed: terminated
+
+    Observed on a real "Generate PCB" run: stage D took 5m53s of provider time
+    in one silent block, the body timed out at 5m, and the client never
+    received ``ai:complete`` — while the designer ran happily to completion and
+    wrote a clean board to disk. The work was fine; only the reporting died,
+    which is the worst version of this failure because nothing looks wrong
+    server-side.
+
+    A ``:`` line is the SSE comment form. The backend's ``parseSSEBuffer``
+    drops any block carrying no ``data:`` line, so these cost one skipped block
+    and never reach a socket — but they are bytes on the wire, which is what
+    resets the timer.
+
+    The source is drained on a thread because it blocks on the child process;
+    a generator cannot both wait for output and notice that it has been waiting.
+    """
+    queue: "Queue[Any]" = Queue()
+
+    def pump() -> None:
+        try:
+            for chunk in source:
+                queue.put(chunk)
+        except Exception as exc:  # relayed below, on the response thread
+            queue.put(exc)
+        finally:
+            queue.put(_STREAM_DONE)
+
+    thread = threading.Thread(target=pump, daemon=True)
+    thread.start()
+
+    while True:
+        try:
+            item = queue.get(timeout=interval)
+        except Empty:
+            yield ": keepalive\n\n"
+            continue
+        if item is _STREAM_DONE:
+            return
+        if isinstance(item, Exception):
+            raise item
+        yield item
+
+
 @app.post("/api/v1/supervisor/stream")
 def supervisor_stream_endpoint(payload: SupervisorRequest):
     """SSE streaming variant of the supervisor endpoint.
@@ -360,7 +494,7 @@ def supervisor_stream_endpoint(payload: SupervisorRequest):
     progress events as they arrive and relay them over Socket.io.
     """
     return StreamingResponse(
-        _stream_generator(payload),
+        _with_keepalive(_stream_generator(payload)),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
