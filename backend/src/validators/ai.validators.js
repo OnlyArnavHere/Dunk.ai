@@ -12,6 +12,8 @@ export const runValidation = [
   body('agentType').optional().isIn(['requirement', 'architecture', 'component', 'pcb', 'validation', 'documentation']),
   body('messages').optional().isArray(),
   body('files').optional().isArray(),
+  // The pcb_ir handoff, forwarded by the client for board generation.
+  body('pcbIr').optional().isObject(),
 ];
 
 export const cancelValidation = [
