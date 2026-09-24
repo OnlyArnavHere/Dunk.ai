@@ -1,8 +1,15 @@
 'use client'
 
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { aiApi } from '@/lib/api'
 import { useWorkspaceStore, type BoardArtifact } from '@/lib/store'
+import {
+  BOARD_PROVIDERS,
+  DEFAULT_BOARD_PROVIDER,
+  PROVIDER_STORAGE_KEY,
+  isBoardProviderId,
+  type BoardProviderId,
+} from '@/lib/providers'
 
 /**
  * Board generation ("Generate PCB").
@@ -16,6 +23,10 @@ import { useWorkspaceStore, type BoardArtifact } from '@/lib/store'
  * Job state lives in the workspace store, not in component state, because the
  * trigger (BOM tab) and the result (PCB tab) are different views and the run
  * has to survive switching between them.
+ *
+ * The chosen provider is remembered in localStorage rather than the store: it is
+ * a per-user preference that should outlive the tab, not part of the design, and
+ * both the BOM and PCB views need to read the same answer.
  */
 export function useBoardGeneration(projectId: string | null) {
   const aiOutput = useWorkspaceStore((s) => s.aiOutput)
@@ -27,6 +38,27 @@ export function useBoardGeneration(projectId: string | null) {
 
   // Holds the teardown for the listeners of the job currently in flight.
   const cleanupRef = useRef<(() => void) | null>(null)
+
+  // Read lazily and defensively: localStorage throws in a private window and
+  // can hold a provider name from an older build that no longer exists.
+  const [provider, setProviderState] = useState<BoardProviderId>(() => {
+    if (typeof window === 'undefined') return DEFAULT_BOARD_PROVIDER
+    try {
+      const saved = window.localStorage.getItem(PROVIDER_STORAGE_KEY)
+      return isBoardProviderId(saved) ? saved : DEFAULT_BOARD_PROVIDER
+    } catch {
+      return DEFAULT_BOARD_PROVIDER
+    }
+  })
+
+  const setProvider = useCallback((next: BoardProviderId) => {
+    setProviderState(next)
+    try {
+      window.localStorage.setItem(PROVIDER_STORAGE_KEY, next)
+    } catch {
+      // A remembered preference is a convenience; losing it must not break the run.
+    }
+  }, [])
 
   useEffect(() => () => cleanupRef.current?.(), [])
 
@@ -43,7 +75,7 @@ export function useBoardGeneration(projectId: string | null) {
     cleanupRef.current?.()
 
     try {
-      const res = await aiApi.generateBoard(projectId, pcbIr)
+      const res = await aiApi.generateBoard(projectId, pcbIr, { provider })
       const jobId = res?.jobId
       if (!jobId) {
         failBoardJob('The server did not return a job id.')
@@ -100,7 +132,7 @@ export function useBoardGeneration(projectId: string | null) {
     } catch (err: unknown) {
       failBoardJob(err instanceof Error ? err.message : 'Could not reach Dunk AI.')
     }
-  }, [projectId, pcbIr, startBoardJob, pushBoardProgress, completeBoardJob, failBoardJob])
+  }, [projectId, pcbIr, provider, startBoardJob, pushBoardProgress, completeBoardJob, failBoardJob])
 
   return {
     generate,
@@ -108,5 +140,8 @@ export function useBoardGeneration(projectId: string | null) {
     componentCount,
     job: boardJob,
     board: aiOutput?.board ?? null,
+    provider,
+    setProvider,
+    providers: BOARD_PROVIDERS,
   }
 }

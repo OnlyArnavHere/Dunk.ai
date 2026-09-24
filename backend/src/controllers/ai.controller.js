@@ -43,6 +43,8 @@ export const run = asyncHandler(async (req, res) => {
     messages: req.body.messages || [],
     files: req.body.files || [],
     agentType: req.body.agentType,
+    provider: req.body.provider,
+    model: req.body.model,
     jobId,
   });
 
@@ -172,6 +174,9 @@ export const runStream = asyncHandler(async (req, res) => {
     project: projectPayload,
     messages: req.body.messages || [],
     files: req.body.files || [],
+    agentType: req.body.agentType,
+    provider: req.body.provider,
+    model: req.body.model,
     jobId,
   }).catch((err) => {
     console.error(`[AI Stream] job ${jobId} failed:`, err.message);
@@ -181,6 +186,7 @@ export const runStream = asyncHandler(async (req, res) => {
     action: req.body.action || 'run_workflow',
     agentType: req.body.agentType,
     projectId: project?._id,
+    provider: req.body.provider,
     jobId,
     streaming: true,
   }, req);
