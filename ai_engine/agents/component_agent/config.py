@@ -83,6 +83,35 @@ _FETCH_ATTEMPTS = 3
 _FETCH_BACKOFF_SECONDS = 5
 
 
+def _cache_path(filename: str):
+    """Local cache location for `filename`, or None when caching is off.
+
+    OPT-IN and off by default: with DUNKAI_HF_CACHE unset, _fetch_bytes behaves
+    exactly as before and nothing touches disk.
+
+    It exists because the no-cache design has a hard failure mode on a slow or
+    lossy link. These payloads total ~850MB (parquet 93MB, embeddings 754MB,
+    index), they are re-fetched on every process start, and a plain
+    `requests.get` has no resume. Observed here three times in one run:
+
+        Component Agent failed: HF fetch of 'component_embeddings.npy' failed
+        after 3 attempts: ('Connection broken: IncompleteRead(509219477 bytes
+        read, 244793835 more expected)')
+
+    The existing retry cannot help, because each attempt restarts from byte 0 —
+    so a link that cannot hold ~754MB open will never succeed, no matter how
+    many attempts are allowed. The cache is populated out-of-band by a resumable
+    downloader (huggingface_hub.hf_hub_download), which is what makes the run
+    reproducible on a connection that drops.
+    """
+    root = os.environ.get("DUNKAI_HF_CACHE")
+    if not root:
+        return None
+    from pathlib import Path
+
+    return Path(root).expanduser() / filename
+
+
 def _fetch_bytes(filename: str) -> bytes:
     """Stream a file's raw bytes from the HF dataset repo — nothing touches disk.
 
@@ -102,6 +131,11 @@ def _fetch_bytes(filename: str) -> bytes:
     finite read timeout the second symptom collapses into the first, and the
     retry below then covers the transient case.
     """
+    cached = _cache_path(filename)
+    if cached is not None and cached.is_file() and cached.stat().st_size > 0:
+        print(f"HF cache hit: {filename} ({cached.stat().st_size:,} bytes)")
+        return cached.read_bytes()
+
     url = hf_hub_url(repo_id=HF_REPO_ID, filename=filename, repo_type=HF_REPO_TYPE)
 
     last_error: Exception | None = None
@@ -153,6 +187,21 @@ EMBEDDINGS = np.load(io.BytesIO(_fetch_bytes("component_embeddings.npy")))
 
 _index_bytes = _fetch_bytes("component_faiss.index")
 FAISS_INDEX = faiss.deserialize_index(np.frombuffer(_index_bytes, dtype=np.uint8))
+
+# Release the serialised copy. `_index_bytes` is a MODULE-level name, so without
+# this it stays reachable for the life of the process — 754MB held after the only
+# thing that needed it has finished.
+#
+# This is not micro-optimisation. Loading this module needs the parquet
+# DataFrame, a 754MB embeddings array and a 754MB index live at once, and on a
+# 16GB machine with ~5GB free that allocation failed outright:
+#
+#     ERROR | Component Agent failed: std::bad_alloc
+#
+# faiss raises that from C++, so it is not a MemoryError and nothing upstream
+# catches it as one; the Component Agent simply reports failure and the BOM,
+# EDA and PCB nodes then fail in turn for want of rows.
+del _index_bytes
 
 # =============================================================================
 # Embedding Model
