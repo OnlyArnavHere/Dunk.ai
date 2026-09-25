@@ -34,6 +34,10 @@ const projectSchema = new mongoose.Schema(
     eda_data: { type: mongoose.Schema.Types.Mixed, default: {} },
     pcb_ir: { type: mongoose.Schema.Types.Mixed, default: {} },
     validation: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // Schema 2.0 handoff result. A DIFFERENT key from `validation` on purpose:
+    // well_formed != passed, and current runs write only this one, so omitting
+    // it meant the Validation tab was empty again after a reload.
+    handoff_validation: { type: mongoose.Schema.Types.Mixed, default: {} },
     documentation: { type: mongoose.Schema.Types.Mixed, default: {} },
 
     // Stats
