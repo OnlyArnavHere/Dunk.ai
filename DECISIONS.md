@@ -208,3 +208,54 @@ exists to expose rather than hide — D-006 already shows and labels such a boar
 `gemini` is implemented and its transport verified, but no free-tier model could
 serve a real brief: every flash model answered 503 "high demand" and
 `gemini-3.1-pro-preview` reported `limit: 0` on the free tier.
+
+## D-009 — `test_fetch_retry.py` is dark: the HF cache branch broke its harness
+
+**Status:** Deferred, and the test is NOT currently protecting anything
+
+All 18 checks in `agents/component_agent/test_fetch_retry.py` fail, every one of
+them on the same proximate error:
+
+    FAIL  mid-stream break -> no exception escapes
+            got:  NameError("name '_cache_path' is not defined")
+            want: None
+    FAIL  mid-stream break -> retry actually fired (3 attempts)
+            got:  0     want: 3
+
+The retry policy itself is fine. The harness is what broke. That file
+deliberately avoids importing `config.py` — its module body fetches a ~754MB
+dataset — and instead AST-extracts only the `_fetch_bytes` FunctionDef and
+`exec`s it against injected stubs, precisely so the code under test stays the
+real function rather than a copy.
+
+D-nnn aside, this is the cost of that technique: the extracted function may
+reference module-level names the harness never injected. `1924cdb` ("HF dataset:
+opt-in local cache") added a cache-hit branch at the top of `_fetch_bytes` —
+
+    cached = _cache_path(filename)
+    if cached is not None and cached.is_file() ...
+
+— and `_cache_path` is not in the injected namespace. Every case now dies on
+line 1 of the function body with `attempts == 0`, before reaching the retry loop
+at all.
+
+**Why this is worth an entry rather than a quick patch.** The test exists to
+guard one specific regression: `_fetch_bytes` previously caught an enumerated
+`(Timeout, ConnectionError, HTTPError)` tuple, and a mid-body transfer break
+surfaces as `ChunkedEncodingError` — a *sibling* under `RequestException`, not a
+subclass — so it bypassed the retry and killed the Component Agent on a plainly
+transient failure. Its own docstring says "if someone narrows the except clause
+again, this test fails." It would not. It fails identically whether the except
+clause is right or wrong, so the regression it was written to catch could be
+reintroduced today with the suite looking exactly as it does now.
+
+Deferred rather than guessed at because the fix is a real choice, not a typo:
+inject a `_cache_path` stub (cheap, but the harness now has to be updated every
+time `_fetch_bytes` grows a dependency), or stop AST-extracting and make
+`config.py` importable without the 754MB module-body fetch (larger, and fixes
+the class of problem rather than this instance). The second is probably right
+and is not this branch's work.
+
+Found while verifying `fix-followup-message-handling`; unrelated to it. That
+branch touches three files, none under `component_agent/`, and
+`test_fetch_retry.py` has zero references to `requirement_agent`.
