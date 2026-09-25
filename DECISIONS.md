@@ -259,3 +259,52 @@ and is not this branch's work.
 Found while verifying `fix-followup-message-handling`; unrelated to it. That
 branch touches three files, none under `component_agent/`, and
 `test_fetch_retry.py` has zero references to `requirement_agent`.
+
+## D-010 — What the rayyan merge repair kept, dropped and deferred
+
+**Status:** Accepted, and three of these are reversible judgment calls
+
+`8bcf279` did not build (see the repair commit). Rebuilding it as a real
+three-way merge forced choices that a conflict resolution would otherwise have
+made silently, so they are recorded here.
+
+**Dropped: invented BOM pricing.** The rayyan side defaulted an unpriced part to
+`$1.25`, an unknown stock field to `"In Stock"`, and an underivable total to
+`$12.86`. Those values flow into the CSV that Export writes — a file someone
+orders parts from. An unpriced row now renders `—` and is excluded from the
+total, so "free" and "unknown" stay distinguishable. The INR/USD toggle itself
+was kept; `USD_TO_INR` is a named constant with a comment saying it is
+indicative, because nothing in the pipeline fetches a rate.
+
+**Dropped: filler interview options.** A `mode="after"` validator topped every
+short option list up to three with generic strings — `"Standard Baseline"`,
+`"High Performance Mode"`, `"Ultra Low-Power Mode"`. They are not answers to the
+question asked, and clicking one returns it as the user's real answer into the
+requirements that drive the whole pipeline. It also made the existing
+option-backfill unreachable, since `run_interview` only backfilled when
+`options` was empty and this guaranteed it never was.
+
+The 3-6 atomic multi-select design is kept and is a genuine improvement; only
+the source of the options changed. `_get_option_chain` is restored and now fires
+when the model returns fewer than three, asking for real, project-specific
+choices. Measured live on "Design an environmental sensor node with WiFi":
+`['Temperature', 'Humidity', 'Air Quality', 'Light Level', 'Pressure', 'Sound
+Level']`. If that call fails the question is simply open-ended, which is honest.
+
+**Deferred: the validation-view restyle.** Rayyan's rewrite (610 lines vs 481)
+is the better-looking view, but it reads only `aiOutput.validation`. Schema 2.0
+writes `handoff_validation` and leaves `validation` null — see D-003's
+neighbours and `state.py` — so that version renders its empty state on every
+current run, re-breaking what `a0b2fe9` fixed. `validation-view.tsx` is
+therefore taken unchanged from `f1e1caa`. The restyle is worth porting onto the
+v1/v2 handling that already exists there; it was not worth shipping a blank tab
+to get it.
+
+**Merged rather than chosen: `normalize_options`.** Both sides defined a
+validator of that name, and Python keeps only the last one in a class body, so
+one was dead on arrival. They handled different shapes — a provider wrapper
+`{"options": [...]}` versus a grouped question keyed by sub-question — and the
+single merged implementation handles both. The grouped dict is flattened, not
+discarded, because the chips are multi-select: the user can pick one choice per
+facet, so collapsing the facets loses nothing they could not express.
+
