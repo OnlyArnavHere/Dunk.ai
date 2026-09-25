@@ -7,6 +7,7 @@ import {
   BOARD_PROVIDERS,
   DEFAULT_BOARD_PROVIDER,
   PROVIDER_STORAGE_KEY,
+  boardProviderRequest,
   isBoardProviderId,
   type BoardProviderId,
 } from '@/lib/providers'
@@ -75,7 +76,10 @@ export function useBoardGeneration(projectId: string | null) {
     cleanupRef.current?.()
 
     try {
-      const res = await aiApi.generateBoard(projectId, pcbIr, { provider })
+      // `provider` is an OPTION id, which is not always the provider name: the
+      // two Anthropic entries differ only by model. boardProviderRequest is what
+      // splits one back into the {provider, model} pair the backend expects.
+      const res = await aiApi.generateBoard(projectId, pcbIr, boardProviderRequest(provider))
       const jobId = res?.jobId
       if (!jobId) {
         failBoardJob('The server did not return a job id.')
