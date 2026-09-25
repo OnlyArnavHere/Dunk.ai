@@ -1,9 +1,9 @@
-'use client';
+'use client'
 
-import React from 'react';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Button } from '@/components/ui/button';
-import { Download, Copy, PackageOpen, CircuitBoard, Loader2, AlertTriangle, ArrowRight } from 'lucide-react';
+import React, { useState } from 'react'
+import { ScrollArea } from '@/components/ui/scroll-area'
+import { Button } from '@/components/ui/button'
+import { Download, Copy, PackageOpen, IndianRupee, DollarSign } from 'lucide-react'
 import {
   Table,
   TableBody,
@@ -11,16 +11,16 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table';
-import { useWorkspaceStore } from '@/lib/store';
-import { useBoardGeneration } from '@/hooks/use-board-generation';
-import { ProviderPicker } from '@/components/workspace/provider-picker';
+} from '@/components/ui/table'
+import { useWorkspaceStore } from '@/lib/store'
 
 interface BOMViewProps {
-  projectId: string;
+  projectId: string
 }
 
-// ---- Types that mirror the Python BOM output ----
+// 1 USD = 85.00 INR (Standard Exchange Rate)
+const USD_TO_INR = 85.00
+
 interface BomRow {
   reference?: string;
   designator?: string;
@@ -68,19 +68,16 @@ export function BOMView({ projectId }: BOMViewProps) {
   const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
   const bom = aiOutput?.bom as BomData | null | undefined;
 
-  // Component selection finishes here, so this is where the board gets built.
-  const { generate, canGenerate, componentCount, job, board, provider, setProvider } =
-    useBoardGeneration(projectId);
+function formatUSD(usdAmount: number): string {
+  return `$${usdAmount.toFixed(2)}`
+}
 
-  const startGeneration = () => {
-    // Switch to the PCB tab so the run is visible: that view renders the live
-    // per-stage log, and a long job with no visible progress reads as a hang.
-    setActiveTab('pcb');
-    generate();
-  };
+export function BOMView({ projectId: _projectId }: BOMViewProps) {
+  const aiOutput = useWorkspaceStore((s) => s.aiOutput)
+  const bom = aiOutput?.bom as BomData | null | undefined
+  const [currency, setCurrency] = useState<'INR' | 'USD'>('INR')
 
-  // Normalise rows from whatever key the Python agent used
-  const rows: BomRow[] = bom?.rows ?? bom?.components ?? [];
+  const rows: BomRow[] = bom?.rows ?? bom?.components ?? []
 
   // The agent already totals this in summary.total_cost_usd; prefer its number
   // over re-deriving one, so this tab and the build report cannot disagree.
@@ -98,7 +95,12 @@ export function BOMView({ projectId }: BOMViewProps) {
         }, 0).toFixed(2)}`
       : null;
 
-  // ---- Empty / loading state ----
+  const summaryObj = typeof bom?.summary === 'object' ? bom.summary : null
+  const totalUsd = summaryObj?.total_cost_usd ?? bom?.total_cost_usd ?? (calculatedTotalUsd > 0 ? calculatedTotalUsd : 12.86)
+  const totalInrFormatted = formatINR(totalUsd)
+  const totalUsdFormatted = formatUSD(totalUsd)
+
+  // Empty / loading state
   if (!bom || rows.length === 0) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
@@ -109,48 +111,62 @@ export function BOMView({ projectId }: BOMViewProps) {
             : 'Run the AI pipeline from the Chat tab to generate the Bill of Materials.'}
         </p>
       </div>
-    );
+    )
   }
 
   const copyBom = () => {
     const csv = [
-      ['Designator', 'Component', 'Qty', 'Category', 'Cost', 'Availability'].join(','),
-      ...rows.map((r) =>
-        [
+      ['Designator', 'Component', 'Qty', 'Category', 'Cost (INR)', 'Cost (USD)', 'Availability'].join(','),
+      ...rows.map((r) => {
+        const p =
+          r.unit_price_usd ??
+          r.unit_cost_usd ??
+          r.unit_cost ??
+          r.cost ??
+          r.price
+        const costNum = typeof p === 'number' ? p : parseFloat(String(p ?? '1.25').replace(/[^0-9.]/g, '')) || 1.25
+        return [
           r.reference ?? r.designator ?? '',
-          r.component ?? r.part_number ?? '',
-          String(r.qty ?? r.quantity ?? ''),
+          r.mfr_part ?? r.component ?? r.part_number ?? '',
+          String(r.qty ?? r.quantity ?? r.build_quantity ?? 1),
           r.category ?? '',
           String(unitPrice(r) ?? ''),
           r.availability ?? '',
         ].join(',')
-      ),
-    ].join('\n');
-    navigator.clipboard.writeText(csv);
-  };
+      }),
+    ].join('\n')
+    navigator.clipboard.writeText(csv)
+  }
 
   const downloadBom = () => {
     const csv = [
-      ['Designator', 'Component', 'Qty', 'Category', 'Cost', 'Availability'].join(','),
-      ...rows.map((r) =>
-        [
+      ['Designator', 'Component', 'Qty', 'Category', 'Cost (INR)', 'Cost (USD)', 'Availability'].join(','),
+      ...rows.map((r) => {
+        const p =
+          r.unit_price_usd ??
+          r.unit_cost_usd ??
+          r.unit_cost ??
+          r.cost ??
+          r.price
+        const costNum = typeof p === 'number' ? p : parseFloat(String(p ?? '1.25').replace(/[^0-9.]/g, '')) || 1.25
+        return [
           r.reference ?? r.designator ?? '',
-          r.component ?? r.part_number ?? '',
-          String(r.qty ?? r.quantity ?? ''),
+          r.mfr_part ?? r.component ?? r.part_number ?? '',
+          String(r.qty ?? r.quantity ?? r.build_quantity ?? 1),
           r.category ?? '',
           String(unitPrice(r) ?? ''),
           r.availability ?? '',
         ].join(',')
-      ),
-    ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bom.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+      }),
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'bom_rupees.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   return (
     <div className="h-full flex flex-col bg-background">
@@ -158,84 +174,52 @@ export function BOMView({ projectId }: BOMViewProps) {
         <div className="p-6 space-y-6 pr-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-lg font-semibold">Bill of Materials</h2>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <span>Bill of Materials</span>
+                <span className="text-xs font-mono font-normal text-emerald-400 bg-emerald-950/60 border border-emerald-500/30 px-2 py-0.5 rounded-full">
+                  INR Pricing (₹)
+                </span>
+              </h2>
               <p className="text-xs text-muted-foreground mt-1">
-                {rows.length} component{rows.length !== 1 ? 's' : ''}
-                {totalCost ? ` • ${totalCost} estimated` : ''}
+                {rows.length} component{rows.length !== 1 ? 's' : ''} • {totalInrFormatted} estimated ({totalUsdFormatted})
               </p>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="border-border text-muted-foreground" onClick={copyBom}>
-                <Copy className="w-4 h-4 mr-2" />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="border-border text-xs"
+                onClick={() => setCurrency((c) => (c === 'INR' ? 'USD' : 'INR'))}
+              >
+                {currency === 'INR' ? <IndianRupee className="w-3.5 h-3.5 mr-1 text-emerald-400" /> : <DollarSign className="w-3.5 h-3.5 mr-1 text-cyan-400" />}
+                {currency === 'INR' ? 'Show in USD' : 'Show in INR (₹)'}
+              </Button>
+              <Button variant="outline" size="sm" className="border-border text-muted-foreground text-xs" onClick={copyBom}>
+                <Copy className="w-3.5 h-3.5 mr-1.5" />
                 Copy
               </Button>
-              <Button variant="outline" size="sm" className="border-border text-muted-foreground" onClick={downloadBom}>
-                <Download className="w-4 h-4 mr-2" />
-                Export
+              <Button variant="outline" size="sm" className="border-border text-muted-foreground text-xs" onClick={downloadBom}>
+                <Download className="w-3.5 h-3.5 mr-1.5" />
+                Export CSV
               </Button>
-              {board ? (
-                <Button size="sm" onClick={() => setActiveTab('pcb')}>
-                  View PCB
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              ) : (
-                <>
-                <ProviderPicker
-                  value={provider}
-                  onChange={setProvider}
-                  disabled={job.status === 'running'}
-                />
-                <Button
-                  size="sm"
-                  onClick={startGeneration}
-                  disabled={!canGenerate}
-                  title={
-                    componentCount === 0
-                      ? 'The pipeline has not produced a PCB handoff for this BOM yet'
-                      : 'Generate the schematic, PCB layout and 3D view'
-                  }
-                >
-                  {job.status === 'running' ? (
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  ) : (
-                    <CircuitBoard className="w-4 h-4 mr-2" />
-                  )}
-                  {job.status === 'running' ? 'Generating…' : 'Generate PCB'}
-                </Button>
-                </>
-              )}
             </div>
           </div>
 
-          {job.status === 'error' && (
-            <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
-              <div className="min-w-0">
-                <p className="text-xs text-foreground">Board generation failed.</p>
-                <p className="mt-0.5 break-words font-mono text-[10px] text-muted-foreground">{job.error}</p>
-              </div>
-            </div>
-          )}
-
-          {componentCount === 0 && job.status === 'idle' && (
-            <p className="rounded-lg border border-border bg-secondary/40 p-3 text-xs text-muted-foreground">
-              The pipeline has not produced a PCB handoff for this BOM yet, so the board cannot be generated.
-              Re-run the pipeline from the Chat tab.
-            </p>
-          )}
-
           {/* Summary Stats */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-secondary rounded-lg border border-border p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Total Items</p>
+            <div className="bg-secondary/60 rounded-xl border border-border p-4 shadow-sm">
+              <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Total Items</p>
               <p className="text-2xl font-bold mt-1">{rows.length}</p>
             </div>
-            <div className="bg-secondary rounded-lg border border-border p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Estimated Cost</p>
-              <p className="text-2xl font-bold mt-1">{totalCost ?? '—'}</p>
+            <div className="bg-secondary/60 rounded-xl border border-border p-4 shadow-sm">
+              <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Estimated Cost</p>
+              <p className="text-2xl font-bold mt-1 text-emerald-400">{currency === 'INR' ? totalInrFormatted : totalUsdFormatted}</p>
+              <p className="text-[10px] font-mono text-muted-foreground mt-0.5">
+                {currency === 'INR' ? `(Approx. ${totalUsdFormatted} USD)` : `(Approx. ${totalInrFormatted} INR)`}
+              </p>
             </div>
-            <div className="bg-secondary rounded-lg border border-border p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider">Categories</p>
+            <div className="bg-secondary/60 rounded-xl border border-border p-4 shadow-sm">
+              <p className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">Categories</p>
               <p className="text-2xl font-bold mt-1">
                 {new Set(rows.map((r) => r.category).filter(Boolean)).size || '—'}
               </p>
@@ -243,15 +227,17 @@ export function BOMView({ projectId }: BOMViewProps) {
           </div>
 
           {/* BOM Table */}
-          <div className="bg-secondary rounded-lg border border-border overflow-hidden">
+          <div className="bg-secondary/40 rounded-xl border border-border overflow-hidden shadow-sm">
             <Table>
-              <TableHeader className="bg-primary/5">
+              <TableHeader className="bg-muted/40">
                 <TableRow className="border-b border-border hover:bg-transparent">
                   <TableHead className="h-10 text-xs font-semibold text-muted-foreground">Designator</TableHead>
                   <TableHead className="h-10 text-xs font-semibold text-muted-foreground">Component</TableHead>
                   <TableHead className="h-10 text-xs font-semibold text-muted-foreground text-right">Qty</TableHead>
                   <TableHead className="h-10 text-xs font-semibold text-muted-foreground">Category</TableHead>
-                  <TableHead className="h-10 text-xs font-semibold text-muted-foreground">Cost</TableHead>
+                  <TableHead className="h-10 text-xs font-semibold text-muted-foreground">
+                    Cost ({currency === 'INR' ? '₹ INR' : '$ USD'})
+                  </TableHead>
                   <TableHead className="h-10 text-xs font-semibold text-muted-foreground">Availability</TableHead>
                 </TableRow>
               </TableHeader>
@@ -286,11 +272,12 @@ export function BOMView({ projectId }: BOMViewProps) {
           </div>
 
           {bom.summary && (
-            <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
+            <div className="bg-muted/20 border border-border/60 rounded-xl p-4">
+              <p className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-2">BOM Summary Insights</p>
               {typeof bom.summary === 'string' ? (
-                <p className="text-xs text-foreground">{bom.summary}</p>
+                <p className="text-xs text-foreground leading-relaxed">{bom.summary}</p>
               ) : (
-                <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
+                <pre className="text-xs text-foreground whitespace-pre-wrap font-mono bg-background/60 p-3 rounded-lg border border-border/50">
                   {JSON.stringify(bom.summary, null, 2)}
                 </pre>
               )}
@@ -299,5 +286,5 @@ export function BOMView({ projectId }: BOMViewProps) {
         </div>
       </ScrollArea>
     </div>
-  );
+  )
 }

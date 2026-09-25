@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Generator, Literal
 
+from functools import lru_cache
+
 from langgraph.graph import END, START, StateGraph
 
 try:
@@ -68,8 +70,9 @@ def build_graph() -> StateGraph:
     return graph
 
 
+@lru_cache(maxsize=1)
 def compile_graph():
-    """Return a compiled LangGraph runnable."""
+    """Return a compiled LangGraph runnable (singleton cached)."""
     return build_graph().compile()
 
 

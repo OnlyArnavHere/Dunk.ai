@@ -1,7 +1,7 @@
 """dunkai Requirement Analysis Agent.
 
 Pure LangChain + Groq module that turns a hardware project idea into a
-validated ``HardwareRequirements`` object through a short (5-7 turn)
+validated ``HardwareRequirements`` object through a short, adaptive
 structured-output QA interview.
 
 Design notes (kept deliberately strict to avoid wasting LLM calls):
@@ -59,11 +59,11 @@ __all__ = [
 
 MODEL_NAME = os.getenv("GROQ_MODEL", "openai/gpt-oss-120b")
 TEMPERATURE = float(os.getenv("REQUIREMENT_AGENT_TEMPERATURE", "0.2"))
-MIN_INTERVIEW_TURNS = int(os.getenv("REQUIREMENT_AGENT_MIN_TURNS", "0"))
-MAX_INTERVIEW_TURNS = int(os.getenv("REQUIREMENT_AGENT_MAX_TURNS", "3"))
-# How many recent chat messages to send back to the model each turn. Keeps
-# per-call token cost (and therefore $ and latency) bounded on long interviews.
-HISTORY_WINDOW = int(os.getenv("REQUIREMENT_AGENT_HISTORY_WINDOW", "14"))
+MIN_INTERVIEW_TURNS = min(10, max(1, int(os.getenv("REQUIREMENT_AGENT_MIN_TURNS", "4"))))
+# Ten is a product limit, not a deployment default.
+MAX_INTERVIEW_TURNS = 10
+# How many recent chat messages to send back to the model each turn.
+HISTORY_WINDOW = min(8, max(4, int(os.getenv("REQUIREMENT_AGENT_HISTORY_WINDOW", "8"))))
 
 
 # ---------------------------------------------------------------------------
@@ -151,6 +151,7 @@ class InterviewResponse(BaseModel):
     status: Literal["question", "complete"]
     question: str | None = None
     options: list[str] | None = None
+    selection_mode: Literal["single", "multiple"] = "multiple"
     requirements: HardwareRequirements | None = None
 
     @model_validator(mode="before")
@@ -160,9 +161,63 @@ class InterviewResponse(BaseModel):
             data["status"] = "complete" if data.get("requirements") else "question"
         return data
 
+    @field_validator("options", mode="before")
+    @classmethod
+    def normalize_options(cls, value: Any) -> list[str] | None:
+        """Normalize provider wrappers into human-readable option labels."""
+        if value is None:
+            return None
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value.strip())
+            except json.JSONDecodeError:
+                parsed = [value]
+            value = parsed.get("options") if isinstance(parsed, dict) else parsed
+        if not isinstance(value, list):
+            return None
+        labels: list[str] = []
+        for item in value:
+            if isinstance(item, dict):
+                item = item.get("label") or item.get("text") or item.get("value")
+            if isinstance(item, str):
+                label = item.strip()
+                if label and label not in labels:
+                    labels.append(label)
+        return labels[:6] if labels else None
+
+    @model_validator(mode="after")
+    def validate_interview_shape(self) -> "InterviewResponse":
+        if self.status == "question":
+            if not self.question or not self.question.strip():
+                raise ValueError("question status requires a question")
+            if self.requirements is not None:
+                raise ValueError("question status cannot include final requirements")
+            
+            # Ensure 3 to 6 separated options are ALWAYS present for multi-select interaction
+            opts = list(self.options or [])
+            if len(opts) < 3:
+                defaults = [
+                    "Standard Baseline",
+                    "High Performance Mode",
+                    "Ultra Low-Power Mode",
+                    "Modular Expansion Support",
+                    "Rugged Outdoor Protection",
+                    "Compact Form-Factor"
+                ]
+                for default_opt in defaults:
+                    if default_opt not in opts:
+                        opts.append(default_opt)
+                    if len(opts) >= 3:
+                        break
+            self.options = opts[:6]
+
+        elif self.requirements is None:
+            raise ValueError("complete status requires requirements")
+        return self
+
 
 class QuestionOptions(BaseModel):
-    options: list[str] = Field(min_length=2, max_length=4)
+    options: list[str] = Field(min_length=2, max_length=6)
 
 
 # ---------------------------------------------------------------------------
@@ -170,29 +225,31 @@ class QuestionOptions(BaseModel):
 # ---------------------------------------------------------------------------
 
 _SYSTEM_PROMPT_TEMPLATE = """
-For every question, provide 2-4 concise options whenever reasonable, especially for power, budget, connectivity, platform, and performance. Use null options only for genuinely open-ended questions.
+Every question MUST include 3 to 6 concise, separated, atomic multiple-choice options (for example: individual features, individual sensors, specific communication protocols, power sources, or physical constraints).
+Keep each option short (1 to 5 words), atomic, and independently selectable so the user can select multiple options according to their specific requirements. Do NOT combine multiple unrelated options into a single long paragraph option.
+
+Set selection_mode to "multiple" by default so the user can check off multiple choices at once.
 
 You are dunkai's Requirement Analysis Agent. dunkai is the software product, not the user's hardware project.
 
-Architecture-first completion rule: conduct at least {min_turns} and at most {max_turns} useful interview turns before status complete. Use high-yield grouped questions instead of one question per schema field. Cover: (1) user workflow and main functions, (2) physical inputs and sensing, (3) physical outputs and interaction, (4) connectivity, processing location, and host platforms, and (5) power, battery life, physical constraints, performance, and safety. Combine related topics into one concise project-specific question. Do not invent exact components or specifications.
+Architecture-first completion rule: conduct a thorough, structured adaptive interview asking at least {min_turns} questions and up to {max_turns} questions. Ask targeted questions across all core architecture domains:
+1. System workflow, target users, and main functional objectives
+2. Hardware inputs, sensors, switches, and signal sources
+3. Hardware outputs, displays, indicators, motors, and actuators
+4. Connectivity (BLE, WiFi, Cellular, USB, Ethernet) and host platforms
+5. Power supply (battery, solar, DC, USB-C), power budget, and thermal/physical constraints
+6. Performance specifications, sample rates, safety & regulatory compliance
 
-Conduct a {min_turns}-{max_turns} turn, project-specific requirements interview. Ask exactly one concise grouped follow-up question per turn. A grouped question may ask several closely related details that together affect architecture. Do not repeat questions or ask narrow low-value questions. Treat the entire conversation as cumulative state: preserve every fact from earlier user answers, merge the latest answer into the existing requirements, and never replace known values with null. Map answers explicitly into the appropriate fields, especially hardware_inputs, hardware_outputs, functional_requirements, connectivity, and power_requirements. Only return complete after the minimum {min_turns} interview turns, unless the conversation already contains {min_turns} clear user answers. When a question has common discrete answers, provide 2-4 concise options; otherwise set options to null. The user may always provide a custom answer.
+Do not rush to complete in 1 or 2 questions. Use the full interview budget to ask clarifying, domain-specific questions with 3-6 separated selectable options each turn.
 
-Ask only about information that can affect architecture, hardware inputs/outputs, connectivity, supported platforms, power, physical constraints, performance, safety, or budget. Do not ask generic questions when a project-specific question is possible. Do not repeat answered questions. If the latest answer is vague or does not answer the previous question, clarify it instead of changing the project.
+Treat the entire conversation as cumulative state: preserve every fact from earlier user answers, merge the latest answer into existing requirements, and never replace known values with null.
 
-Never hallucinate. Do not change the project domain. Unknown values must be null. Do not recommend components, design circuits, or generate firmware. Ask at least {min_turns} and no more than {max_turns} questions total.
+Never hallucinate. Do not recommend specific chip part numbers or design PCB traces in this phase.
 
 Return only the structured response represented by the Pydantic schema. For complete responses, set question and options to null.
 """
 
 SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(min_turns=MIN_INTERVIEW_TURNS, max_turns=MAX_INTERVIEW_TURNS)
-
-_OPTION_SYSTEM_PROMPT = (
-    "Generate 2 to 4 useful answer choices for the question. Choices must be "
-    "specific to the hardware project and question. Do not answer the "
-    "question. Return only the options field."
-)
-
 
 # ---------------------------------------------------------------------------
 # Lazy, cached client/chain construction
@@ -203,31 +260,22 @@ _OPTION_SYSTEM_PROMPT = (
 # is invoked.
 # ---------------------------------------------------------------------------
 
-@lru_cache(maxsize=1)
-def _get_llm() -> ChatGroq:
+@lru_cache(maxsize=8)
+def _get_llm(model: str | None = None) -> ChatGroq:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise EnvironmentError("Set GROQ_API_KEY before running the Requirement Agent.")
-    return ChatGroq(model=MODEL_NAME, groq_api_key=api_key, temperature=TEMPERATURE, max_retries=2)
+    return ChatGroq(model=model or MODEL_NAME, groq_api_key=api_key, temperature=TEMPERATURE, max_retries=2)
 
 
-@lru_cache(maxsize=1)
-def _get_interview_chain():
+@lru_cache(maxsize=8)
+def _get_interview_chain(model: str | None = None):
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         MessagesPlaceholder("history"),
         ("human", "{input}"),
     ])
-    return prompt | _get_llm().with_structured_output(InterviewResponse)
-
-
-@lru_cache(maxsize=1)
-def _get_option_chain():
-    option_prompt = ChatPromptTemplate.from_messages([
-        ("system", _OPTION_SYSTEM_PROMPT),
-        ("human", "Question: {question}"),
-    ])
-    return option_prompt | _get_llm().with_structured_output(QuestionOptions)
+    return prompt | _get_llm(model).with_structured_output(InterviewResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -268,47 +316,90 @@ def _asked_question_count(history: list[Any] | None) -> int:
     return count
 
 
+def _interview_budget(user_input: str, history: list[Any] | None = None) -> int:
+    """Return a small, complexity-aware interview budget, capped at ten."""
+    user_text = [user_input]
+    for item in history or []:
+        if isinstance(item, dict) and item.get("role") == "user":
+            user_text.append(str(item.get("content") or ""))
+        elif isinstance(item, (list, tuple)) and item and item[0]:
+            user_text.append(str(item[0]))
+    text = " ".join(user_text).lower()
+    domains = (
+        ("battery", "power", "charging", "solar"),
+        ("wifi", "bluetooth", "ble", "cellular", "ethernet", "usb", "cloud"),
+        ("sensor", "camera", "microphone", "gps", "input"),
+        ("display", "led", "motor", "relay", "speaker", "output"),
+        ("wearable", "portable", "enclosure", "size", "temperature", "outdoor"),
+        ("medical", "safety", "certif", "industrial", "automotive"),
+        ("latency", "accuracy", "sampling", "performance", "real-time"),
+    )
+    covered_domains = sum(any(term in text for term in domain) for domain in domains)
+    detail_bonus = 1 if len(text.split()) > 35 else 0
+    # Two questions for a narrow brief, progressing to eight for a complex one.
+    return min(MAX_INTERVIEW_TURNS, max(MIN_INTERVIEW_TURNS, 2 + covered_domains // 2 + detail_bonus))
+
+
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
 
-def run_interview(user_input: str, history: list[Any] | None = None) -> InterviewResponse:
+def run_interview(user_input: str, history: list[Any] | None = None, model: str | None = None) -> InterviewResponse:
     """Advance the interview by one turn.
 
-    Makes exactly one LLM call to the interview chain. Makes a second call
-    -- to backfill multiple-choice options -- only if the model asked a
-    question but didn't already supply options itself.
+    Makes exactly one LLM call. Every question is schema-validated to include
+    2-4 clean, selectable answer choices.
     """
     if not user_input or not user_input.strip():
         raise ValueError("Please enter a hardware project idea.")
 
     try:
         asked = _asked_question_count(history)
-        turn_instruction = (
-            f"This is follow-up question {asked + 1} of {MIN_INTERVIEW_TURNS} minimum. "
-            "Ask a grouped architecture question; do not complete yet.\n"
-            if asked < MIN_INTERVIEW_TURNS
-            else f"The minimum {MIN_INTERVIEW_TURNS} questions have been asked; complete only if "
-                 "architecture-critical details are sufficient.\n"
-        )
+        budget = _interview_budget(user_input, history)
+        if asked >= MAX_INTERVIEW_TURNS:
+            turn_instruction = (
+                f"You have already asked {MAX_INTERVIEW_TURNS} questions. You MUST now return "
+                "status complete using only facts gathered so far; leave unknown values null.\n"
+            )
+        elif asked >= budget:
+            turn_instruction = (
+                f"The project-specific hard limit of {budget} questions has been reached. You MUST "
+                "return status complete now using the gathered facts; leave unknown values null.\n"
+            )
+        else:
+            turn_instruction = (
+                f"This is follow-up question {asked + 1}; the project-specific target is about {budget} "
+                f"questions and the absolute maximum is {MAX_INTERVIEW_TURNS}. Ask the highest-value "
+                "unanswered architecture question.\n"
+            )
         current_input = turn_instruction + "\nCURRENT USER ANSWER:\n" + user_input.strip()
 
-        result = _get_interview_chain().invoke({
-            "history": to_langchain_history(history),
-            "input": current_input,
-        })
+        chain = _get_interview_chain(model)
+        result = None
+        last_exc = None
+        for attempt in range(6):
+            try:
+                result = chain.invoke({
+                    "history": to_langchain_history(history),
+                    "input": current_input,
+                })
+                break
+            except Exception as exc:
+                last_exc = exc
+                err_str = str(exc)
+                if ("429" in err_str or "rate_limit_exceeded" in err_str or "Too Many Requests" in err_str) and attempt < 5:
+                    wait_match = re.search(r"try again in ([\d\.]+)s", err_str, re.IGNORECASE)
+                    wait_time = float(wait_match.group(1)) + 1.5 if wait_match else (attempt + 1) * 3.5
+                    print(f"[Requirement Agent] Groq rate limit 429 encountered for model '{model or MODEL_NAME}'. Waiting {wait_time:.1f}s before retry (attempt {attempt+1}/5)...")
+                    time.sleep(wait_time)
+                else:
+                    raise
+        if result is None:
+            raise RuntimeError(f"LangChain/Groq rate limit exceeded after retries: {last_exc}") from last_exc
         response = InterviewResponse.model_validate(result)
 
-        if response.status == "question" and response.question and not response.options:
-            try:
-                generated = _get_option_chain().invoke({"question": response.question})
-                response = response.model_copy(
-                    update={"options": QuestionOptions.model_validate(generated).options}
-                )
-            except Exception:
-                # Backfilling options is a nice-to-have, not a hard requirement --
-                # fall back to no options rather than failing the whole turn.
-                pass
+        if asked >= min(budget, MAX_INTERVIEW_TURNS) and response.status == "question":
+            raise RuntimeError("Interview question limit reached without a complete requirements response.")
 
         return response
     except ValidationError:
