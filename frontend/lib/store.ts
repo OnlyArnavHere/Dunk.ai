@@ -64,7 +64,14 @@ export interface AiOutput {
   bom: Record<string, unknown> | null
   eda_data: Record<string, unknown> | null
   pcb_ir: Record<string, unknown> | null
+  // Schema 1.0 only — carries `passed`. Left null by every current run.
   validation: Record<string, unknown> | null
+  // Schema 2.0 — carries `well_formed`. This is the key validation_node
+  // actually writes for a current design; `validation` above stayed null and
+  // the Validation tab rendered its empty state on every run until this was
+  // carried through. The two are deliberately separate keys in CircuitState
+  // (see ai_engine/agents/supervisor/state.py) and stay separate here.
+  handoff_validation: Record<string, unknown> | null
   documentation: Record<string, unknown> | null
   // Present only after "Generate PCB" has run. Lives inside AiOutput on purpose:
   // a fresh pipeline run replaces the whole object, which clears a board that
