@@ -5,6 +5,7 @@ import { ArrowUp, Loader2, Mic, Paperclip, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWorkspaceStore } from '@/lib/store'
+import { ModelSelector } from './model-selector'
 import { useCreateProject } from '@/hooks/use-projects'
 import { toast } from 'sonner'
 
@@ -15,11 +16,23 @@ const placeholderPrompts = [
   'Review my power architecture...',
 ]
 
-// Placeholder title — the real title will be generated from context by the AI later
-const PLACEHOLDER_TITLE = 'Untitled Project'
+function generateTitleFromPrompt(prompt: string): string {
+  if (!prompt || !prompt.trim()) return 'Untitled Project'
+  const clean = prompt
+    .trim()
+    .replace(/^(i want to|i need to|can you|please|build|design|create|make|develop|a|an|the)\s+/i, '')
+    .replace(/^(i'd like to|help me|project for)\s+/i, '')
+    .trim()
+
+  if (!clean) return 'Untitled Project'
+  const words = clean.split(/\s+/)
+  const titleWords = words.slice(0, 5).join(' ')
+  const title = titleWords.length > 40 ? titleWords.slice(0, 40) + '…' : titleWords
+  return title.charAt(0).toUpperCase() + title.slice(1)
+}
 
 export function NewProjectChat() {
-  const { setActiveProjectId, setActiveTab, setPendingPrompt } = useWorkspaceStore()
+  const { setActiveProjectId, setActiveTab, setPendingPrompt, selectedModel, setSelectedModel } = useWorkspaceStore()
   const createProject = useCreateProject()
   const [input, setInput] = useState('')
   const [placeholder, setPlaceholder] = useState('')
@@ -43,8 +56,9 @@ export function NewProjectChat() {
     const prompt = input.trim()
     if (!prompt || createProject.isPending) return
     try {
+      const dynamicTitle = generateTitleFromPrompt(prompt)
       const project = await createProject.mutateAsync({
-        title: PLACEHOLDER_TITLE,
+        title: dynamicTitle,
         description: prompt,
       })
       // Hand the prompt off to the project chat so the agent starts running immediately
@@ -77,6 +91,7 @@ export function NewProjectChat() {
                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Attach a file" aria-label="Attach a file">
               <Paperclip className="h-4 w-4" />
             </Button>
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} disabled={busy} />
             <Input
               value={input}
               onChange={(event) => setInput(event.target.value)}

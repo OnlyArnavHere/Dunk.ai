@@ -12,6 +12,14 @@ export const updateProjectValidation = [
   body('tags').optional().isArray(),
   body('status').optional().isIn(['active', 'archived']),
   body('currentStage').optional().isIn(['requirements', 'architecture', 'components', 'pcb', 'validation', 'documentation']),
+  // AI-generated artifact data (Mixed schema types)
+  body('requirements').optional(),
+  body('architecture').optional(),
+  body('bom').optional(),
+  body('eda_data').optional(),
+  body('pcb_ir').optional(),
+  body('validation').optional(),
+  body('documentation').optional(),
 ];
 
 export const shareProjectValidation = [
