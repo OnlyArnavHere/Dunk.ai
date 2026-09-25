@@ -159,26 +159,40 @@ export function ChatInterface({ projectId }: { projectId: string }) {
         // 1. Fetch saved project artifacts from MongoDB
         const projectData = (await projectApi.get(projectId)) as Record<string, unknown>
         if (projectData && isMounted) {
-          const isPopulated = (val: unknown) =>
-            val && typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length > 0
+          // Mongoose stores these as Mixed with `default: {}`, so an untouched
+          // field arrives as `{}` (or absent) rather than null. `{}` must not
+          // reach the store: it is indistinguishable from a real-but-empty
+          // artifact downstream, and it would replace nothing with nothing.
+          const saved = (key: string): Record<string, unknown> | null => {
+            const val = projectData[key]
+            return val && typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length > 0
+              ? (val as Record<string, unknown>)
+              : null
+          }
 
-          setAiOutput({
-            requirements: (payload.requirements as Record<string, unknown>) ?? null,
-            architecture: (payload.architecture as Record<string, unknown>) ?? null,
-            bom: (payload.bom as Record<string, unknown>) ?? null,
-            eda_data: (payload.eda_data as Record<string, unknown>) ?? null,
-            pcb_ir: (payload.pcb_ir as Record<string, unknown>) ?? null,
-            validation: (payload.validation as Record<string, unknown>) ?? null,
+          const restored: AiOutput = {
+            requirements: saved('requirements'),
+            architecture: saved('architecture'),
+            bom: saved('bom'),
+            eda_data: saved('eda_data'),
+            pcb_ir: saved('pcb_ir'),
+            validation: saved('validation'),
             // Schema 2.0 designs report here and leave `validation` unset, so
             // forwarding only `validation` left the Validation tab empty on
-            // every current run.
-            handoff_validation: (payload.handoff_validation as Record<string, unknown>) ?? null,
-            documentation: (payload.documentation as Record<string, unknown>) ?? null,
-            // A fresh pipeline run invalidates any previously generated board:
-            // it belongs to the old BOM, and showing it beside new components
-            // would be a different design than the one on screen.
-            board: (payload.board as AiOutput['board']) ?? null,
-          } satisfies AiOutput)
+            // every current run. Not a column on Project yet, so this stays
+            // null until the run that produced it writes it somewhere.
+            handoff_validation: saved('handoff_validation'),
+            documentation: saved('documentation'),
+            // The board is a directory of files under uploads/boards/, not a
+            // Project field, so nothing is restored for it here.
+            board: null,
+          }
+
+          // A project with nothing saved yet must not push a wall of nulls into
+          // a store that a run may already have filled.
+          if (Object.values(restored).some((value) => value !== null)) {
+            setAiOutput(restored)
+          }
         }
 
         // 2. Fetch conversation history from MongoDB
@@ -394,6 +408,10 @@ export function ChatInterface({ projectId }: { projectId: string }) {
               eda_data: (payload.eda_data as Record<string, unknown>) ?? null,
               pcb_ir: (payload.pcb_ir as Record<string, unknown>) ?? null,
               validation: (payload.validation as Record<string, unknown>) ?? null,
+              // Schema 2.0 designs report here and leave `validation` unset, so
+              // forwarding only `validation` leaves the Validation tab empty on
+              // every current run.
+              handoff_validation: (payload.handoff_validation as Record<string, unknown>) ?? null,
               documentation: (payload.documentation as Record<string, unknown>) ?? null,
               board: (payload.board as AiOutput['board']) ?? null,
             } satisfies AiOutput
@@ -408,6 +426,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             if (artifactPayload.eda_data) updatePayload.eda_data = artifactPayload.eda_data
             if (artifactPayload.pcb_ir) updatePayload.pcb_ir = artifactPayload.pcb_ir
             if (artifactPayload.validation) updatePayload.validation = artifactPayload.validation
+            if (artifactPayload.handoff_validation) updatePayload.handoff_validation = artifactPayload.handoff_validation
             if (artifactPayload.documentation) updatePayload.documentation = artifactPayload.documentation
 
             if (payload.requirements && typeof payload.requirements === 'object') {
