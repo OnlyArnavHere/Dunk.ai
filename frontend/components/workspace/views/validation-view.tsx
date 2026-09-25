@@ -44,22 +44,34 @@ interface ValidationViewProps {
   projectId: string
 }
 
-interface HandoffIssue {
-  severity?: string
+interface ValidationIssue {
+  id?: string
+  title?: string
+  name?: string
+  category?: string
   code?: string
+  status?: 'passed' | 'warning' | 'failed' | 'error' | 'info'
+  severity?: 'error' | 'warning' | 'info' | 'passed'
+  details?: string
   message?: string
 }
 
-interface HandoffData {
-  /** Schema 2.0 verdict. */
-  well_formed?: boolean
-  /** Schema 1.0 verdict. Only one of the two is ever present. */
-  passed?: boolean
-  schema_version?: string
-  issue_count?: number
-  issues?: HandoffIssue[]
-  checks_run?: string[]
-  scope?: string
+interface ValidationData {
+  issues?: ValidationIssue[]
+  checks?: ValidationIssue[]
+  results?: ValidationIssue[]
+  passed?: number | boolean
+  passed_count?: number
+  warnings?: number
+  failures?: number
+  info_count?: number
+  status?: string
+  summary?: string
+  createdAt?: string
+  updatedAt?: string
+  timestamp?: string
+  validatedAt?: string
+  lastValidatedAt?: string
 }
 
 const CHECK_LABELS: Record<string, string> = {
@@ -75,8 +87,74 @@ const CHECK_LABELS: Record<string, string> = {
   net_connectivity: 'Net connections resolve to declared refs',
 }
 
-const humanise = (value: string) =>
-  CHECK_LABELS[value] ?? value.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
+const CATEGORY_CONFIG: Record<CategoryKey, { icon: React.ReactNode; accent: string; badge: string }> = {
+  Electrical: {
+    icon: <CircuitBoard className="h-4 w-4" />,
+    accent: 'text-cyan-600 dark:text-cyan-400',
+    badge: 'border-cyan-500/20 bg-cyan-500/5 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300',
+  },
+  Thermal: {
+    icon: <Thermometer className="h-4 w-4" />,
+    accent: 'text-orange-600 dark:text-orange-400',
+    badge: 'border-orange-500/20 bg-orange-500/5 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300',
+  },
+  Power: {
+    icon: <BatteryCharging className="h-4 w-4" />,
+    accent: 'text-amber-600 dark:text-amber-400',
+    badge: 'border-amber-500/20 bg-amber-500/5 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300',
+  },
+  'Signal Integrity': {
+    icon: <Waves className="h-4 w-4" />,
+    accent: 'text-violet-600 dark:text-violet-400',
+    badge: 'border-violet-500/20 bg-violet-500/5 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300',
+  },
+  Manufacturing: {
+    icon: <Factory className="h-4 w-4" />,
+    accent: 'text-emerald-600 dark:text-emerald-400',
+    badge: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300',
+  },
+  Compliance: {
+    icon: <BadgeCheck className="h-4 w-4" />,
+    accent: 'text-pink-600 dark:text-pink-400',
+    badge: 'border-pink-500/20 bg-pink-500/5 text-pink-700 dark:border-pink-400/20 dark:bg-pink-400/10 dark:text-pink-300',
+  },
+}
+
+const CATEGORY_ORDER: CategoryKey[] = [
+  'Electrical',
+  'Thermal',
+  'Power',
+  'Signal Integrity',
+  'Manufacturing',
+  'Compliance',
+]
+
+function statusFromItem(item: ValidationIssue): StatusKey {
+  const sev = item.severity ?? item.status
+  if (sev === 'passed') return 'passed'
+  if (sev === 'error') return 'failed'
+  if (sev === 'warning') return 'warning'
+  if (sev === 'info') return 'info'
+  if (sev === 'failed') return 'failed'
+  return 'info'
+}
+
+function categoryFromItem(item: ValidationIssue): CategoryKey {
+  // Prefer the category field from the backend if it matches a known category
+  const backendCat = item.category?.trim()
+  if (backendCat && CATEGORY_ORDER.includes(backendCat as CategoryKey)) {
+    return backendCat as CategoryKey
+  }
+
+  const text = `${item.category ?? ''} ${item.title ?? item.name ?? ''} ${item.details ?? item.message ?? item.description ?? ''}`.toLowerCase()
+
+  if (/(thermal|temperature|temp|heat|cool|derating)/.test(text)) return 'Thermal'
+  if (/(power|vbat|vcc|vdd|rail|regulator|pmic|battery|current|consumption)/.test(text)) return 'Power'
+  if (/(signal|integrity|impedance|noise|crosstalk|clock|timing|skew|trace|routing)/.test(text)) return 'Signal Integrity'
+  if (/(manufactur|assembly|bom|footprint|pick and place|dfm|drc|availability|solder|stock|moq|package)/.test(text)) return 'Manufacturing'
+  if (/(compliance|regulatory|emc|emi|fcc|ce|ul|rf|antenna|ble|wifi|can|safety|pin|pricing|cost)/.test(text)) return 'Compliance'
+  return 'Electrical'
+}
 
 function formatTime(value?: string): string {
   if (!value) return 'Not available'
@@ -98,6 +176,23 @@ function Verdict({ tone, label }: { tone: 'good' | 'warn' | 'bad' | 'idle'; labe
     idle: { cls: 'border-border bg-secondary/50 text-muted-foreground', icon: <CircleDashed className="h-3.5 w-3.5" /> },
   }[tone]
 
+function recommendationFor(item: ValidationIssue, status: StatusKey): string | null {
+  if (item.recommendation || item.suggestion || item.fix) return item.recommendation ?? item.suggestion ?? item.fix ?? null
+  if (status === 'passed') return null
+  if (status === 'info') return 'This is informational — no immediate action required.'
+  if (status === 'warning') return 'Review the referenced constraint and confirm the chosen value remains within tolerance.'
+  if (status === 'failed' || status === 'error') return 'Resolve the issue before export to avoid downstream board or manufacturing failures.'
+  return null
+}
+
+function donutColor(status: StatusKey): string {
+  if (status === 'warning') return 'var(--warning, #f59e0b)'
+  if (status === 'failed' || status === 'error') return 'var(--destructive, #ef4444)'
+  return 'var(--accent, #59616e)'
+}
+
+function StatusPill({ status }: { status: StatusKey }) {
+  const cfg = STATUS_CONFIG[status]
   return (
     <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] ${config.cls}`}>
       {config.icon}
@@ -375,6 +470,33 @@ function BoardSection({ board }: { board: BoardArtifact | null }) {
 
 export function ValidationView({ projectId: _projectId }: ValidationViewProps) {
   const aiOutput = useWorkspaceStore((s) => s.aiOutput)
+  const validation = aiOutput?.validation as ValidationData | null | undefined
+
+  const checks: ValidationIssue[] = validation?.issues ?? validation?.checks ?? validation?.results ?? []
+
+  const { grouped, passedCount, warningCount, failedCount, totalCount, score, overallStatus, lastValidationTime } = useMemo(() => {
+    const buckets: Record<CategoryKey, ValidationIssue[]> = {
+      Electrical: [],
+      Thermal: [],
+      Power: [],
+      'Signal Integrity': [],
+      Manufacturing: [],
+      Compliance: [],
+    }
+
+    for (const item of checks) {
+      buckets[categoryFromItem(item)].push(item)
+    }
+
+    const passed = (typeof validation?.passed_count === 'number' ? validation.passed_count : null) ?? checks.filter((c) => statusFromItem(c) === 'passed').length
+    const warnings = validation?.warnings ?? checks.filter((c) => statusFromItem(c) === 'warning').length
+    const failures = validation?.failures ?? checks.filter((c) => ['failed', 'error'].includes(statusFromItem(c))).length
+    const infoCount = (typeof validation?.info_count === 'number' ? validation.info_count : null) ?? checks.filter((c) => statusFromItem(c) === 'info').length
+    const actionableTotal = Math.max(passed + warnings + failures, 1)
+    const total = Math.max(checks.length, 1)
+    const health = Math.max(0, Math.min(100, Math.round((passed / actionableTotal) * 100)))
+    const status = failures > 0 ? 'Needs Review' : warnings > 0 ? 'Warnings Present' : 'All Checks Passed'
+    const lastTime = validation?.lastValidatedAt ?? validation?.validatedAt ?? validation?.updatedAt ?? validation?.timestamp ?? validation?.createdAt
 
   const { handoff, isV2, board } = useMemo(() => {
     const v2 = (aiOutput?.handoff_validation as HandoffData | null) ?? null

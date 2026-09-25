@@ -38,6 +38,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 import sys
 from typing import Any
 
@@ -316,13 +317,27 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
         max_retries=2,
         model_kwargs={"response_format": {"type": "json_object"}},
     )
-    try:
-        response = llm.invoke([
-            SystemMessage(content=system_prompt),
-            HumanMessage(content=user_content),
-        ])
-    except Exception as exc:  # pragma: no cover - network failure path
-        raise RuntimeError(f"Groq API error: {exc}") from exc
+    response = None
+    last_exc = None
+    for attempt in range(6):
+        try:
+            response = llm.invoke([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_content),
+            ])
+            break
+        except Exception as exc:
+            last_exc = exc
+            err_str = str(exc)
+            if ("429" in err_str or "rate_limit_exceeded" in err_str or "Too Many Requests" in err_str) and attempt < 5:
+                wait_match = re.search(r"try again in ([\d\.]+)s", err_str, re.IGNORECASE)
+                wait_time = float(wait_match.group(1)) + 1.5 if wait_match else (attempt + 1) * 3.5
+                print(f"[Architecture Agent] Groq rate limit 429 encountered for model '{model or DEFAULT_MODEL}'. Waiting {wait_time:.1f}s before retry (attempt {attempt+1}/5)...")
+                time.sleep(wait_time)
+            else:
+                raise RuntimeError(f"Groq API error: {exc}") from exc
+    if response is None:
+        raise RuntimeError(f"Groq API rate limit exceeded after retries: {last_exc}") from last_exc
 
     content = response.content
     if not content:
