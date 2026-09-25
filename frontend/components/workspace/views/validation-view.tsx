@@ -1,168 +1,82 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import {
-  AlertTriangle,
-  CheckCircle2,
+  BadgeCheck,
   CircleAlert,
+  CircleDashed,
   Clock3,
   Download,
-  Info,
-  ShieldCheck,
+  FileWarning,
+  Layers,
   ShieldAlert,
-  CircleDashed,
-  Thermometer,
-  Waves,
-  BatteryCharging,
-  CircuitBoard,
-  Factory,
-  BadgeCheck,
-  ChevronDown,
-  ChevronUp,
+  ShieldCheck,
+  Waypoints,
 } from 'lucide-react'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import { useWorkspaceStore } from '@/lib/store'
+import { useWorkspaceStore, type BoardArtifact } from '@/lib/store'
+
+/**
+ * Validation.
+ *
+ * Two checks, kept apart on purpose
+ * --------------------------------
+ * HANDOFF is dunkai's own check, run BEFORE anything is generated, and it asks
+ * "is this a well-formed handoff document?" — known interfaces, legal roles, a
+ * filled BOM, every ref resolving. BOARD is dunkai-designer's, run AFTER
+ * generation, and asks "did this actually route, and can it be fabricated?".
+ *
+ * They are not two halves of one score and are not averaged into one. A
+ * well-formed handoff is explicitly NOT a claim that the board can be built —
+ * `_validate_handoff` says so in its docstring, and CircuitState keeps
+ * `handoff_validation` under a different key from `validation` precisely so
+ * that reading a buildability verdict off it fails loudly instead of quietly
+ * returning something that means something else. Blending them into "78%
+ * valid" would rebuild exactly the confusion those two decisions prevent: it
+ * would let one unrouted port dilute a clean netlist, and a clean netlist
+ * mask an unroutable board.
+ */
 
 interface ValidationViewProps {
   projectId: string
 }
 
-interface ValidationIssue {
-  id?: string
-  title?: string
-  name?: string
-  category?: string
-  status?: 'passed' | 'warning' | 'failed' | 'error' | 'info'
-  severity?: 'error' | 'warning' | 'info'
-  details?: string
+interface HandoffIssue {
+  severity?: string
+  code?: string
   message?: string
-  description?: string
-  recommendation?: string
-  suggestion?: string
-  fix?: string
-  timestamp?: string
-  createdAt?: string
-  updatedAt?: string
 }
 
-interface ValidationData {
-  issues?: ValidationIssue[]
-  checks?: ValidationIssue[]
-  results?: ValidationIssue[]
-  passed?: number
-  warnings?: number
-  failures?: number
-  status?: string
-  summary?: string
-  createdAt?: string
-  updatedAt?: string
-  timestamp?: string
-  validatedAt?: string
-  lastValidatedAt?: string
+interface HandoffData {
+  /** Schema 2.0 verdict. */
+  well_formed?: boolean
+  /** Schema 1.0 verdict. Only one of the two is ever present. */
+  passed?: boolean
+  schema_version?: string
+  issue_count?: number
+  issues?: HandoffIssue[]
+  checks_run?: string[]
+  scope?: string
 }
 
-type StatusKey = 'passed' | 'warning' | 'failed' | 'error' | 'info'
-type CategoryKey = 'Electrical' | 'Thermal' | 'Power' | 'Signal Integrity' | 'Manufacturing' | 'Compliance'
-
-const STATUS_CONFIG: Record<StatusKey, { icon: React.ReactNode; label: string; tone: string; border: string; bg: string }> = {
-  passed: {
-    icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
-    label: 'Passed',
-    tone: 'text-emerald-600 dark:text-emerald-400',
-    border: 'border-emerald-500/20 dark:border-emerald-400/20',
-    bg: 'bg-emerald-500/5 dark:bg-emerald-400/10',
-  },
-  warning: {
-    icon: <CircleAlert className="h-5 w-5 text-amber-500" />,
-    label: 'Warning',
-    tone: 'text-amber-600 dark:text-amber-400',
-    border: 'border-amber-500/20 dark:border-amber-400/20',
-    bg: 'bg-amber-500/5 dark:bg-amber-400/10',
-  },
-  failed: {
-    icon: <ShieldAlert className="h-5 w-5 text-rose-500" />,
-    label: 'Failed',
-    tone: 'text-rose-600 dark:text-rose-400',
-    border: 'border-rose-500/20 dark:border-rose-400/20',
-    bg: 'bg-rose-500/5 dark:bg-rose-400/10',
-  },
-  error: {
-    icon: <ShieldAlert className="h-5 w-5 text-rose-500" />,
-    label: 'Error',
-    tone: 'text-rose-600 dark:text-rose-400',
-    border: 'border-rose-500/20 dark:border-rose-400/20',
-    bg: 'bg-rose-500/5 dark:bg-rose-400/10',
-  },
-  info: {
-    icon: <Info className="h-5 w-5 text-slate-500 dark:text-slate-400" />,
-    label: 'Info',
-    tone: 'text-slate-600 dark:text-slate-400',
-    border: 'border-slate-500/20 dark:border-slate-400/20',
-    bg: 'bg-slate-500/5 dark:bg-slate-400/10',
-  },
+const CHECK_LABELS: Record<string, string> = {
+  interface_known: 'Every net names a known interface',
+  role_valid_for_interface: 'Every member role is legal for its interface',
+  role_compatibility_on_net: 'Roles on a net can share one wire',
+  component_references_resolve: 'Every referenced component exists',
+  bom_completeness: 'Every reference has a part selected',
+  package_present: 'Every component carries a package string',
+  symbol_availability: 'A schematic symbol was found',
+  footprint_availability: 'A PCB footprint was resolved',
+  pinout_availability: 'A pinout was available',
+  net_connectivity: 'Net connections resolve to declared refs',
 }
 
-const CATEGORY_CONFIG: Record<CategoryKey, { icon: React.ReactNode; accent: string; badge: string }> = {
-  Electrical: {
-    icon: <CircuitBoard className="h-4 w-4" />,
-    accent: 'text-cyan-600 dark:text-cyan-400',
-    badge: 'border-cyan-500/20 bg-cyan-500/5 text-cyan-700 dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300',
-  },
-  Thermal: {
-    icon: <Thermometer className="h-4 w-4" />,
-    accent: 'text-orange-600 dark:text-orange-400',
-    badge: 'border-orange-500/20 bg-orange-500/5 text-orange-700 dark:border-orange-400/20 dark:bg-orange-400/10 dark:text-orange-300',
-  },
-  Power: {
-    icon: <BatteryCharging className="h-4 w-4" />,
-    accent: 'text-amber-600 dark:text-amber-400',
-    badge: 'border-amber-500/20 bg-amber-500/5 text-amber-700 dark:border-amber-400/20 dark:bg-amber-400/10 dark:text-amber-300',
-  },
-  'Signal Integrity': {
-    icon: <Waves className="h-4 w-4" />,
-    accent: 'text-violet-600 dark:text-violet-400',
-    badge: 'border-violet-500/20 bg-violet-500/5 text-violet-700 dark:border-violet-400/20 dark:bg-violet-400/10 dark:text-violet-300',
-  },
-  Manufacturing: {
-    icon: <Factory className="h-4 w-4" />,
-    accent: 'text-emerald-600 dark:text-emerald-400',
-    badge: 'border-emerald-500/20 bg-emerald-500/5 text-emerald-700 dark:border-emerald-400/20 dark:bg-emerald-400/10 dark:text-emerald-300',
-  },
-  Compliance: {
-    icon: <BadgeCheck className="h-4 w-4" />,
-    accent: 'text-pink-600 dark:text-pink-400',
-    badge: 'border-pink-500/20 bg-pink-500/5 text-pink-700 dark:border-pink-400/20 dark:bg-pink-400/10 dark:text-pink-300',
-  },
-}
-
-const CATEGORY_ORDER: CategoryKey[] = [
-  'Electrical',
-  'Thermal',
-  'Power',
-  'Signal Integrity',
-  'Manufacturing',
-  'Compliance',
-]
-
-function statusFromItem(item: ValidationIssue): StatusKey {
-  const raw = item.status ?? (item.severity === 'error' ? 'failed' : item.severity) ?? 'info'
-  return (['passed', 'warning', 'failed', 'error', 'info'].includes(raw) ? raw : 'info') as StatusKey
-}
-
-function categoryFromItem(item: ValidationIssue): CategoryKey {
-  const text = `${item.category ?? ''} ${item.title ?? item.name ?? ''} ${item.details ?? item.message ?? item.description ?? ''}`.toLowerCase()
-
-  if (/(thermal|temperature|temp|heat|cool|derating)/.test(text)) return 'Thermal'
-  if (/(power|vbat|vcc|vdd|rail|regulator|pmic|battery|current|consumption)/.test(text)) return 'Power'
-  if (/(signal|integrity|impedance|noise|crosstalk|clock|timing|skew|trace|routing)/.test(text)) return 'Signal Integrity'
-  if (/(manufactur|assembly|bom|footprint|pick and place|dfm|drc|availability|solder)/.test(text)) return 'Manufacturing'
-  if (/(compliance|regulatory|emc|emi|fcc|ce|ul|rf|antenna|ble|wifi|can|safety)/.test(text)) return 'Compliance'
-  return 'Electrical'
-}
+const humanise = (value: string) =>
+  CHECK_LABELS[value] ?? value.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 
 function formatTime(value?: string): string {
   if (!value) return 'Not available'
@@ -176,260 +90,345 @@ function formatTime(value?: string): string {
   }).format(date)
 }
 
-function relativeTime(value?: string): string {
-  if (!value) return 'just now'
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return 'just now'
-  const diff = Date.now() - date.getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'just now'
-  if (mins < 60) return `${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours}h ago`
-  const days = Math.floor(hours / 24)
-  if (days < 7) return `${days}d ago`
-  return formatTime(value)
-}
+function Verdict({ tone, label }: { tone: 'good' | 'warn' | 'bad' | 'idle'; label: string }) {
+  const config = {
+    good: { cls: 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300', icon: <BadgeCheck className="h-3.5 w-3.5" /> },
+    warn: { cls: 'border-amber-500/25 bg-amber-500/10 text-amber-700 dark:text-amber-300', icon: <CircleAlert className="h-3.5 w-3.5" /> },
+    bad: { cls: 'border-rose-500/25 bg-rose-500/10 text-rose-700 dark:text-rose-300', icon: <ShieldAlert className="h-3.5 w-3.5" /> },
+    idle: { cls: 'border-border bg-secondary/50 text-muted-foreground', icon: <CircleDashed className="h-3.5 w-3.5" /> },
+  }[tone]
 
-function recommendationFor(item: ValidationIssue, status: StatusKey): string | null {
-  if (item.recommendation || item.suggestion || item.fix) return item.recommendation ?? item.suggestion ?? item.fix ?? null
-  if (status === 'warning') return 'Review the referenced constraint and confirm the chosen value remains within tolerance.'
-  if (status === 'failed' || status === 'error') return 'Resolve the issue before export to avoid downstream board or manufacturing failures.'
-  return null
-}
-
-function donutColor(status: StatusKey): string {
-  if (status === 'warning') return 'var(--warning, #f59e0b)'
-  if (status === 'failed' || status === 'error') return 'var(--destructive, #ef4444)'
-  return 'var(--accent, #59616e)'
-}
-
-function StatusPill({ status }: { status: StatusKey }) {
-  const cfg = STATUS_CONFIG[status]
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.18em] ${cfg.border} ${cfg.bg} ${cfg.tone}`}>
-      {cfg.icon}
-      {cfg.label}
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.18em] ${config.cls}`}>
+      {config.icon}
+      {label}
     </span>
   )
 }
 
-function DonutChart({ passed, warning, failed }: { passed: number; warning: number; failed: number }) {
-  const total = Math.max(passed + warning + failed, 1)
-  const passedPct = (passed / total) * 100
-  const warningPct = (warning / total) * 100
-  const failedPct = (failed / total) * 100
-
+function Stat({ label, value, tone }: { label: string; value: React.ReactNode; tone?: string }) {
   return (
-    <div className="relative mx-auto flex h-36 w-36 items-center justify-center">
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: `conic-gradient(${donutColor('passed')} 0% ${passedPct}%, ${donutColor('warning')} ${passedPct}% ${passedPct + warningPct}%, ${donutColor('failed')} ${passedPct + warningPct}% 100%)`,
-        }}
-      />
-      <div className="absolute inset-[14px] rounded-full border border-border bg-background shadow-inner dark:bg-card" />
-      <div className="relative z-10 text-center">
-        <p className="text-[10px] uppercase tracking-[0.22em] text-muted-foreground">Distribution</p>
-        <p className="mt-1 text-lg font-semibold text-foreground">{total}</p>
-        <p className="text-[11px] text-muted-foreground">checks</p>
-      </div>
+    <div className="rounded-2xl border border-border bg-background/80 p-3">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className={`mt-1.5 text-2xl font-semibold ${tone ?? 'text-foreground'}`}>{value}</p>
     </div>
   )
 }
 
-function ValidationItemCard({ item, index }: { item: ValidationIssue; index: number }) {
-  const [open, setOpen] = useState(index === 0)
-  const status = statusFromItem(item)
-  const category = categoryFromItem(item)
-  const categoryConfig = CATEGORY_CONFIG[category]
-  const title = item.title ?? item.name ?? `Check ${index + 1}`
-  const summary = item.details ?? item.message ?? item.description ?? 'No additional details provided.'
-  const recommendation = recommendationFor(item, status)
-  const timestamp = item.timestamp ?? item.updatedAt ?? item.createdAt
+/** Section 1 — dunkai's pre-generation check on the handoff document. */
+function HandoffSection({ handoff, isV2 }: { handoff: HandoffData | null; isV2: boolean }) {
+  if (!handoff) {
+    return (
+      <Card className="border-border/70 bg-card/85 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Layers className="h-4 w-4 text-muted-foreground" />
+            Handoff
+          </CardTitle>
+          <CardDescription>Is the design a well-formed handoff document?</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <CircleDashed className="h-4 w-4" />
+            Not run yet — start the pipeline from the Chat tab.
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const issues = handoff.issues ?? []
+  const errors = issues.filter((i) => i.severity === 'error')
+  const warnings = issues.filter((i) => i.severity === 'warning')
+  // v2 reports `well_formed`; v1 reports `passed`. Only one is ever set, and
+  // reading the wrong one off the wrong schema yields undefined rather than a
+  // wrong answer — which is the point of them being separate fields.
+  const ok = isV2 ? handoff.well_formed === true : handoff.passed === true
+  const checks = handoff.checks_run ?? []
 
   return (
-    <article className={`rounded-2xl border bg-card/90 shadow-sm transition-[transform,border-color,box-shadow,background-color] duration-200 hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-[0_12px_30px_rgba(0,0,0,0.08)] dark:bg-card/70 dark:hover:shadow-[0_12px_30px_rgba(0,0,0,0.2)] ${STATUS_CONFIG[status].border}`}>
-      <button
-        type="button"
-        aria-expanded={open}
-        onClick={() => setOpen((value) => !value)}
-        className="flex w-full items-start justify-between gap-4 p-4 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-      >
-        <div className="flex min-w-0 flex-1 items-start gap-3">
-          <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${STATUS_CONFIG[status].border} ${STATUS_CONFIG[status].bg}`}>
-            {STATUS_CONFIG[status].icon}
+    <Card className="border-border/70 bg-card/85 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Layers className="h-4 w-4 text-muted-foreground" />
+              Handoff
+            </CardTitle>
+            <CardDescription className="mt-1">
+              {isV2
+                ? 'Is the design a well-formed handoff document? Checked before generation.'
+                : 'Legacy schema 1.0 buildability check.'}
+            </CardDescription>
           </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-sm font-semibold leading-5 text-foreground">{title}</h3>
-              <Badge variant="outline" className={`rounded-full px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] ${categoryConfig.badge}`}>
-                <span className={`mr-1 inline-flex items-center`}>{categoryConfig.icon}</span>
-                {category}
+          <div className="flex items-center gap-2">
+            {handoff.schema_version && (
+              <Badge variant="outline" className="rounded-full font-mono text-[10px]">
+                schema {handoff.schema_version}
               </Badge>
-              <StatusPill status={status} />
-            </div>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">{summary}</p>
+            )}
+            <Verdict
+              tone={ok ? 'good' : 'bad'}
+              label={isV2 ? (ok ? 'Well-formed' : 'Malformed') : ok ? 'Passed' : 'Failed'}
+            />
           </div>
         </div>
-        <span className="mt-1 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground transition-colors">
-          {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-        </span>
-      </button>
+      </CardHeader>
 
-      {open && (
-        <div className="border-t border-border/70 px-4 pb-4 pt-3">
-          <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_240px]">
-            <div className="space-y-3">
-              {recommendation && (
-                <div className="rounded-xl border border-border bg-secondary/40 p-3">
-                  <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">Recommendation</p>
-                  <p className="mt-1 text-sm leading-6 text-foreground">{recommendation}</p>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Stat label="Checks run" value={checks.length || '—'} />
+          <Stat
+            label="Errors"
+            value={errors.length}
+            tone={errors.length ? 'text-rose-600 dark:text-rose-400' : 'text-foreground'}
+          />
+          <Stat
+            label="Warnings"
+            value={warnings.length}
+            tone={warnings.length ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}
+          />
+        </div>
+
+        {checks.length > 0 && (
+          <div className="rounded-2xl border border-border bg-background/70 p-3">
+            <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              What was checked
+            </p>
+            <ul className="grid gap-1.5 sm:grid-cols-2">
+              {checks.map((check) => {
+                // A check with no issue carrying its name passed. This is the
+                // only way to show a PASS at all: the validator emits issues
+                // only for failures, so counting "passed checks" from the
+                // issue list alone always yielded zero.
+                const failed = errors.some((e) => (e.code ?? '').toLowerCase().includes(check.split('_')[0]))
+                return (
+                  <li key={check} className="flex items-start gap-2 text-xs">
+                    {failed ? (
+                      <ShieldAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-rose-500" />
+                    ) : (
+                      <BadgeCheck className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+                    )}
+                    <span className="text-muted-foreground">{humanise(check)}</span>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )}
+
+        {issues.length > 0 && (
+          <div className="space-y-2">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Issues ({issues.length})
+            </p>
+            {issues.map((issue, index) => (
+              <div
+                key={`${issue.code}-${index}`}
+                className={`rounded-xl border p-3 ${
+                  issue.severity === 'error'
+                    ? 'border-rose-500/20 bg-rose-500/5 dark:bg-rose-400/10'
+                    : 'border-amber-500/20 bg-amber-500/5 dark:bg-amber-400/10'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="rounded-full font-mono text-[10px]">
+                    {issue.code ?? issue.severity ?? 'issue'}
+                  </Badge>
                 </div>
-              )}
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div className="rounded-xl border border-border bg-background/80 p-3">
-                  <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">Check details</p>
-                  <p className="mt-1 text-sm leading-6 text-foreground">{summary}</p>
-                </div>
-                <div className="rounded-xl border border-border bg-background/80 p-3">
-                  <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">Category</p>
-                  <p className="mt-1 text-sm leading-6 text-foreground">{category}</p>
-                </div>
+                <p className="mt-1.5 text-sm leading-6 text-foreground">{issue.message}</p>
               </div>
-            </div>
-
-            <div className="rounded-xl border border-border bg-background/80 p-3">
-              <p className="text-[10px] font-mono uppercase tracking-[0.22em] text-muted-foreground">Timestamp</p>
-              <p className="mt-1 text-sm leading-6 text-foreground">{formatTime(timestamp)}</p>
-              <p className="text-xs text-muted-foreground">{relativeTime(timestamp)}</p>
-            </div>
+            ))}
           </div>
-        </div>
-      )}
-    </article>
+        )}
+
+        {issues.length === 0 && (
+          <p className="text-sm text-muted-foreground">
+            No issues. {checks.length} check{checks.length !== 1 ? 's' : ''} found nothing to report.
+          </p>
+        )}
+
+        {handoff.scope && (
+          <p className="rounded-xl border border-border bg-secondary/40 p-3 text-xs leading-5 text-muted-foreground">
+            {handoff.scope}
+          </p>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
-function SectionCard({ category, issues }: { category: CategoryKey; issues: ValidationIssue[] }) {
-  const config = CATEGORY_CONFIG[category]
-  const counts = issues.reduce(
-    (acc, item) => {
-      const status = statusFromItem(item)
-      if (status === 'passed') acc.passed += 1
-      else if (status === 'warning') acc.warning += 1
-      else if (status === 'failed' || status === 'error') acc.failed += 1
-      return acc
-    },
-    { passed: 0, warning: 0, failed: 0 }
-  )
-  const total = Math.max(issues.length, 1)
-  const passRate = Math.round((counts.passed / total) * 100)
+/** Section 2 — the designer's post-generation check on the routed board. */
+function BoardSection({ board }: { board: BoardArtifact | null }) {
+  if (!board) {
+    return (
+      <Card className="border-border/70 bg-card/85 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Waypoints className="h-4 w-4 text-muted-foreground" />
+            Board (DRC)
+          </CardTitle>
+          <CardDescription>Did the board route, and can it be fabricated?</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <CircleDashed className="h-4 w-4" />
+            No board generated yet — run Generate PCB from the BOM or PCB tab.
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
+  const stats = board.stats ?? {}
+  const errors = stats.errors ?? 0
+  const warnings = stats.warnings ?? 0
+  const unresolved = stats.unresolvedComponents ?? 0
+  const placeholders = stats.placeholderPinComponents ?? 0
+  const substituted = stats.substitutedComponents ?? 0
 
   return (
-    <section className="rounded-3xl border border-border bg-card/80 shadow-sm">
-      <div className="border-b border-border px-5 py-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className={`flex h-8 w-8 items-center justify-center rounded-xl border border-border bg-background/80 ${config.accent}`}>
-                {config.icon}
-              </span>
-              <div>
-                <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">Section</p>
-                <h3 className="text-lg font-semibold text-foreground">{category}</h3>
-              </div>
+    <Card className="border-border/70 bg-card/85 shadow-sm">
+      <CardHeader className="pb-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Waypoints className="h-4 w-4 text-muted-foreground" />
+              Board (DRC)
+            </CardTitle>
+            <CardDescription className="mt-1">
+              Did the board route, and can it be fabricated? Checked after generation.
+            </CardDescription>
+          </div>
+          <Verdict
+            tone={errors > 0 ? 'bad' : warnings > 0 ? 'warn' : 'good'}
+            label={errors > 0 ? `${errors} DRC error${errors !== 1 ? 's' : ''}` : 'DRC clean'}
+          />
+        </div>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Stat
+            label="DRC errors"
+            value={errors}
+            tone={errors ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}
+          />
+          <Stat
+            label="Warnings"
+            value={warnings}
+            tone={warnings ? 'text-amber-600 dark:text-amber-400' : 'text-foreground'}
+          />
+          <Stat label="Routed traces" value={stats.traces ?? '—'} />
+          <Stat label="Components" value={stats.components ?? '—'} />
+        </div>
+
+        {(stats.errorTypes?.length ?? 0) > 0 && (
+          <div className="rounded-2xl border border-rose-500/20 bg-rose-500/5 p-3 dark:bg-rose-400/10">
+            <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+              Error types
+            </p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {stats.errorTypes!.map((type) => (
+                <Badge key={type} variant="outline" className="rounded-full font-mono text-[10px]">
+                  {type}
+                </Badge>
+              ))}
             </div>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-semibold text-foreground">{passRate}%</p>
-            <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">Pass rate</p>
-          </div>
-        </div>
-        <div className="mt-4 grid gap-2 sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-background/70 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Passed</p>
-            <p className={`mt-1 text-sm font-semibold ${STATUS_CONFIG.passed.tone}`}>{counts.passed}</p>
-          </div>
-          <div className="rounded-xl border border-border bg-background/70 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Warnings</p>
-            <p className={`mt-1 text-sm font-semibold ${STATUS_CONFIG.warning.tone}`}>{counts.warning}</p>
-          </div>
-          <div className="rounded-xl border border-border bg-background/70 px-3 py-2">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Errors</p>
-            <p className={`mt-1 text-sm font-semibold ${STATUS_CONFIG.failed.tone}`}>{counts.failed}</p>
-          </div>
-        </div>
-        <Progress value={passRate} className="mt-4 h-2" />
-      </div>
+        )}
 
-      <div className="space-y-3 p-4">
-        {issues.map((item, index) => (
-          <ValidationItemCard key={item.id ?? `${category}-${index}`} item={item} index={index} />
-        ))}
-      </div>
-    </section>
+        <div className="rounded-2xl border border-border bg-background/70 p-3">
+          <p className="mb-2 font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+            Component resolution
+          </p>
+          <div className="grid gap-2 text-xs sm:grid-cols-2 lg:grid-cols-4">
+            <span className="text-muted-foreground">
+              Resolved: <span className="font-medium text-foreground">{stats.resolvedComponents ?? '—'}</span>
+            </span>
+            <span className={unresolved ? 'text-rose-600 dark:text-rose-400' : 'text-muted-foreground'}>
+              Unresolved: <span className="font-medium">{unresolved}</span>
+            </span>
+            <span className={placeholders ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}>
+              Placeholder pins: <span className="font-medium">{placeholders}</span>
+            </span>
+            <span className={substituted ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}>
+              Substituted: <span className="font-medium">{substituted}</span>
+            </span>
+          </div>
+          {placeholders > 0 && (
+            <p className="mt-2 text-xs leading-5 text-muted-foreground">
+              A part with placeholder pins has unnamed pins, so it cannot be wired by signal name.
+            </p>
+          )}
+        </div>
+
+        <p className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Clock3 className="h-3.5 w-3.5" />
+          Generated {formatTime(board.generated_at)}
+          {board.design_name ? ` · ${board.design_name}` : ''}
+        </p>
+      </CardContent>
+    </Card>
   )
 }
 
 export function ValidationView({ projectId: _projectId }: ValidationViewProps) {
   const aiOutput = useWorkspaceStore((s) => s.aiOutput)
-  const validation = aiOutput?.validation as ValidationData | null | undefined
 
-  const checks: ValidationIssue[] = validation?.issues ?? validation?.checks ?? validation?.results ?? []
-
-  const { grouped, passedCount, warningCount, failedCount, totalCount, score, overallStatus, lastValidationTime } = useMemo(() => {
-    const buckets: Record<CategoryKey, ValidationIssue[]> = {
-      Electrical: [],
-      Thermal: [],
-      Power: [],
-      'Signal Integrity': [],
-      Manufacturing: [],
-      Compliance: [],
-    }
-
-    for (const item of checks) {
-      buckets[categoryFromItem(item)].push(item)
-    }
-
-    const passed = validation?.passed ?? checks.filter((c) => statusFromItem(c) === 'passed').length
-    const warnings = validation?.warnings ?? checks.filter((c) => statusFromItem(c) === 'warning').length
-    const failures = validation?.failures ?? checks.filter((c) => ['failed', 'error'].includes(statusFromItem(c))).length
-    const total = Math.max(checks.length, 1)
-    const health = Math.max(0, Math.min(100, Math.round(((passed + warnings * 0.5) / total) * 100)))
-    const status = failures > 0 ? 'Needs Review' : warnings > 0 ? 'Warnings Present' : 'Ready'
-    const lastTime = validation?.lastValidatedAt ?? validation?.validatedAt ?? validation?.updatedAt ?? validation?.timestamp ?? validation?.createdAt
-
+  const { handoff, isV2, board } = useMemo(() => {
+    const v2 = (aiOutput?.handoff_validation as HandoffData | null) ?? null
+    const v1 = (aiOutput?.validation as HandoffData | null) ?? null
     return {
-      grouped: buckets,
-      passedCount: passed,
-      warningCount: warnings,
-      failedCount: failures,
-      totalCount: checks.length,
-      score: health,
-      overallStatus: status,
-      lastValidationTime: lastTime,
+      handoff: v2 ?? v1,
+      isV2: Boolean(v2),
+      board: aiOutput?.board ?? null,
     }
-  }, [checks, validation])
+  }, [aiOutput])
 
-  if (!validation || checks.length === 0) {
+  if (!aiOutput) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4 text-muted-foreground">
         <ShieldCheck className="h-10 w-10 opacity-40" />
-        <p className="text-sm">
-          {aiOutput
-            ? 'No validation results were generated for this run.'
-            : 'Run the AI pipeline from the Chat tab to generate the Validation Report.'}
-        </p>
+        <p className="text-sm">Run the AI pipeline from the Chat tab to generate the Validation Report.</p>
       </div>
     )
   }
 
   const exportReport = () => {
-    const text = checks
-      .map((c) => `[${statusFromItem(c).toUpperCase()}] ${c.title ?? c.name ?? 'Check'}: ${c.details ?? c.message ?? c.description ?? ''}`)
-      .join('\n')
-    const blob = new Blob([text], { type: 'text/plain' })
+    const lines: string[] = ['# Validation report', '']
+
+    lines.push('## Handoff (pre-generation)')
+    if (handoff) {
+      const ok = isV2 ? handoff.well_formed : handoff.passed
+      lines.push(`Verdict: ${ok ? (isV2 ? 'well-formed' : 'passed') : 'needs review'}`)
+      lines.push(`Schema: ${handoff.schema_version ?? 'unknown'}`)
+      lines.push(`Checks run: ${(handoff.checks_run ?? []).join(', ') || 'none reported'}`)
+      for (const issue of handoff.issues ?? []) {
+        lines.push(`  [${issue.severity}] ${issue.code}: ${issue.message}`)
+      }
+      if ((handoff.issues ?? []).length === 0) lines.push('  no issues')
+    } else {
+      lines.push('not run')
+    }
+
+    lines.push('', '## Board DRC (post-generation)')
+    if (board) {
+      const s = board.stats ?? {}
+      lines.push(`DRC errors: ${s.errors ?? 0}`)
+      lines.push(`Warnings: ${s.warnings ?? 0}`)
+      lines.push(`Routed traces: ${s.traces ?? 0}`)
+      lines.push(`Components: ${s.components ?? 0}`)
+      if (s.errorTypes?.length) lines.push(`Error types: ${s.errorTypes.join(', ')}`)
+      lines.push(
+        `Resolution: ${s.resolvedComponents ?? 0} resolved, ${s.unresolvedComponents ?? 0} unresolved, ` +
+          `${s.placeholderPinComponents ?? 0} with placeholder pins, ${s.substitutedComponents ?? 0} substituted`
+      )
+    } else {
+      lines.push('no board generated')
+    }
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
@@ -438,152 +437,42 @@ export function ValidationView({ projectId: _projectId }: ValidationViewProps) {
     URL.revokeObjectURL(url)
   }
 
-  const visibleSections = CATEGORY_ORDER.filter((category) => grouped[category].length > 0)
-
   return (
     <div className="flex h-full flex-col bg-background text-foreground">
       <ScrollArea className="min-h-0 flex-1">
-        <div className="space-y-6 p-6 pr-4">
+        <div className="space-y-5 p-6 pr-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-1">
-              <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-muted-foreground">Validation dashboard</p>
-              <h2 className="font-display text-2xl tracking-tight">Validation Report</h2>
-              <p className="text-sm text-muted-foreground">{totalCount} check{totalCount !== 1 ? 's' : ''} performed</p>
+              <p className="font-mono text-[10px] uppercase tracking-[0.24em] text-muted-foreground">
+                Validation dashboard
+              </p>
+              <h2 className="font-display text-2xl tracking-tight">Validation</h2>
+              <p className="max-w-2xl text-sm text-muted-foreground">
+                Two separate checks. The handoff check asks whether the design is a well-formed
+                document; the board check asks whether what was generated from it can be built.
+                Neither answers the other, so they are not combined into one score.
+              </p>
             </div>
-            <Button variant="outline" size="sm" className="border-border text-muted-foreground shadow-sm" onClick={exportReport}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="border-border text-muted-foreground shadow-sm"
+              onClick={exportReport}
+            >
               <Download className="mr-2 h-4 w-4" />
               Export Report
             </Button>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-            <Card className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Validation Score</CardTitle>
-                <CardDescription>Overall health across the current run</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                <div className="flex items-end justify-between gap-4">
-                  <div>
-                    <p className="text-5xl font-semibold tracking-tight text-foreground">{score}%</p>
-                    <p className="mt-2 text-sm text-muted-foreground">{overallStatus}</p>
-                  </div>
-                  <div className="text-right">
-                    <StatusPill status={failedCount > 0 ? 'failed' : warningCount > 0 ? 'warning' : 'passed'} />
-                    <p className="mt-2 text-xs text-muted-foreground">Last run {formatTime(lastValidationTime)}</p>
-                  </div>
-                </div>
-                <Progress value={score} className="h-2" />
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-border bg-background/80 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Passed Checks</p>
-                    <p className="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{passedCount}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-background/80 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Warnings</p>
-                    <p className="mt-2 text-2xl font-semibold text-amber-600 dark:text-amber-400">{warningCount}</p>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-background/80 p-3">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Errors</p>
-                    <p className="mt-2 text-2xl font-semibold text-rose-600 dark:text-rose-400">{failedCount}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+          <HandoffSection handoff={handoff} isV2={isV2} />
+          <BoardSection board={board} />
 
-            <Card className="border-border/70 bg-card/90 shadow-sm">
-              <CardHeader className="pb-4">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Distribution</CardTitle>
-                <CardDescription>Passed, warning, and failed checks in this run</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <DonutChart passed={passedCount} warning={warningCount} failed={failedCount} />
-                <div className="space-y-3">
-                  {[
-                    { label: 'Passed', value: passedCount, tone: 'bg-emerald-500' },
-                    { label: 'Warnings', value: warningCount, tone: 'bg-amber-500' },
-                    { label: 'Errors', value: failedCount, tone: 'bg-rose-500' },
-                  ].map((entry) => {
-                    const total = Math.max(totalCount, 1)
-                    const pct = Math.round((entry.value / total) * 100)
-                    return (
-                      <div key={entry.label} className="space-y-1.5">
-                        <div className="flex items-center justify-between text-xs">
-                          <span className="text-muted-foreground">{entry.label}</span>
-                          <span className="font-mono text-muted-foreground">{entry.value} · {pct}%</span>
-                        </div>
-                        <div className="h-2 rounded-full bg-muted/60">
-                          <div className={`h-2 rounded-full ${entry.tone}`} style={{ width: `${Math.max(pct, entry.value > 0 ? 6 : 0)}%` }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Card className="border-border/70 bg-card/85 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Overall Status</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2">
-                  {failedCount > 0 ? <ShieldAlert className="h-5 w-5 text-rose-500" /> : warningCount > 0 ? <CircleAlert className="h-5 w-5 text-amber-500" /> : <BadgeCheck className="h-5 w-5 text-emerald-500" />}
-                  <p className="text-lg font-semibold text-foreground">{overallStatus}</p>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">Status reflects the current validation run.</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/70 bg-card/85 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Last Validation Time</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center gap-2 text-foreground">
-                  <Clock3 className="h-4 w-4 text-muted-foreground" />
-                  <p className="text-base font-medium">{formatTime(lastValidationTime)}</p>
-                </div>
-                <p className="mt-2 text-sm text-muted-foreground">{relativeTime(lastValidationTime)}</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/70 bg-card/85 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Progress</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-lg font-semibold text-foreground">{score}% complete</p>
-                <Progress value={score} className="mt-3 h-2" />
-                <p className="mt-2 text-sm text-muted-foreground">Validation completion for this run.</p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-border/70 bg-card/85 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Category Coverage</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-lg font-semibold text-foreground">{visibleSections.length} sections</p>
-                <p className="mt-2 text-sm text-muted-foreground">Electrical, thermal, power, signal integrity, manufacturing, compliance.</p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-4">
-            {visibleSections.map((category) => (
-              <SectionCard key={category} category={category} issues={grouped[category]} />
-            ))}
-          </div>
-
-          {validation.summary && (
-            <Card className={`border shadow-sm ${failedCount > 0 ? 'border-rose-500/20 bg-rose-500/5 dark:bg-rose-400/10' : 'border-emerald-500/20 bg-emerald-500/5 dark:bg-emerald-400/10'}`}>
-              <CardContent className="p-4">
-                <p className="text-sm leading-6 text-foreground">{validation.summary}</p>
-              </CardContent>
-            </Card>
+          {handoff && !board && (
+            <p className="flex items-start gap-2 rounded-xl border border-border bg-secondary/40 p-3 text-xs leading-5 text-muted-foreground">
+              <FileWarning className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+              A well-formed handoff is not a claim that the board can be built. Buildability is
+              decided by the board check above, which needs a generated board.
+            </p>
           )}
         </div>
       </ScrollArea>

@@ -150,6 +150,10 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             eda_data: (payload.eda_data as Record<string, unknown>) ?? null,
             pcb_ir: (payload.pcb_ir as Record<string, unknown>) ?? null,
             validation: (payload.validation as Record<string, unknown>) ?? null,
+            // Schema 2.0 designs report here and leave `validation` unset, so
+            // forwarding only `validation` left the Validation tab empty on
+            // every current run.
+            handoff_validation: (payload.handoff_validation as Record<string, unknown>) ?? null,
             documentation: (payload.documentation as Record<string, unknown>) ?? null,
             // A fresh pipeline run invalidates any previously generated board:
             // it belongs to the old BOM, and showing it beside new components

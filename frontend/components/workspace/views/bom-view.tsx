@@ -35,14 +35,33 @@ interface BomRow {
   unit_cost?: string | number;
   cost?: string;
   availability?: string;
+  // The names the component agent actually writes (BOM_COLUMNS in
+  // ai_engine/agents/component_agent/bom.py). The four guessed spellings above
+  // never matched a real row, so every cost cell read '—' and the total read
+  // $0.00 on runs that had prices all along.
+  unit_price_usd?: number | string;
+  extended_price_usd?: number | string;
+  build_quantity?: number;
+  mfr_part?: string;
+  lcsc?: string;
+  stock?: number;
+  status?: string;
 }
 
 interface BomData {
   rows?: BomRow[];
   components?: BomRow[];
   total_cost?: string | number;
-  summary?: string;
+  summary?: {
+    total_line_items?: number;
+    total_cost_usd?: number;
+    unfilled_references?: string[];
+  };
 }
+
+/** First of the real names, then the older guesses, so both shapes render. */
+const unitPrice = (r: BomRow) => r.unit_price_usd ?? r.unit_cost ?? r.cost;
+const quantityOf = (r: BomRow) => r.build_quantity ?? r.qty ?? r.quantity ?? 1;
 
 export function BOMView({ projectId }: BOMViewProps) {
   const aiOutput = useWorkspaceStore((s) => s.aiOutput);
@@ -63,13 +82,19 @@ export function BOMView({ projectId }: BOMViewProps) {
   // Normalise rows from whatever key the Python agent used
   const rows: BomRow[] = bom?.rows ?? bom?.components ?? [];
 
+  // The agent already totals this in summary.total_cost_usd; prefer its number
+  // over re-deriving one, so this tab and the build report cannot disagree.
   const totalCost =
-    bom?.total_cost != null
+    typeof bom?.summary?.total_cost_usd === 'number'
+      ? `$${bom.summary.total_cost_usd.toFixed(2)}`
+      : bom?.total_cost != null
       ? String(bom.total_cost)
       : rows.length
       ? `$${rows.reduce((sum, r) => {
-          const cost = parseFloat(String(r.unit_cost ?? r.cost ?? '0').replace(/[^0-9.]/g, ''));
-          return sum + (isNaN(cost) ? 0 : cost * (r.qty ?? r.quantity ?? 1));
+          const extended = parseFloat(String(r.extended_price_usd ?? '').replace(/[^0-9.]/g, ''));
+          if (Number.isFinite(extended)) return sum + extended;
+          const cost = parseFloat(String(unitPrice(r) ?? '0').replace(/[^0-9.]/g, ''));
+          return sum + (isNaN(cost) ? 0 : cost * quantityOf(r));
         }, 0).toFixed(2)}`
       : null;
 
@@ -96,7 +121,7 @@ export function BOMView({ projectId }: BOMViewProps) {
           r.component ?? r.part_number ?? '',
           String(r.qty ?? r.quantity ?? ''),
           r.category ?? '',
-          String(r.unit_cost ?? r.cost ?? ''),
+          String(unitPrice(r) ?? ''),
           r.availability ?? '',
         ].join(',')
       ),
@@ -113,7 +138,7 @@ export function BOMView({ projectId }: BOMViewProps) {
           r.component ?? r.part_number ?? '',
           String(r.qty ?? r.quantity ?? ''),
           r.category ?? '',
-          String(r.unit_cost ?? r.cost ?? ''),
+          String(unitPrice(r) ?? ''),
           r.availability ?? '',
         ].join(',')
       ),
@@ -249,7 +274,7 @@ export function BOMView({ projectId }: BOMViewProps) {
                       ) : '—'}
                     </TableCell>
                     <TableCell className="h-10 text-xs font-semibold text-foreground">
-                      {item.unit_cost ?? item.cost ?? (item as any).price ?? (item as any).unit_price ?? '—'}
+                      {unitPrice(item) ?? '—'}
                     </TableCell>
                     <TableCell className="h-10 text-xs text-accent">
                       {item.availability ?? (item as any).stock ?? '—'}
