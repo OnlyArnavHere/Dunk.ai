@@ -4,6 +4,13 @@ Configuration
 """
 
 import os
+
+# ── Guard against fork-related segfaults on macOS / Apple Silicon ──
+# Must be set before torch, tokenizers, or faiss are imported.
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
 import io
 import requests
 import numpy as np

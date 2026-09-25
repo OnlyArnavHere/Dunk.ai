@@ -6,9 +6,16 @@ internal and are invoked through graph nodes or direct node wrappers.
 
 from __future__ import annotations
 
+# ── Guard against fork-related segfaults on macOS / Apple Silicon ──
+# Must be set before any heavy library (torch, tokenizers, faiss) is imported.
+import os
+
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
+os.environ.setdefault("OBJC_DISABLE_INITIALIZE_FORK_SAFETY", "YES")
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+
 import json
 import logging
-import os
 import uuid
 from typing import Any
 
