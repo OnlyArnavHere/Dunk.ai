@@ -84,6 +84,36 @@ export interface AiOutput {
   board: BoardArtifact | null
 }
 
+/**
+ * The artifact keys a pipeline run can fill in, excluding `board`.
+ *
+ * `board` is handled separately in `setAiOutput`: it is not produced by the
+ * pipeline at all (only by "Generate PCB"), and it is invalidated by a new
+ * BOM rather than replaced by one.
+ */
+const DESIGN_KEYS = [
+  'requirements',
+  'architecture',
+  'bom',
+  'eda_data',
+  'pcb_ir',
+  'validation',
+  'handoff_validation',
+  'documentation',
+] as const
+
+const emptyAiOutput: AiOutput = {
+  requirements: null,
+  architecture: null,
+  bom: null,
+  eda_data: null,
+  pcb_ir: null,
+  validation: null,
+  handoff_validation: null,
+  documentation: null,
+  board: null,
+}
+
 interface WorkspaceState {
   activeProjectId: string | null
   activeTab: string
@@ -109,7 +139,16 @@ interface WorkspaceState {
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
   setPendingPrompt: (prompt: string | null) => void
-  setAiOutput: (output: AiOutput) => void
+  /**
+   * Merge a pipeline result into the stored design.
+   *
+   * Null and absent incoming fields are DROPPED rather than written, so a
+   * failed or partial run can never blank out artifacts an earlier run
+   * produced. Only real content replaces real content.
+   */
+  setAiOutput: (output: Partial<AiOutput>) => void
+  /** Replace the whole design wholesale — for a genuinely new design only. */
+  replaceAiOutput: (output: AiOutput) => void
   clearAiOutput: () => void
 
   setPipelineProgress: (progress: PipelineProgress) => void
@@ -139,7 +178,41 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
-  setAiOutput: (output) => set({ aiOutput: output, boardJob: idleBoardJob }),
+  setAiOutput: (output) =>
+    set((state) => {
+      const merged: AiOutput = { ...(state.aiOutput ?? emptyAiOutput) }
+
+      // A new BOM or pcb_ir means the components changed, which retires any
+      // board built from the previous ones. Tracked while merging so that only
+      // a run that actually delivered new components clears the board — a run
+      // that delivered nothing leaves it alone.
+      let componentsReplaced = false
+
+      for (const key of DESIGN_KEYS) {
+        const incoming = output[key]
+        if (incoming === null || incoming === undefined) continue
+        merged[key] = incoming
+        if (key === 'bom' || key === 'pcb_ir') componentsReplaced = true
+      }
+
+      if (output.board) {
+        merged.board = output.board
+      } else if (componentsReplaced) {
+        // Showing the old board beside new components would be a different
+        // design than the one on screen (see the `board` field comment above).
+        merged.board = null
+      }
+
+      return {
+        aiOutput: merged,
+        // The job log describes the board that is on screen. Reset it only when
+        // that board changed; otherwise a merge would erase the completed run's
+        // stage log while its board is still being displayed.
+        boardJob: merged.board === state.aiOutput?.board ? state.boardJob : idleBoardJob,
+      }
+    }),
+
+  replaceAiOutput: (output) => set({ aiOutput: output, boardJob: idleBoardJob }),
   clearAiOutput: () => set({ aiOutput: null, boardJob: idleBoardJob }),
 
   setPipelineProgress: (progress) => set({ pipelineProgress: progress }),
