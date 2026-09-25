@@ -399,6 +399,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             return
           }
 
+          const errors = payload.errors as string[] | undefined
+
           // Case 2: Full workflow complete -> update state, persist to MongoDB, and update dynamic project title
           if (payload) {
             const artifactPayload = {
@@ -416,7 +418,15 @@ export function ChatInterface({ projectId }: { projectId: string }) {
               board: (payload.board as AiOutput['board']) ?? null,
             } satisfies AiOutput
 
-            setAiOutput(artifactPayload)
+            const anyPopulated = Object.values(artifactPayload).some((value) => value != null)
+
+            // A run that failed and produced nothing has nothing to contribute.
+            // Writing it would be a no-op under the merging `setAiOutput`, but
+            // skipping it keeps the failure purely a chat message and leaves
+            // the board job log of the design still on screen untouched.
+            if (anyPopulated || !errors?.length) {
+              setAiOutput(artifactPayload)
+            }
 
             // Persist all generated artifacts to MongoDB Project Document
             const updatePayload: Record<string, unknown> = {}
@@ -445,7 +455,6 @@ export function ChatInterface({ projectId }: { projectId: string }) {
 
           const aiMsgs = payload.messages as Array<{ content?: string }> | undefined
           const lastAiMsg = Array.isArray(aiMsgs) ? aiMsgs[aiMsgs.length - 1]?.content : undefined
-          const errors = payload.errors as string[] | undefined
 
           const finalMsg =
             (errors?.length ? `⚠️ Pipeline completed with issues: ${errors.join('; ')}` : undefined) ||
