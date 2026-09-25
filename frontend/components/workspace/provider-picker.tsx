@@ -33,7 +33,7 @@ export function ProviderPicker({ value, onChange, disabled }: ProviderPickerProp
     <Select value={value} onValueChange={(v) => onChange(v as BoardProviderId)} disabled={disabled}>
       <SelectTrigger
         size="sm"
-        className="w-[150px] border-border text-muted-foreground"
+        className="w-[190px] border-border text-muted-foreground"
         aria-label="Board generation model"
         title={active ? `${active.label} — ${active.hint}` : 'Board generation model'}
       >
