@@ -214,8 +214,9 @@ def requirements_node(state: CircuitState) -> dict[str, Any]:
 
     from requirement_agent import run_interview
 
+    selected_model = state.get("llm_model") or state.get("designer_model")
     try:
-        result = run_interview(user_input, state.get("interview_history"))
+        result = run_interview(user_input, state.get("interview_history"), model=selected_model)
     except Exception as exc:
         return _error(f"Requirement Agent failed: {exc}")
 
@@ -226,6 +227,7 @@ def requirements_node(state: CircuitState) -> dict[str, Any]:
             "interview_status": "question",
             "interview_question": question,
             "interview_options": result.options,
+            "interview_selection_mode": result.selection_mode if hasattr(result, "selection_mode") else "multiple",
             "workflow_status": "awaiting_input",
             **_append_message(question),
         }
@@ -240,6 +242,7 @@ def requirements_node(state: CircuitState) -> dict[str, Any]:
         "interview_status": "complete",
         "interview_question": None,
         "interview_options": None,
+        "interview_selection_mode": None,
         **_append_message(
             f"Requirements captured for project '{requirements.get('project_name', 'unnamed')}'."
         ),
@@ -258,8 +261,9 @@ def architecture_node(state: CircuitState) -> dict[str, Any]:
 
     from architecture_agent import build_architecture
 
+    selected_model = state.get("llm_model") or state.get("designer_model")
     try:
-        architecture = build_architecture(requirements)
+        architecture = build_architecture(requirements, model=selected_model)
     except Exception as exc:
         return _error(f"Architecture Agent failed: {exc}")
 

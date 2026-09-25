@@ -165,8 +165,17 @@ export const chatApi = {
       body: JSON.stringify({ title }),
     }),
 
+  saveMessage: (chatId: string, type: 'user' | 'assistant', content: string, options?: string[]) =>
+    request(`/chats/${chatId}/messages/save`, {
+      method: 'POST',
+      body: JSON.stringify({ type, content, options }),
+    }),
+
   delete: (chatId: string) =>
     request(`/chats/${chatId}`, { method: 'DELETE' }),
+
+  clearMessages: (chatId: string) =>
+    request(`/chats/${chatId}/messages`, { method: 'DELETE' }),
 }
 
 // ---- AI API ----
