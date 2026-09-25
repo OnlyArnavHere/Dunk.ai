@@ -18,13 +18,7 @@
  * board that routed, while the OpenAI-compatible three are ~100x cheaper per run.
  */
 
-export type BoardProviderId =
-  | 'claude-code'
-  | 'anthropic-opus-4-5'
-  | 'anthropic-sonnet-4-5'
-  | 'gemini'
-  | 'groq'
-  | 'ollama'
+export type BoardProviderId = 'claude-code' | 'gemini' | 'groq' | 'ollama'
 
 export interface BoardProvider {
   /** Select value and localStorage key. Unique per OPTION, not per provider. */
@@ -46,22 +40,16 @@ export const BOARD_PROVIDERS: readonly BoardProvider[] = [
     label: 'Claude Code',
     hint: 'Agentic — writes and repairs the board itself. Highest quality, highest cost.',
   },
-  {
-    id: 'anthropic-opus-4-5',
-    provider: 'anthropic',
-    model: 'claude-opus-4-5',
-    label: 'Claude Opus 4.5',
-    hint: 'Anthropic API. Strongest one-shot board; no agentic self-repair.',
-    needsServerKey: 'ANTHROPIC_API_KEY',
-  },
-  {
-    id: 'anthropic-sonnet-4-5',
-    provider: 'anthropic',
-    model: 'claude-sonnet-4-5',
-    label: 'Claude Sonnet 4.5',
-    hint: 'Anthropic API. Cheaper and faster than Opus 4.5, same one-shot contract.',
-    needsServerKey: 'ANTHROPIC_API_KEY',
-  },
+  // The two Anthropic API options (Opus 4.5 / Sonnet 4.5) are deliberately NOT
+  // offered. The `anthropic` provider exists and is tested in dunkai-designer,
+  // but it bills against an Anthropic API key with its own prepaid credit —
+  // separate from the Claude subscription `claude-code` already uses — and that
+  // account is not set up. Offering an option that always fails on a missing
+  // key is worse than not offering it.
+  //
+  // To restore: add entries with provider 'anthropic' and model
+  // 'claude-opus-4-5' / 'claude-sonnet-4-5', and put a key in dunkai/.env.
+  // Nothing else needs changing; the backend and designer already accept them.
   {
     id: 'groq',
     provider: 'groq',
