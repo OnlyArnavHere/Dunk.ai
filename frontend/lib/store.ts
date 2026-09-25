@@ -47,6 +47,11 @@ export interface BoardJob {
   log: Array<{ stage: string | null; label: string; detail: string | null; at: number }>
 }
 
+export interface PipelineProgress {
+  activeNode: string
+  completedNodes: string[]
+}
+
 const idleBoardJob: BoardJob = {
   status: 'idle',
   jobId: null,
@@ -64,7 +69,14 @@ export interface AiOutput {
   bom: Record<string, unknown> | null
   eda_data: Record<string, unknown> | null
   pcb_ir: Record<string, unknown> | null
+  // Schema 1.0 only — carries `passed`. Left null by every current run.
   validation: Record<string, unknown> | null
+  // Schema 2.0 — carries `well_formed`. This is the key validation_node
+  // actually writes for a current design; `validation` above stayed null and
+  // the Validation tab rendered its empty state on every run until this was
+  // carried through. The two are deliberately separate keys in CircuitState
+  // (see ai_engine/agents/supervisor/state.py) and stay separate here.
+  handoff_validation: Record<string, unknown> | null
   documentation: Record<string, unknown> | null
   // Present only after "Generate PCB" has run. Lives inside AiOutput on purpose:
   // a fresh pipeline run replaces the whole object, which clears a board that
@@ -82,6 +94,16 @@ interface WorkspaceState {
   aiOutput: AiOutput | null
   boardJob: BoardJob
 
+  // Pipeline node progress — updated by chat-interface as nodes complete
+  pipelineProgress: PipelineProgress
+
+  // Counter incremented by sidebar "New Chat" to signal chat-interface to reset
+  chatResetCounter: number
+
+  // Selected AI Model for chat / supervisor pipeline
+  selectedModel: string
+  setSelectedModel: (model: string) => void
+
   setActiveProjectId: (id: string | null) => void
   setActiveTab: (tab: string) => void
   toggleSidebar: () => void
@@ -90,6 +112,9 @@ interface WorkspaceState {
   setAiOutput: (output: AiOutput) => void
   clearAiOutput: () => void
 
+  setPipelineProgress: (progress: PipelineProgress) => void
+  clearPipelineProgress: () => void
+  triggerChatReset: () => void
   startBoardJob: (jobId: string) => void
   pushBoardProgress: (update: { stage?: string | null; label?: string | null; detail?: string | null }) => void
   completeBoardJob: (board: BoardArtifact) => void
@@ -104,7 +129,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   pendingPrompt: null,
   aiOutput: null,
   boardJob: idleBoardJob,
+  pipelineProgress: { activeNode: '', completedNodes: [] },
+  chatResetCounter: 0,
+  selectedModel: 'openai/gpt-oss-120b',
 
+  setSelectedModel: (model) => set({ selectedModel: model }),
   setActiveProjectId: (id) => set({ activeProjectId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
@@ -112,6 +141,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
   setAiOutput: (output) => set({ aiOutput: output, boardJob: idleBoardJob }),
   clearAiOutput: () => set({ aiOutput: null, boardJob: idleBoardJob }),
+
+  setPipelineProgress: (progress) => set({ pipelineProgress: progress }),
+  clearPipelineProgress: () => set({ pipelineProgress: { activeNode: '', completedNodes: [] } }),
+  triggerChatReset: () => set((state) => ({ chatResetCounter: state.chatResetCounter + 1 })),
 
   startBoardJob: (jobId) =>
     set({ boardJob: { ...idleBoardJob, status: 'running', jobId, label: 'Starting board generation' } }),

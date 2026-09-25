@@ -89,6 +89,15 @@ export const createProject = async (data, user, req = null) => {
 export const updateProject = async (id, data, user, req = null) => {
   const project = await getProject(id, user, true);
   Object.assign(project, data);
+
+  // Mongoose Mixed-type fields need explicit markModified() for change detection
+  const mixedFields = ['requirements', 'architecture', 'bom', 'eda_data', 'pcb_ir', 'validation', 'documentation'];
+  for (const field of mixedFields) {
+    if (field in data) {
+      project.markModified(field);
+    }
+  }
+
   await project.save();
 
   await logActivity('project_updated', user._id, { projectId: project._id }, req);
