@@ -5,6 +5,7 @@ import { ArrowUp, Loader2, Mic, Paperclip, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWorkspaceStore } from '@/lib/store'
+import { ModelSelector } from './model-selector'
 import { useCreateProject } from '@/hooks/use-projects'
 import { toast } from 'sonner'
 
@@ -31,7 +32,7 @@ function generateTitleFromPrompt(prompt: string): string {
 }
 
 export function NewProjectChat() {
-  const { setActiveProjectId, setActiveTab, setPendingPrompt } = useWorkspaceStore()
+  const { setActiveProjectId, setActiveTab, setPendingPrompt, selectedModel, setSelectedModel } = useWorkspaceStore()
   const createProject = useCreateProject()
   const [input, setInput] = useState('')
   const [placeholder, setPlaceholder] = useState('')
@@ -90,6 +91,7 @@ export function NewProjectChat() {
                 <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Attach a file" aria-label="Attach a file">
               <Paperclip className="h-4 w-4" />
             </Button>
+            <ModelSelector value={selectedModel} onChange={setSelectedModel} disabled={busy} />
             <Input
               value={input}
               onChange={(event) => setInput(event.target.value)}

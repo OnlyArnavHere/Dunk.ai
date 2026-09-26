@@ -1,39 +1,55 @@
-import { api, ApiError } from './axios-client'
+import type { ApiResponse } from './types'
+
+const API_BASE = '/api/v1'
+
+class ApiError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+    public errors: unknown[] = []
+  ) {
+    super(message)
+  }
+}
 
 async function request<T = unknown>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const method = (options.method || 'GET').toLowerCase()
-  let bodyData: unknown = undefined
-  if (options.body) {
-    if (typeof options.body === 'string') {
-      try {
-        bodyData = JSON.parse(options.body)
-      } catch {
-        bodyData = options.body
-      }
-    } else {
-      bodyData = options.body
-    }
+  const url = `${API_BASE}${path}`
+
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
   }
-  const config: Record<string, unknown> = {}
+  // Merge caller-provided headers if they're a plain object
   if (options.headers && typeof options.headers === 'object' && !(options.headers instanceof Headers)) {
-    config.headers = options.headers
+    Object.assign(headers, options.headers)
+  } else if (options.headers instanceof Headers) {
+    options.headers.forEach((value, key) => {
+      headers[key] = value
+    })
   }
 
-  if (method === 'get') {
-    return api.get<unknown, T>(path, config)
-  } else if (method === 'post') {
-    return api.post<unknown, T>(path, bodyData, config)
-  } else if (method === 'patch') {
-    return api.patch<unknown, T>(path, bodyData, config)
-  } else if (method === 'put') {
-    return api.put<unknown, T>(path, bodyData, config)
-  } else if (method === 'delete') {
-    return api.delete<unknown, T>(path, config)
+  const response = await fetch(url, {
+    ...options,
+    headers,
+    credentials: 'include', // Send cookies for auth
+  })
+
+  const data: ApiResponse<T> = await response.json().catch(() => ({
+    success: false,
+    message: 'Network error',
+    data: null as T,
+    errors: [],
+    timestamp: new Date().toISOString(),
+  }))
+
+  if (!response.ok || !data.success) {
+    const message = data.message || `Request failed with status ${response.status}`
+    throw new ApiError(response.status, message, data.errors)
   }
-  return api.request<unknown, T>({ url: path, method, data: bodyData, ...config })
+
+  return data.data
 }
 
 // ---- Auth API ----
@@ -143,16 +159,16 @@ export const chatApi = {
       body: JSON.stringify({ content, attachments }),
     }),
 
-  saveMessage: (chatId: string, type: 'user' | 'assistant', content: string, options?: string[]) =>
-    request(`/chats/${chatId}/messages/save`, {
-      method: 'POST',
-      body: JSON.stringify({ type, content, options }),
-    }),
-
   rename: (chatId: string, title: string) =>
     request(`/chats/${chatId}`, {
       method: 'PATCH',
       body: JSON.stringify({ title }),
+    }),
+
+  saveMessage: (chatId: string, type: 'user' | 'assistant', content: string, options?: string[]) =>
+    request(`/chats/${chatId}/messages/save`, {
+      method: 'POST',
+      body: JSON.stringify({ type, content, options }),
     }),
 
   delete: (chatId: string) =>
@@ -176,10 +192,44 @@ export const aiApi = {
       body: JSON.stringify(data),
     }),
 
-  runStream: (data: { projectId?: string; action?: string; messages?: Array<{ role: string; content: string }> }) =>
+  runStream: (data: {
+    projectId?: string
+    action?: string
+    messages?: Array<{ role: string; content: string }>
+    pcbIr?: Record<string, unknown>
+    provider?: string
+    model?: string
+  }) =>
     request<{ jobId: string }>('/ai/run-stream', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+
+  /**
+   * Run dunkai-designer over an existing pcb_ir handoff.
+   *
+   * Same endpoint, same Socket.io relay and same jobId contract as the chat
+   * pipeline — only the action differs. The pcb_ir is sent along because
+   * run-stream persists nothing, so the browser holds the only copy.
+   *
+   * `provider` and `model` are omitted when unset so the server-side
+   * DESIGNER_PROVIDER default still applies; sending an explicit null would
+   * override it with nothing.
+   */
+  generateBoard: (
+    projectId: string,
+    pcbIr: Record<string, unknown>,
+    opts: { provider?: string; model?: string } = {}
+  ) =>
+    request<{ jobId: string }>('/ai/run-stream', {
+      method: 'POST',
+      body: JSON.stringify({
+        projectId,
+        action: 'generate_board',
+        pcbIr,
+        ...(opts.provider ? { provider: opts.provider } : {}),
+        ...(opts.model ? { model: opts.model } : {}),
+      }),
     }),
 
   status: (jobId: string) => request(`/ai/status/${jobId}`),
