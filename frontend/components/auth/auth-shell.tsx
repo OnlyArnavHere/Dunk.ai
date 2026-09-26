@@ -15,7 +15,7 @@ export function AuthShell({ children, title, description }: { children: React.Re
   const light = mounted && resolvedTheme === 'light'
   
   return (
-    <main className="min-h-screen bg-[#0F0F0F] text-[#F3F2F0] flex font-sans">
+    <main className="min-h-screen bg-background text-foreground flex font-sans">
       {/* Left Panel */}
       <section className="relative flex flex-col w-full lg:w-1/2 min-h-screen z-10 px-6 sm:px-12 py-8">
         
@@ -26,7 +26,7 @@ export function AuthShell({ children, title, description }: { children: React.Re
             <span className="font-serif text-2xl tracking-tight font-medium">DunkAI</span>
           </Link>
           <div className="flex gap-2">
-            <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={() => setTheme(light ? 'dark' : 'light')} className="h-9 w-9 rounded-full text-muted-foreground hover:bg-white/10 hover:text-white">
+            <Button variant="ghost" size="icon" aria-label="Toggle theme" onClick={() => setTheme(light ? 'dark' : 'light')} className="h-9 w-9 rounded-full text-muted-foreground hover:bg-secondary hover:text-foreground">
               {light ? <Moon className="h-4 w-4"/> : <Sun className="h-4 w-4"/>}
             </Button>
           </div>
@@ -35,11 +35,11 @@ export function AuthShell({ children, title, description }: { children: React.Re
         {/* Center Content */}
         <div className="flex-1 flex flex-col items-center justify-center w-full max-w-[520px] mx-auto mt-[-40px]">
           <div className="text-center mb-10">
-            <h1 className="font-serif text-[48px] sm:text-[56px] leading-[1.1] tracking-tight mb-4 text-[#EFECE6]">{title}</h1>
-            <p className="text-xl text-[#EFECE6]/70 tracking-wide">{description}</p>
+            <h1 className="font-serif text-[48px] sm:text-[56px] leading-[1.1] tracking-tight mb-4 text-foreground">{title}</h1>
+            <p className="text-xl text-muted-foreground tracking-wide">{description}</p>
           </div>
           
-          <div className="w-full rounded-3xl border border-white/10 bg-[#161616]/80 p-8 sm:p-10 shadow-2xl backdrop-blur-xl">
+          <div className="w-full rounded-3xl border border-border bg-card p-8 sm:p-10 shadow-2xl backdrop-blur-xl">
             {children}
           </div>
 
@@ -48,7 +48,7 @@ export function AuthShell({ children, title, description }: { children: React.Re
 
       {/* Right Panel - Image */}
       <section className="hidden lg:flex w-1/2 p-4 min-h-screen">
-        <div className="relative w-full h-full rounded-[32px] overflow-hidden bg-[#161616] border border-white/5">
+        <div className="relative w-full h-full rounded-[32px] overflow-hidden bg-muted border border-border">
           <img 
             src="/images/hardware_workbench.jpg" 
             alt="Hardware Workbench" 
@@ -66,7 +66,7 @@ export function GoogleButton() {
     <Button 
       type="button" 
       variant="outline" 
-      className="h-14 w-full rounded-xl border-white/10 bg-[#282828] hover:bg-[#333333] hover:text-white text-[#EFECE6] transition-colors text-[17px] font-semibold" 
+      className="h-14 w-full rounded-xl border-border bg-secondary hover:bg-secondary/80 text-foreground transition-colors text-[17px] font-semibold"
       onClick={loginWithGoogle}
     >
       {/* Small Google 'G' Icon */}

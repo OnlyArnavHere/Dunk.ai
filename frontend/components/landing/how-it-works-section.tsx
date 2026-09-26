@@ -9,14 +9,14 @@ const pipeline = [
     meta: "Natural Language Brief",
     visual: (
       <div className="flex flex-col gap-1 w-full text-[9px] font-mono leading-relaxed p-2">
-        <div className="text-white/60">
-          <span className="text-emerald-400 mr-1">{'>'}</span>Build a low-power
+        <div className="text-muted-foreground">
+          <span className="text-emerald-500 mr-1">{'>'}</span>Build a low-power
         </div>
-        <div className="text-white/60">
+        <div className="text-muted-foreground">
           <span className="text-transparent mr-1">{'>'}</span>WiFi sensor node
         </div>
         <div className="flex items-center gap-1 mt-1">
-          <div className="w-1.5 h-3 bg-emerald-400 animate-pulse" />
+          <div className="w-1.5 h-3 bg-emerald-500 animate-pulse" />
         </div>
       </div>
     )
@@ -27,26 +27,26 @@ const pipeline = [
     meta: "Parameter Extraction",
     visual: (
       <div className="flex flex-col w-full h-full justify-center px-3 py-2 font-mono text-[9px] gap-2">
-        <div className="flex items-center justify-between border-b border-white/10 pb-1">
+        <div className="flex items-center justify-between border-b border-border pb-1">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_5px_rgba(52,211,153,0.5)]" />
-            <span className="text-emerald-500/70">PWR</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.5)]" />
+            <span className="text-emerald-600 dark:text-emerald-500/70">PWR</span>
           </div>
-          <span className="text-white/90">3.3V / 5V</span>
+          <span className="text-foreground">3.3V / 5V</span>
         </div>
-        <div className="flex items-center justify-between border-b border-white/10 pb-1">
+        <div className="flex items-center justify-between border-b border-border pb-1">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 shadow-[0_0_5px_rgba(34,211,238,0.5)]" />
-            <span className="text-cyan-500/70">NET</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-cyan-500 shadow-[0_0_5px_rgba(6,182,212,0.5)]" />
+            <span className="text-cyan-600 dark:text-cyan-500/70">NET</span>
           </div>
-          <span className="text-white/90">WiFi</span>
+          <span className="text-foreground">WiFi</span>
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-violet-400 shadow-[0_0_5px_rgba(167,139,250,0.5)]" />
-            <span className="text-violet-500/70">DIM</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-violet-500 shadow-[0_0_5px_rgba(139,92,246,0.5)]" />
+            <span className="text-violet-600 dark:text-violet-500/70">DIM</span>
           </div>
-          <span className="text-white/90">50×50 mm</span>
+          <span className="text-foreground">50×50 mm</span>
         </div>
       </div>
     )
@@ -69,16 +69,16 @@ const pipeline = [
 
           {/* Nodes */}
           {/* MCU */}
-          <circle cx="50" cy="15" r="8" fill="#14161a" stroke="url(#silver-grad)" strokeWidth="1.5" />
-          <text x="50" y="17.5" fill="#fff" fontSize="6" fontFamily="monospace" textAnchor="middle">MCU</text>
+          <circle cx="50" cy="15" r="8" className="fill-secondary stroke-border" strokeWidth="1.5" />
+          <text x="50" y="17.5" className="fill-foreground font-mono" fontSize="6" textAnchor="middle">MCU</text>
 
           {/* PWR */}
-          <circle cx="25" cy="45" r="7" fill="#14161a" stroke="#d4d4d8" strokeWidth="1" opacity="0.9" />
-          <text x="25" y="47.5" fill="#a1a1aa" fontSize="5" fontFamily="monospace" textAnchor="middle">PWR</text>
+          <circle cx="25" cy="45" r="7" className="fill-background stroke-border" strokeWidth="1" opacity="0.9" />
+          <text x="25" y="47.5" className="fill-muted-foreground font-mono" fontSize="5" textAnchor="middle">PWR</text>
 
           {/* NET */}
-          <circle cx="75" cy="45" r="7" fill="#14161a" stroke="#d4d4d8" strokeWidth="1" opacity="0.9" />
-          <text x="75" y="47.5" fill="#a1a1aa" fontSize="5" fontFamily="monospace" textAnchor="middle">NET</text>
+          <circle cx="75" cy="45" r="7" className="fill-background stroke-border" strokeWidth="1" opacity="0.9" />
+          <text x="75" y="47.5" className="fill-muted-foreground font-mono" fontSize="5" textAnchor="middle">NET</text>
 
           <defs>
             <linearGradient id="silver-grad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -96,17 +96,17 @@ const pipeline = [
     meta: "BOM Selection",
     visual: (
       <div className="flex flex-col w-full h-full justify-center px-3 gap-1.5">
-        <div className="flex items-center justify-between bg-[#14161a] border border-[#27272a] rounded px-2 py-1">
-          <span className="text-[8px] font-mono text-white/80">MCU</span>
-          <span className="text-[8px] text-emerald-400">✓</span>
+        <div className="flex items-center justify-between bg-secondary/50 border border-border rounded px-2 py-1">
+          <span className="text-[8px] font-mono text-foreground/80">MCU</span>
+          <span className="text-[8px] text-emerald-500">✓</span>
         </div>
-        <div className="flex items-center justify-between bg-[#14161a] border border-[#27272a] rounded px-2 py-1">
-          <span className="text-[8px] font-mono text-white/80">WiFi</span>
-          <span className="text-[8px] text-emerald-400">✓</span>
+        <div className="flex items-center justify-between bg-secondary/50 border border-border rounded px-2 py-1">
+          <span className="text-[8px] font-mono text-foreground/80">WiFi</span>
+          <span className="text-[8px] text-emerald-500">✓</span>
         </div>
-        <div className="flex items-center justify-between bg-[#14161a] border border-[#27272a] rounded px-2 py-1">
-          <span className="text-[8px] font-mono text-white/80">Sensor</span>
-          <span className="text-[8px] text-emerald-400">✓</span>
+        <div className="flex items-center justify-between bg-secondary/50 border border-border rounded px-2 py-1">
+          <span className="text-[8px] font-mono text-foreground/80">Sensor</span>
+          <span className="text-[8px] text-emerald-500">✓</span>
         </div>
       </div>
     )
@@ -116,7 +116,7 @@ const pipeline = [
     label: "PCB",
     meta: "Schematic & Layout",
     visual: (
-      <div className="relative w-full h-full bg-[#051710] border border-[#0d3423] rounded overflow-hidden p-1 shadow-inner">
+      <div className="relative w-full h-full bg-[#051710] border border-[#0d3423] rounded overflow-hidden p-1 shadow-md dark:shadow-inner">
         <svg viewBox="0 0 100 60" className="w-full h-full opacity-90">
           <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
             <circle cx="1" cy="1" r="0.5" fill="#144b31" />
@@ -158,24 +158,24 @@ const pipeline = [
     visual: (
       <div className="flex flex-col w-full h-full justify-center px-3 gap-2 font-mono text-[9px]">
         <div className="flex items-center justify-between group">
-          <span className="text-white/50">DRC</span>
+          <span className="text-muted-foreground">DRC</span>
           <div className="flex items-center gap-1">
-            <span className="text-emerald-400">PASS</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.6)]" />
+            <span className="text-emerald-500">PASS</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
           </div>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-white/50">ERC</span>
+          <span className="text-muted-foreground">ERC</span>
           <div className="flex items-center gap-1">
-            <span className="text-emerald-400">PASS</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.6)]" />
+            <span className="text-emerald-500">PASS</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
           </div>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-white/50">POWER</span>
+          <span className="text-muted-foreground">POWER</span>
           <div className="flex items-center gap-1">
-            <span className="text-emerald-400">PASS</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_4px_rgba(52,211,153,0.6)]" />
+            <span className="text-emerald-500">PASS</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 shadow-[0_0_4px_rgba(16,185,129,0.6)]" />
           </div>
         </div>
       </div>
@@ -188,13 +188,13 @@ const pipeline = [
     visual: (
       <div className="relative w-full h-full flex flex-col items-center justify-center p-2 font-mono text-[8px]">
         <div className="flex items-center gap-2 mb-2">
-          <div className="px-2 py-1 bg-[#14161a] border border-[#27272a] rounded text-white/80">PCB</div>
-          <span className="text-cyan-400">→</span>
-          <div className="px-2 py-1 bg-[#0f2119] border border-emerald-500/40 rounded text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.2)]">GERBER</div>
+          <div className="px-2 py-1 bg-secondary/50 border border-border rounded text-foreground/80">PCB</div>
+          <span className="text-cyan-500">→</span>
+          <div className="px-2 py-1 bg-emerald-500/10 border border-emerald-500/40 rounded text-emerald-600 dark:text-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.1)]">GERBER</div>
         </div>
         <div className="flex gap-2">
-          <div className="px-1.5 py-0.5 border border-cyan-500/20 rounded text-cyan-400/80 bg-cyan-500/5">BOM</div>
-          <div className="px-1.5 py-0.5 border border-cyan-500/20 rounded text-cyan-400/80 bg-cyan-500/5">FAB</div>
+          <div className="px-1.5 py-0.5 border border-cyan-500/20 rounded text-cyan-600 dark:text-cyan-400/80 bg-cyan-500/5">BOM</div>
+          <div className="px-1.5 py-0.5 border border-cyan-500/20 rounded text-cyan-600 dark:text-cyan-400/80 bg-cyan-500/5">FAB</div>
         </div>
       </div>
     )
@@ -217,7 +217,7 @@ export function HowItWorksSection() {
   }, []);
 
   return (
-    <section id="how-it-works" ref={sectionRef} className="relative py-32 lg:py-48 bg-[#05070A] border-t border-white/5 overflow-hidden">
+    <section id="how-it-works" ref={sectionRef} className="relative py-32 lg:py-48 bg-background border-t border-border overflow-hidden">
       {/* Background Ambience */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.06)_0%,rgba(0,0,0,0)_60%)] blur-3xl" />
@@ -226,11 +226,11 @@ export function HowItWorksSection() {
       <div className="relative z-10 max-w-[1200px] mx-auto px-6 lg:px-12">
         {/* Editorial Heading */}
         <div className="text-center mb-24 lg:mb-32">
-          <h2 className={`text-5xl lg:text-7xl font-light tracking-[-0.02em] text-white transition-all duration-1000 ease-out ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+          <h2 className={`text-5xl lg:text-7xl font-light tracking-[-0.02em] text-foreground transition-all duration-1000 ease-out ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}>
             How it works.
           </h2>
-          <p className={`mt-8 max-w-xl mx-auto text-lg text-white/50 font-light transition-all duration-1000 delay-200 ease-out ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
+          <p className={`mt-8 max-w-xl mx-auto text-lg text-muted-foreground font-light transition-all duration-1000 delay-200 ease-out ${isVisible ? "translate-y-0 opacity-100" : "translate-y-8 opacity-0"
             }`}>
             Move from a plain-language brief to a validated hardware package automatically.
           </p>
@@ -322,12 +322,12 @@ function CenterNode({ index, isActive }: { index: number; isActive: boolean }) {
         }`} />
 
       {/* Node Outer Ring - Gradient */}
-      <div className={`relative w-12 h-12 rounded-full p-[1px] transition-all duration-700 ease-out shadow-lg ${isActive ? 'bg-gradient-to-b from-emerald-400 via-cyan-500 to-blue-500 shadow-emerald-500/20' : 'bg-gradient-to-b from-gray-500 via-gray-700 to-gray-500 shadow-black/50'
+      <div className={`relative w-12 h-12 rounded-full p-[1px] transition-all duration-700 ease-out shadow-sm ${isActive ? 'bg-gradient-to-b from-emerald-400 via-cyan-500 to-blue-500 shadow-emerald-500/20' : 'bg-gradient-to-b from-border via-border/80 to-border shadow-sm'
         }`}>
         {/* Node Inner Circle */}
-        <div className={`w-full h-full rounded-full flex items-center justify-center transition-colors duration-700 ${isActive ? 'bg-[#05070A]' : 'bg-[#0a0b0e]'
+        <div className={`w-full h-full rounded-full flex items-center justify-center transition-colors duration-700 ${isActive ? 'bg-foreground dark:bg-card' : 'bg-secondary dark:bg-card/50'
           }`}>
-          <span className={`font-mono text-sm tracking-wide transition-colors duration-700 ${isActive ? 'text-white' : 'text-gray-400'
+          <span className={`font-mono text-sm tracking-wide transition-colors duration-700 font-bold ${isActive ? 'text-background dark:text-foreground' : 'text-muted-foreground'
             }`}>
             0{index + 1}
           </span>
@@ -339,24 +339,24 @@ function CenterNode({ index, isActive }: { index: number; isActive: boolean }) {
 
 function CardContent({ item }: { item: typeof pipeline[0] }) {
   return (
-    <div className="w-full bg-[#080B10] border border-white/5 hover:border-emerald-500/30 rounded-2xl p-6 lg:p-8 shadow-2xl transition-colors group relative overflow-hidden">
+    <div className="w-full bg-card border border-border hover:border-emerald-500/30 rounded-2xl p-6 lg:p-8 shadow-2xl transition-colors group relative overflow-hidden">
       {/* Subtle highlight inner border */}
-      <div className="absolute inset-0 rounded-2xl border border-white/[0.02] pointer-events-none group-hover:border-emerald-500/10 transition-colors" />
+      <div className="absolute inset-0 rounded-2xl border border-foreground/[0.02] pointer-events-none group-hover:border-emerald-500/10 transition-colors" />
 
       <div className="flex flex-col gap-6 relative z-10">
         <div className="flex items-start justify-between">
-          <h3 className="text-2xl font-light text-white tracking-tight">{item.label}</h3>
+          <h3 className="text-2xl font-light text-foreground tracking-tight">{item.label}</h3>
 
           {/* Engineering Visual Miniature */}
-          <div className="w-24 h-20 shrink-0 rounded-lg bg-[#05070A] border border-emerald-500/10 shadow-inner overflow-hidden flex items-center justify-center group-hover:border-emerald-500/30 transition-colors">
+          <div className="w-24 h-20 shrink-0 rounded-lg bg-background border border-emerald-500/10 shadow-inner overflow-hidden flex items-center justify-center group-hover:border-emerald-500/30 transition-colors">
             {item.visual}
           </div>
         </div>
 
         <div className="flex flex-col gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
-            <span className="text-[10px] uppercase tracking-widest font-mono text-white/50">{item.meta}</span>
+            <div className="w-1.5 h-1.5 rounded-full bg-foreground/30" />
+            <span className="text-[10px] uppercase tracking-widest font-mono text-muted-foreground">{item.meta}</span>
           </div>
         </div>
       </div>

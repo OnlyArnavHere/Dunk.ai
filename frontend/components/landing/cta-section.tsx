@@ -21,10 +21,10 @@ export function CtaSection() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative py-40 lg:py-56 bg-[#03060c] border-t border-emerald-500/10 overflow-hidden">
+    <section ref={sectionRef} className="relative py-40 lg:py-56 bg-background border-t border-emerald-500/10 overflow-hidden">
       {/* Background Engineering Visual (Subtle Grid + Glow) */}
       <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-        <div className="w-full h-full max-w-[1200px] opacity-[0.03] mix-blend-screen" style={{ backgroundImage: 'radial-gradient(#10b981 2px, transparent 2px)', backgroundSize: '60px 60px' }} />
+        <div className="w-full h-full max-w-[1200px] opacity-[0.03] dark:mix-blend-screen" style={{ backgroundImage: 'radial-gradient(#10b981 2px, transparent 2px)', backgroundSize: '60px 60px' }} />
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,rgba(6,182,212,0.03)_30%,rgba(0,0,0,0)_60%)] blur-3xl animate-[pulse_8s_ease-in-out_infinite]" />
         
         {/* Subtle moving abstract trace */}
@@ -42,19 +42,19 @@ export function CtaSection() {
       </div>
 
       <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12 flex flex-col items-center text-center">
-        <div className={`w-px h-24 bg-gradient-to-b from-transparent to-white/20 mb-12 transition-all duration-1000 ease-out ${
+        <div className={`w-px h-24 bg-gradient-to-b from-transparent to-border mb-12 transition-all duration-1000 ease-out ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-12"
         }`} />
 
-        <h2 className={`text-6xl lg:text-[100px] font-light tracking-[-0.03em] text-white leading-[0.9] mb-10 transition-all duration-1000 ease-out delay-100 ${
+        <h2 className={`text-6xl lg:text-[100px] font-light tracking-[-0.03em] text-foreground leading-[0.9] mb-10 transition-all duration-1000 ease-out delay-100 ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
         }`}>
           Ready to build
           <br />
-          <span className="font-serif italic text-white/50">something great?</span>
+          <span className="font-serif italic text-muted-foreground">something great?</span>
         </h2>
 
-        <p className={`text-xl lg:text-3xl text-white/40 mb-16 leading-relaxed max-w-3xl mx-auto font-light transition-all duration-1000 delay-300 ease-out ${
+        <p className={`text-xl lg:text-3xl text-muted-foreground mb-16 leading-relaxed max-w-3xl mx-auto font-light transition-all duration-1000 delay-300 ease-out ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}>
           Join engineering teams shipping hardware faster with DunkAI. 
@@ -70,7 +70,7 @@ export function CtaSection() {
               <ArrowRight className="w-5 h-5 ml-3 transition-transform group-hover:translate-x-1.5" />
             </Link>
           </Button>
-          <Button asChild size="lg" variant="outline" className="h-16 px-12 text-lg rounded-full border-emerald-500/30 text-emerald-100/80 hover:text-white hover:bg-emerald-500/10 font-medium transition-all hover:border-emerald-500/50">
+          <Button asChild size="lg" variant="outline" className="h-16 px-12 text-lg rounded-full border-emerald-500/30 text-emerald-600 dark:text-emerald-100/80 hover:text-foreground dark:hover:text-white hover:bg-emerald-500/10 font-medium transition-all hover:border-emerald-500/50 bg-background">
             <Link href="/workspace">Launch workspace</Link>
           </Button>
         </div>

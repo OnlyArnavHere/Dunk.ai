@@ -9,7 +9,7 @@ function PcbVisual() {
   return (
     <div className="relative w-full aspect-square max-w-[600px] mx-auto transition-transform duration-1000 hover:scale-[1.02]">
       {/* Realistic PCB SVG */}
-      <svg viewBox="0 0 400 400" className="w-full h-full drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]">
+      <svg viewBox="0 0 400 400" className="w-full h-full drop-shadow-[0_20px_40px_rgba(0,0,0,0.3)] dark:drop-shadow-[0_20px_40px_rgba(0,0,0,0.8)]">
         <defs>
           <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
             <feDropShadow dx="2" dy="5" stdDeviation="4" floodColor="#000" floodOpacity="0.6"/>
@@ -199,15 +199,15 @@ export function HeroSection() {
   }, []);
 
   return (
-    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-[#05070A]">
+    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-background">
       {/* Layered Technical Background */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute inset-0 opacity-[0.03] mix-blend-screen" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
+        <div className="absolute inset-0 opacity-[0.03] dark:mix-blend-screen" style={{ backgroundImage: 'radial-gradient(currentColor 1px, transparent 1px)', backgroundSize: '40px 40px' }} />
         <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,0.12)_0%,rgba(0,0,0,0)_60%)] blur-3xl" />
         <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-[radial-gradient(circle_at_bottom_left,rgba(6,182,212,0.12)_0%,rgba(0,0,0,0)_60%)] blur-3xl" />
         
         {/* Subtle grid lines */}
-        <div className="absolute inset-0 border-t border-l border-white/[0.02] w-full h-full" style={{ backgroundSize: '200px 200px', backgroundImage: 'linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px)' }} />
+        <div className="absolute inset-0 w-full h-full opacity-20 dark:opacity-5" style={{ backgroundSize: '200px 200px', backgroundImage: 'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)' }} />
       </div>
 
       <div className="relative z-10 w-full max-w-[1600px] mx-auto px-6 lg:px-12 pt-32 pb-20 flex flex-col lg:flex-row items-center justify-between min-h-[90vh] gap-16">
@@ -217,18 +217,18 @@ export function HeroSection() {
 
 
           <h1 
-            className={`text-[clamp(3.5rem,7vw,7rem)] font-light leading-[0.9] tracking-[-0.03em] text-white transition-all duration-1000 ease-out delay-100 ${
+            className={`text-[clamp(3.5rem,7vw,7rem)] font-light leading-[0.9] tracking-[-0.03em] text-foreground transition-all duration-1000 ease-out delay-100 ${
               isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
             }`}
           >
-            <span className="block mb-4 text-white/90">From idea to</span>
-            <span className="block font-serif italic text-white pr-4">
+            <span className="block mb-4 text-foreground/90">From idea to</span>
+            <span className="block font-serif italic text-foreground pr-4">
               manufacturing.
             </span>
           </h1>
 
           <p 
-            className={`mt-10 text-lg lg:text-xl text-white/50 leading-relaxed max-w-lg font-light transition-all duration-1000 delay-300 ease-out ${
+            className={`mt-10 text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-lg font-light transition-all duration-1000 delay-300 ease-out ${
               isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
           >
@@ -268,7 +268,7 @@ export function HeroSection() {
                 </span>
               </span>
             </Link>
-            <span className="text-xs font-mono tracking-widest uppercase text-white/30">
+            <span className="text-xs font-mono tracking-widest uppercase text-muted-foreground">
               [ Free Trial ]
             </span>
           </div>
@@ -277,7 +277,7 @@ export function HeroSection() {
           <div className={`absolute -left-4 lg:-left-12 bottom-0 -rotate-90 origin-bottom-left hidden lg:block transition-all duration-1000 delay-700 ease-out ${
             isVisible ? "opacity-100" : "opacity-0"
           }`}>
-            <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-white/20 whitespace-nowrap">
+            <span className="text-[10px] font-mono tracking-[0.3em] uppercase text-muted-foreground whitespace-nowrap">
               AI Engineering Copilot
             </span>
           </div>
