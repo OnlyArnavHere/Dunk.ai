@@ -78,6 +78,7 @@ export interface AiOutput {
   // (see ai_engine/agents/supervisor/state.py) and stay separate here.
   handoff_validation: Record<string, unknown> | null
   documentation: Record<string, unknown> | null
+  code_generation: Record<string, unknown> | null
   // Present only after "Generate PCB" has run. Lives inside AiOutput on purpose:
   // a fresh pipeline run replaces the whole object, which clears a board that
   // belongs to a previous BOM rather than showing it against new components.
@@ -100,6 +101,7 @@ const DESIGN_KEYS = [
   'validation',
   'handoff_validation',
   'documentation',
+  'code_generation',
 ] as const
 
 const emptyAiOutput: AiOutput = {
@@ -111,6 +113,7 @@ const emptyAiOutput: AiOutput = {
   validation: null,
   handoff_validation: null,
   documentation: null,
+  code_generation: null,
   board: null,
 }
 

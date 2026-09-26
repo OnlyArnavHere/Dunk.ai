@@ -32,6 +32,7 @@ class CircuitState(TypedDict, total=False):
     # Buildability is decided downstream by the PCB module, and only there.
     handoff_validation: dict[str, Any]
     documentation: dict[str, Any]
+    code_generation: dict[str, Any]
     # Generated board artifacts (dunkai-designer output): URLs, sizes and build
     # stats. Deliberately NOT merged into `pcb_ir` — pcb_ir is dunkai's handoff,
     # and a consumer must be able to tell "what we asked for" from "what was

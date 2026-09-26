@@ -230,7 +230,9 @@ class InterviewResponse(BaseModel):
             if not self.question or not self.question.strip():
                 raise ValueError("question status requires a question")
             if self.requirements is not None:
-                raise ValueError("question status cannot include final requirements")
+                # The LLM sometimes generates both a question and a partial requirements object.
+                # Instead of crashing the pipeline, we just clear the requirements so the interview continues.
+                self.requirements = None
             
             # Capped, but deliberately NOT padded. A previous revision topped
             # every short list up to three with generic strings ("Standard
