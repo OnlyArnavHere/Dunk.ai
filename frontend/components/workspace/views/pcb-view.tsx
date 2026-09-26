@@ -58,11 +58,12 @@ const DOWNLOADS: Array<{ key: string; label: string }> = [
 
 export function PcbView({ projectId }: { projectId?: string } = {}) {
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId)
+  const activeChatId = useWorkspaceStore((s) => s.activeChatId)
   const setActiveTab = useWorkspaceStore((s) => s.setActiveTab)
   // Display only. The board is generated automatically when the chat pipeline
   // hands off (see chat-interface.tsx); the manual re-run lives on the BOM tab,
   // next to the components it is built from.
-  const { board, job, componentCount } = useBoardGeneration(projectId ?? activeProjectId)
+  const { board, job, componentCount } = useBoardGeneration(projectId ?? activeProjectId, activeChatId)
 
   const [pane, setPane] = useState<Pane>('pcb')
   const [showSample, setShowSample] = useState(false)

@@ -116,13 +116,14 @@ const formatUSD = (usd: number) => `$${usd.toFixed(2)}`;
 export function BOMView({ projectId }: BOMViewProps) {
   const aiOutput = useWorkspaceStore((s) => s.aiOutput);
   const setActiveTab = useWorkspaceStore((s) => s.setActiveTab);
+  const activeChatId = useWorkspaceStore((s) => s.activeChatId);
   const bom = aiOutput?.bom as BomData | null | undefined;
   const [currency, setCurrency] = useState<'INR' | 'USD'>('USD');
 
   // Component selection finishes here, so this is where the board gets built.
   // The model used here is the Settings default ("Default agent/model for PCB
   // generation"); this button only re-runs with it.
-  const { generate, canGenerate, componentCount, job, board } = useBoardGeneration(projectId);
+  const { generate, canGenerate, componentCount, job, board } = useBoardGeneration(projectId, activeChatId);
 
   const startGeneration = () => {
     // Switch to the PCB tab so the run is visible: that view renders the live
@@ -361,15 +362,9 @@ export function BOMView({ projectId }: BOMViewProps) {
             </Table>
           </div>
 
-          {bom.summary && (
+          {typeof bom.summary === 'string' && bom.summary && (
             <div className="bg-accent/10 border border-accent/20 rounded-lg p-4">
-              {typeof bom.summary === 'string' ? (
-                <p className="text-xs text-foreground">{bom.summary}</p>
-              ) : (
-                <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
-                  {JSON.stringify(bom.summary, null, 2)}
-                </pre>
-              )}
+              <p className="text-xs text-foreground">{bom.summary}</p>
             </div>
           )}
         </div>

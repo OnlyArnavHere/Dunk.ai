@@ -10,6 +10,10 @@ export const list = asyncHandler(async (req, res) => {
   send(res, { data: await service.listChats(req.params.projectId, req.user, req.query) });
 });
 
+export const get = asyncHandler(async (req, res) => {
+  send(res, { data: await service.getChat(req.params.id, req.user) });
+});
+
 export const messages = asyncHandler(async (req, res) => {
   send(res, { data: await service.getMessages(req.params.id, req.user, req.query) });
 });
@@ -32,6 +36,13 @@ export const saveMessage = asyncHandler(async (req, res) => {
 
 export const rename = asyncHandler(async (req, res) => {
   send(res, { message: 'Chat renamed', data: await service.renameChat(req.params.id, req.body.title, req.user) });
+});
+
+export const updateArtifacts = asyncHandler(async (req, res) => {
+  send(res, {
+    message: 'Chat artifacts updated',
+    data: await service.updateArtifacts(req.params.id, req.body, req.user),
+  });
 });
 
 export const remove = asyncHandler(async (req, res) => {

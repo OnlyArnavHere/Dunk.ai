@@ -29,7 +29,7 @@ import { boardProviderRequest, readStoredBoardProvider } from '@/lib/providers'
  *   should be generating a board. zustand's set is synchronous, so by the time
  *   generate is called the store already holds the fresh handoff.
  */
-export function useBoardGeneration(projectId: string | null) {
+export function useBoardGeneration(projectId: string | null, chatId: string | null = null) {
   const aiOutput = useWorkspaceStore((s) => s.aiOutput)
   const boardJob = useWorkspaceStore((s) => s.boardJob)
   const startBoardJob = useWorkspaceStore((s) => s.startBoardJob)
@@ -63,7 +63,7 @@ export function useBoardGeneration(projectId: string | null) {
       // The stored id is an OPTION id, which is not always the provider name:
       // two entries can differ only by model. boardProviderRequest is what
       // splits one back into the {provider, model} pair the backend expects.
-      const res = await aiApi.generateBoard(projectId, liveIr, boardProviderRequest(readStoredBoardProvider()))
+      const res = await aiApi.generateBoard(projectId, chatId, liveIr, boardProviderRequest(readStoredBoardProvider()))
       const jobId = res?.jobId
       if (!jobId) {
         failBoardJob('The server did not return a job id.')
@@ -120,7 +120,7 @@ export function useBoardGeneration(projectId: string | null) {
     } catch (err: unknown) {
       failBoardJob(err instanceof Error ? err.message : 'Could not reach Dunk AI.')
     }
-  }, [projectId, startBoardJob, pushBoardProgress, completeBoardJob, failBoardJob])
+  }, [projectId, chatId, startBoardJob, pushBoardProgress, completeBoardJob, failBoardJob])
 
   return {
     generate,

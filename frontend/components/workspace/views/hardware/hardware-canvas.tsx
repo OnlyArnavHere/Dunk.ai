@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   ReactFlow,
   Background,
@@ -56,6 +56,30 @@ function HardwareCanvasInner({ spec: initialSpec }: { spec: HardwareSpec }) {
   const initial = useMemo(() => specToFlow(spec), [spec])
   const [nodes, setNodes, onNodesChange] = useNodesState<HardwareFlowNode>(initial.nodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState<BusFlowEdge>(initial.edges)
+
+  // The workspace keeps every tab's view mounted at once and just toggles
+  // `hidden`/`block` on whichever isn't active (see main-editor.tsx), so if
+  // this tab isn't the one open on first load, react-flow mounts and fits
+  // against a 0x0 (display:none) pane and never re-measures once it's
+  // actually shown. Re-fit the moment this pane transitions from 0-size to
+  // real size, which is exactly the "tab just became visible" signal.
+  const { fitView } = useReactFlow()
+  const wrapperRef = useRef<HTMLDivElement>(null)
+  const wasVisibleRef = useRef(false)
+  useEffect(() => {
+    const el = wrapperRef.current
+    if (!el) return
+    const observer = new ResizeObserver((entries) => {
+      const { width, height } = entries[0].contentRect
+      const isVisible = width > 0 && height > 0
+      if (isVisible && !wasVisibleRef.current) {
+        requestAnimationFrame(() => fitView({ padding: 0.2, duration: 0 }))
+      }
+      wasVisibleRef.current = isVisible
+    })
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [fitView])
 
   // Inspector state
   const [inspectorOpen, setInspectorOpen] = useState(false)
@@ -142,7 +166,7 @@ function HardwareCanvasInner({ spec: initialSpec }: { spec: HardwareSpec }) {
   }
 
   return (
-    <div className="relative h-full w-full overflow-hidden bg-secondary/20">
+    <div ref={wrapperRef} className="relative h-full w-full overflow-hidden bg-secondary/20">
       <ReactFlow
         nodes={displayNodes}
         edges={displayEdges}

@@ -13,9 +13,11 @@
 
 import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
+import { readFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
 import { note } from "../lib/events.mjs"
+import { findUndeclaredNetRefs } from "../lib/nets.mjs"
 import {
   FOOTPRINTER_GUIDE,
   BOARD_FILE_RULES,
@@ -204,7 +206,7 @@ export function createClaudeCodeProvider(options = {}) {
      * Stage D. Writes the tscircuit sources into `workdir`.
      */
     async generateProject({ brief, workdir }) {
-      const prompt = [
+      const basePrompt = [
         "Write a complete tscircuit board from the design brief below.",
         "",
         "The brief is the specification. Follow it exactly: every component,",
@@ -216,7 +218,6 @@ export function createClaudeCodeProvider(options = {}) {
         "",
         "Write these files in the current directory:",
         "  src/board.tsx      the board: nets, components, connections",
-        "  src/floorplan.ts   every pcbX/pcbY as one reviewable table",
         "  index.tsx          `import Board from './src/board'; export default Board`",
         "",
         ...BOARD_FILE_RULES,
@@ -228,21 +229,57 @@ export function createClaudeCodeProvider(options = {}) {
 
       note(`  provider: claude-code (${model}) generating into ${workdir}`)
 
-      const { stdout } = await runClaude(
-        [
-          "-p",
-          prompt,
-          "--output-format",
-          "json",
-          "--model",
-          model,
-          "--permission-mode",
-          "acceptEdits",
-          "--add-dir",
-          workdir,
-        ],
-        { cwd: workdir, timeoutMs }
-      )
+      const runGenerate = (prompt) =>
+        runClaude(
+          [
+            "-p",
+            prompt,
+            "--output-format",
+            "json",
+            "--model",
+            model,
+            "--permission-mode",
+            "acceptEdits",
+            "--add-dir",
+            workdir,
+          ],
+          { cwd: workdir, timeoutMs }
+        )
+
+      const readBoardTsx = () =>
+        readFile(path.join(workdir, "src", "board.tsx"), "utf-8").catch(() => "")
+
+      let { stdout } = await runGenerate(basePrompt)
+      let boardTsx = await readBoardTsx()
+
+      // Writes through file tools rather than our own writeFiles, so these
+      // checks run post-hoc against what actually landed on disk, then ask
+      // for one corrective edit rather than re-generating from scratch.
+      const usesPlaceholderPart = /STC89C52RC_40I_PDIP40/.test(boardTsx) && !brief.includes("STC89C52RC_40I_PDIP40")
+      const usesPlaceholderNet = /POWER_RAIL/.test(boardTsx) && !brief.includes("POWER_RAIL")
+      if (usesPlaceholderPart && usesPlaceholderNet) {
+        note(`  claude-code echoed the skeleton's example part/net — retrying once`)
+        ;({ stdout } = await runGenerate(
+          "src/board.tsx copied the example part name and net name " +
+            "(STC89C52RC_40I_PDIP40 / POWER_RAIL) from a skeleton reference instead " +
+            "of using this design's own resolved parts and nets. Rewrite " +
+            "src/board.tsx using ONLY the parts and nets named in this brief:\n\n" +
+            brief
+        ))
+        boardTsx = await readBoardTsx()
+      }
+
+      const { missing } = boardTsx ? findUndeclaredNetRefs(boardTsx) : { missing: [] }
+      if (missing.length > 0) {
+        note(`  claude-code referenced undeclared net(s): ${missing.join(", ")} — retrying once`)
+        ;({ stdout } = await runGenerate(
+          `src/board.tsx references these net names without declaring them with ` +
+            `<net name="..." />: ${missing.join(", ")}. tscircuit does not error on ` +
+            `this — it silently creates a new disconnected net instead. Add the ` +
+            `missing <net> declaration(s) to src/board.tsx, or fix the typo if one ` +
+            `was intended to match an existing declared net.`
+        ))
+      }
 
       return { summary: extractResult(stdout).slice(0, 4000) }
     },
@@ -252,9 +289,9 @@ export function createClaudeCodeProvider(options = {}) {
      * ("Component U1 extends outside board boundaries by 12.93mm"), so they are
      * handed back verbatim rather than summarised.
      */
-    async repair({ workdir, errors, board }) {
+    async repair({ workdir, errors }) {
       const prompt = [
-        "The board you generated does not pass placement checks.",
+        "The board you generated has errors.",
         "",
         ...REPAIR_PREAMBLE,
         "",
@@ -262,18 +299,14 @@ export function createClaudeCodeProvider(options = {}) {
         errors,
         "=== END ERRORS ===",
         "",
-        "=== CURRENT src/floorplan.ts ===",
-        board,
-        "=== END ===",
-        "",
-        "Fix the placement. Rules:",
+        "Fix it. Rules:",
         ...REPAIR_RULES,
         "",
-        "Edit src/floorplan.ts (and src/board.tsx if the outline must grow).",
-        "Change nothing else — the netlist is correct. Do not explain, just fix it.",
+        "Edit src/board.tsx. Change only what the errors above require — do not",
+        "touch anything else. Do not explain, just fix it.",
       ].join("\n")
 
-      note(`  provider: claude-code (${model}) repairing placement`)
+      note(`  provider: claude-code (${model}) repairing the board`)
 
       const { stdout } = await runClaude(
         [

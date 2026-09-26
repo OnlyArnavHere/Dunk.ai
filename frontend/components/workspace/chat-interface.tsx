@@ -1,15 +1,18 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUp, Loader2, Mic, Paperclip } from 'lucide-react'
+import { ArrowUp, Loader2, Mic, Paperclip, X } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWorkspaceStore, type AiOutput, type BoardArtifact } from '@/lib/store'
 import { ModelSelector } from './model-selector'
-import { aiApi, chatApi, projectApi } from '@/lib/api'
+import { aiApi, chatApi, fileApi } from '@/lib/api'
 import { useUpdateProject } from '@/hooks/use-projects'
+import { useUpdateChatArtifacts } from '@/hooks/use-chats'
 import { useBoardGeneration } from '@/hooks/use-board-generation'
+import { useSpeechToText } from '@/hooks/use-speech-to-text'
+import { toast } from 'sonner'
 
 // ---- Message types ----
 type MessageRole = 'user' | 'assistant'
@@ -105,19 +108,40 @@ const BOARD_DONE = 'PCB generated — open the PCB tab for the layout, the 3D bo
 const boardFailure = (error: string | null) => `⚠️ PCB generation failed: ${error ?? 'unknown error'}`
 
 export function ChatInterface({ projectId }: { projectId: string }) {
-  const { pendingPrompt, setPendingPrompt, setAiOutput, hydrateAiOutput, setActiveTab, setPipelineProgress, clearPipelineProgress, setPipelineRun, chatResetCounter, selectedModel, setSelectedModel } = useWorkspaceStore()
+  const { pendingPrompt, setPendingPrompt, setAiOutput, replaceAiOutput, setActiveTab, setPipelineProgress, clearPipelineProgress, setPipelineRun, selectedModel, setSelectedModel } = useWorkspaceStore()
+  // Which chat *session* this view is showing — lives in the shared store so
+  // the sidebar's session list can switch it directly instead of relaying
+  // through a reset signal.
+  const activeChatId = useWorkspaceStore((s) => s.activeChatId)
+  const setActiveChatId = useWorkspaceStore((s) => s.setActiveChatId)
+  // Read (not depended-on) by the message-loading effect below, so it can
+  // check "is a prompt about to be auto-sent into this chat" at the moment
+  // activeChatId changes without re-running every time pendingPrompt itself
+  // changes (which happens moments later, right as that same send begins,
+  // and would re-fire the reload mid-race if it were a real dependency).
+  const pendingPromptRef = useRef(pendingPrompt)
+  pendingPromptRef.current = pendingPrompt
   const updateProject = useUpdateProject()
+  const updateChatArtifacts = useUpdateChatArtifacts(projectId)
   // Board generation runs itself off the back of the pipeline; this view owns
   // the trigger because this is where the pipeline's completion lands.
-  const { generate: generateBoard } = useBoardGeneration(projectId)
+  const { generate: generateBoard } = useBoardGeneration(projectId, activeChatId)
   const boardJob = useWorkspaceStore((s) => s.boardJob)
   // The jobId of a board run this view started, so the outcome is announced
   // once and only for a run the chat is actually narrating.
-  const announcedBoardJobRef = useRef<string | null>(null)
+  const announcedBoardJobRef = useRef<{ jobId: string; chatId: string | null } | null>(null)
+  // Set right before runAgent's own inline chatId-resolution fallback calls
+  // setActiveChatId (rare: only when the pick-a-chat effect hasn't resolved
+  // one yet). The message-loading effect below checks this so it doesn't
+  // treat "runAgent just adopted the chat it's mid-way through posting to"
+  // as a session switch and wipe the message/loading state runAgent already
+  // set with a reload of what the server has saved so far (which can still
+  // be empty at that exact instant) — that race is what caused the send to
+  // visibly flash back to empty right after the user hit send.
+  const selfInitiatedChatIdRef = useRef<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [activeChatId, setActiveChatId] = useState<string | null>(null)
   const [placeholder, setPlaceholder] = useState('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
@@ -126,6 +150,11 @@ export function ChatInterface({ projectId }: { projectId: string }) {
   const [completedNodes, setCompletedNodes] = useState<string[]>([])
   const [activeNode, setActiveNode] = useState<string>('')
   const [unhingedMsg, setUnhingedMsg] = useState<string>(UNHINGED_LOADERS[0])
+
+  const [attachments, setAttachments] = useState<Array<{ id: string; name: string }>>([])
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const speech = useSpeechToText(setInput)
 
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -177,120 +206,31 @@ export function ChatInterface({ projectId }: { projectId: string }) {
   // ---- Report how an automatic board run ended ----
   // Only for a run this view announced: a board started by hand from the BOM
   // tab narrates itself there and should not appear in the transcript twice.
+  //
+  // Posts into the chat CAPTURED when the run started, not the live
+  // activeChatId: a board build runs for minutes, and if the user switches
+  // sessions before it finishes, using the live activeChatId would post
+  // "PCB generated" into whatever session happens to be open now — leaving
+  // the session that actually started the build stuck showing "Generating
+  // PCB..." forever, with no completion message ever reaching it.
   useEffect(() => {
     const announced = announcedBoardJobRef.current
-    if (!announced || boardJob.jobId !== announced) return
+    if (!announced || boardJob.jobId !== announced.jobId) return
     if (boardJob.status !== 'done' && boardJob.status !== 'error') return
 
     announcedBoardJobRef.current = null
-    postAssistant(boardJob.status === 'done' ? BOARD_DONE : boardFailure(boardJob.error), activeChatId)
-  }, [boardJob.status, boardJob.jobId, boardJob.error, activeChatId, postAssistant])
+    postAssistant(boardJob.status === 'done' ? BOARD_DONE : boardFailure(boardJob.error), announced.chatId)
+  }, [boardJob.status, boardJob.jobId, boardJob.error, postAssistant])
 
-  // ---- Load Chat History & Saved Artifacts from MongoDB ----
+  // ---- Pick a chat session when the project changes ----
+  // Split from the message/artifact-loading effect below (keyed on
+  // activeChatId): a project can have many chat sessions (see the Chat model
+  // / sidebar session list), each with its OWN independent
+  // requirements/architecture/bom/etc — nothing project-level to hydrate
+  // here, just which session to open.
   useEffect(() => {
     let isMounted = true
     // Reset messages when active project changes so previous project messages are not retained
-    setMessages([])
-
-    async function loadChatAndHistory() {
-      if (!projectId) return
-      try {
-        // 1. Fetch saved project artifacts from MongoDB
-        const projectData = (await projectApi.get(projectId)) as Record<string, unknown>
-        if (projectData && isMounted) {
-          // Mongoose stores these as Mixed with `default: {}`, so an untouched
-          // field arrives as `{}` (or absent) rather than null. `{}` must not
-          // reach the store: it is indistinguishable from a real-but-empty
-          // artifact downstream, and it would replace nothing with nothing.
-          const saved = (key: string): Record<string, unknown> | null => {
-            const val = projectData[key]
-            return val && typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length > 0
-              ? (val as Record<string, unknown>)
-              : null
-          }
-
-          const restored: AiOutput = {
-            requirements: saved('requirements'),
-            architecture: saved('architecture'),
-            bom: saved('bom'),
-            eda_data: saved('eda_data'),
-            pcb_ir: saved('pcb_ir'),
-            validation: saved('validation'),
-            // Schema 2.0 designs report here and leave `validation` unset, so
-            // forwarding only `validation` left the Validation tab empty on
-            // every current run. Not a column on Project yet, so this stays
-            // null until the run that produced it writes it somewhere.
-            handoff_validation: saved('handoff_validation'),
-            documentation: saved('documentation'),
-            // The board's files live under uploads/boards/ and outlive the
-            // session; `urls` points straight at them, so restoring the saved
-            // object is enough to bring the PCB, DRC and Docs figures back.
-            // Written by the backend when the run completes, not from here.
-            board: saved('board') as BoardArtifact | null,
-          }
-
-          // A project with nothing saved yet must not push a wall of nulls into
-          // a store that a run may already have filled.
-          //
-          // hydrateAiOutput, not setAiOutput: this is a replay of the saved
-          // design, not a run that produced a new BOM, and setAiOutput would
-          // read the restored bom/pcb_ir as new components and discard the
-          // board generated from them.
-          if (Object.values(restored).some((value) => value !== null)) {
-            hydrateAiOutput(restored)
-          }
-        }
-
-        // 2. Fetch conversation history from MongoDB
-        const chatsRes = (await chatApi.list(projectId)) as { items?: Array<{ _id: string; messageCount?: number }> }
-        const chatList = chatsRes?.items || []
-        const primaryChat = chatList.find((c) => (c.messageCount || 0) > 0) || chatList[0]
-        let chatId = primaryChat?._id
-
-        if (!chatId) {
-          const newChat = (await chatApi.create(projectId, 'Project Chat')) as { _id: string }
-          chatId = newChat?._id
-        }
-
-        if (isMounted) {
-          if (chatId) setActiveChatId(chatId)
-
-          // Fetch messages across all chats for this project
-          const allMsgs: Array<{ type: string; content: string; metadata?: { options?: string[] } }> = []
-          for (const c of chatList) {
-            try {
-              const msgRes = (await chatApi.messages(c._id)) as {
-                items?: Array<{ type: string; content: string; metadata?: { options?: string[] } }>
-              }
-              if (msgRes?.items?.length) {
-                allMsgs.push(...msgRes.items)
-              }
-            } catch {
-              // Ignore single chat failure
-            }
-          }
-
-          if (isMounted) {
-            const parsed: Message[] = allMsgs.map((m, idx) => ({
-              id: `history-${idx}`,
-              role: (m.type === 'user' ? 'user' : 'assistant') as MessageRole,
-              content: m.content,
-              options: m.metadata?.options,
-            }))
-
-            setMessages(parsed)
-
-            const lastAssistant = parsed.filter((m) => m.role === 'assistant').pop()
-            if (lastAssistant?.options) {
-              setActiveQuestionId(lastAssistant.id)
-            }
-          }
-        }
-      } catch {
-        // Soft fallback
-      }
-    }
-
     setMessages([])
     setInput('')
     setLoading(false)
@@ -299,18 +239,63 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     setCompletedNodes([])
     setActiveNode('')
     clearPipelineProgress()
-    // The loader above is dropped, so the run is no longer being narrated here.
     setPipelineRun('idle')
-    loadChatAndHistory()
+
+    async function pickChat() {
+      if (!projectId) return
+      try {
+        // Pick which chat session to open: the most recent one, or a fresh
+        // session if this project has none yet. The sidebar's session list
+        // lets the user switch to a different one afterward, which updates
+        // the store directly rather than re-running this effect.
+        const chatsRes = (await chatApi.list(projectId)) as { items?: Array<{ _id: string }> }
+        const chatList = chatsRes?.items || []
+        let chatId = chatList[0]?._id
+
+        if (!chatId) {
+          const newChat = (await chatApi.create(projectId, 'New chat')) as { _id: string }
+          chatId = newChat?._id
+        }
+
+        if (isMounted && chatId) setActiveChatId(chatId)
+      } catch {
+        // Soft fallback
+      }
+    }
+
+    pickChat()
 
     return () => {
       isMounted = false
     }
-  }, [projectId, clearPipelineProgress, hydrateAiOutput, setPipelineRun])
+  }, [projectId, clearPipelineProgress, setPipelineRun, setActiveChatId])
 
-  // ---- Watch for "New Chat" reset signal from sidebar ----
+  // ---- Load messages + artifacts for whichever chat session is active ----
+  // Fires on the initial project-open (once the effect above resolves a
+  // chatId) and again any time the sidebar switches sessions. Each session
+  // carries its own requirements/architecture/bom/etc (see the Chat model),
+  // so switching sessions must fully REPLACE the store's aiOutput rather than
+  // merge into it — otherwise the previous session's data would bleed
+  // through wherever the new session hasn't generated something yet.
   useEffect(() => {
-    if (chatResetCounter === 0) return // Skip initial mount
+    if (!activeChatId) return
+    if (selfInitiatedChatIdRef.current === activeChatId) {
+      // runAgent just adopted this chatId itself, mid-send — nothing to
+      // load, and reloading here would race the save it's still doing.
+      selfInitiatedChatIdRef.current = null
+      return
+    }
+    if (pendingPromptRef.current) {
+      // A prompt is about to be sent into this very chat (the pick-a-chat
+      // effect just resolved it, and the auto-run effect below is waiting
+      // on exactly this activeChatId to fire runAgent). Reloading "what's on
+      // the server" here is not just redundant but actively racy: on a
+      // brand-new chat it is still empty, and if this reload's setMessages([])
+      // lands after runAgent's optimistic setMessages, it wipes the message
+      // the user just sent back off the screen.
+      return
+    }
+    let isMounted = true
     setMessages([])
     setInput('')
     setLoading(false)
@@ -318,21 +303,84 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     setActiveQuestionId(null)
     setCompletedNodes([])
     setActiveNode('')
-    setActiveChatId(null)
+    clearPipelineProgress()
     setPipelineRun('idle')
-    // Re-initialize the chat session
-    async function reinitChat() {
+
+    async function loadChatSession() {
       try {
-        const chatsRes = (await chatApi.list(projectId)) as { items?: Array<{ _id: string }> }
-        const chatId = chatsRes?.items?.[0]?._id
-        if (chatId) setActiveChatId(chatId)
+        const [chatData, msgRes] = await Promise.all([
+          chatApi.get(activeChatId!) as Promise<Record<string, unknown>>,
+          chatApi.messages(activeChatId!) as Promise<{
+            items?: Array<{ type: string; content: string; metadata?: { options?: string[] } }>
+          }>,
+        ])
+        if (!isMounted) return
+
+        // Mongoose stores these as Mixed with `default: {}`, so an untouched
+        // field arrives as `{}` (or absent) rather than null. `{}` must not
+        // reach the store: it is indistinguishable from a real-but-empty
+        // artifact downstream, and setAiOutput's merge would treat it as
+        // "nothing new" instead of the wholesale replace this needs.
+        const saved = (key: string): Record<string, unknown> | null => {
+          const val = chatData?.[key]
+          return val && typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length > 0
+            ? (val as Record<string, unknown>)
+            : null
+        }
+
+        replaceAiOutput({
+          requirements: saved('requirements'),
+          architecture: saved('architecture'),
+          bom: saved('bom'),
+          eda_data: saved('eda_data'),
+          pcb_ir: saved('pcb_ir'),
+          // Schema 2.0 designs report here and leave `validation` unset, so
+          // forwarding only `validation` left the Validation tab empty on
+          // every current run.
+          validation: saved('validation'),
+          handoff_validation: saved('handoff_validation'),
+          documentation: saved('documentation'),
+          code_generation: saved('code_generation'),
+          // The board's files live under uploads/boards/ and outlive the
+          // session; `urls` points straight at them, so restoring the saved
+          // object is enough to bring the PCB, DRC and Docs figures back.
+          board: saved('board') as BoardArtifact | null,
+        })
+
+        const parsed: Message[] = (msgRes?.items || []).map((m, idx) => ({
+          id: `history-${idx}`,
+          role: (m.type === 'user' ? 'user' : 'assistant') as MessageRole,
+          content: m.content,
+          options: m.metadata?.options,
+        }))
+
+        // Reconcile a "Generating PCB..." message a reload/disconnect left
+        // dangling mid-build: its completion follow-up (see the boardJob
+        // effect above) is a live, in-memory socket announcement only, with
+        // no persistence fallback, so a client that wasn't around when the
+        // job actually finished never sees it — even though the board
+        // (saved on this very chat, just hydrated above) genuinely completed.
+        const lastMsg = parsed[parsed.length - 1]
+        if (lastMsg?.role === 'assistant' && lastMsg.content === BOARD_STARTING && saved('board')) {
+          parsed.push({ id: `${Date.now()}-catchup`, role: 'assistant', content: BOARD_DONE })
+          chatApi.saveMessage(activeChatId!, 'assistant', BOARD_DONE).catch(() => {})
+        }
+
+        setMessages(parsed)
+
+        const lastAssistant = parsed.filter((m) => m.role === 'assistant').pop()
+        setActiveQuestionId(lastAssistant?.options ? lastAssistant.id : null)
       } catch {
         // Soft fallback
       }
     }
-    reinitChat()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chatResetCounter])
+
+    loadChatSession()
+
+    return () => {
+      isMounted = false
+    }
+  }, [activeChatId, clearPipelineProgress, setPipelineRun, replaceAiOutput])
 
   // ---- Core agent runner ----
   const runAgent = useCallback(
@@ -358,6 +406,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             targetChatId = newChat?._id
           }
           if (targetChatId) {
+            selfInitiatedChatIdRef.current = targetChatId
             setActiveChatId(targetChatId)
           }
         } catch {
@@ -377,6 +426,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
       try {
         const res = await aiApi.runStream({
           projectId,
+          chatId: targetChatId ?? undefined,
           action: 'run_workflow',
           model: selectedModel,
           messages: [
@@ -412,9 +462,16 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           socket.emit('ai:unsubscribe', jobId)
         }
 
+        // Accumulated locally (not read back from React state) so
+        // handleComplete below sees exactly what happened in *this* run —
+        // the `completedNodes` state closed over at call time would still
+        // read as last run's value, since state updates from handleProgress
+        // land in later renders this closure never sees.
+        const runCompletedNodes: string[] = []
         const handleProgress = (data: { node?: string }) => {
           if (data.node) {
             setActiveNode(data.node)
+            if (!runCompletedNodes.includes(data.node)) runCompletedNodes.push(data.node)
             setCompletedNodes((prev) => (prev.includes(data.node!) ? prev : [...prev, data.node!]))
           }
         }
@@ -454,6 +511,12 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           const errors = payload.errors as string[] | undefined
 
           // Case 2: Full workflow complete -> update state, persist to MongoDB, and update dynamic project title
+          // Captured BEFORE setAiOutput below, which itself clears `board`
+          // the instant this run touches bom/pcb_ir (see that store method) —
+          // reading it after would always see null, defeating the check that
+          // uses this to tell "a board already existed" from "this is fresh".
+          const boardExistedBeforeThisRun = Boolean(useWorkspaceStore.getState().aiOutput?.board)
+
           if (payload) {
             const artifactPayload = {
               requirements: (payload.requirements as Record<string, unknown>) ?? null,
@@ -481,29 +544,44 @@ export function ChatInterface({ projectId }: { projectId: string }) {
               setAiOutput(artifactPayload)
             }
 
-            // Persist all generated artifacts to MongoDB Project Document
-            const updatePayload: Record<string, unknown> = {}
-            if (artifactPayload.requirements) updatePayload.requirements = artifactPayload.requirements
-            if (artifactPayload.architecture) updatePayload.architecture = artifactPayload.architecture
-            if (artifactPayload.bom) updatePayload.bom = artifactPayload.bom
-            if (artifactPayload.eda_data) updatePayload.eda_data = artifactPayload.eda_data
-            if (artifactPayload.pcb_ir) updatePayload.pcb_ir = artifactPayload.pcb_ir
-            if (artifactPayload.validation) updatePayload.validation = artifactPayload.validation
-            if (artifactPayload.handoff_validation) updatePayload.handoff_validation = artifactPayload.handoff_validation
-            if (artifactPayload.documentation) updatePayload.documentation = artifactPayload.documentation
-            if (artifactPayload.code_generation) updatePayload.code_generation = artifactPayload.code_generation
+            // Persist the generated artifacts onto THIS chat session, not the
+            // project — each session holds its own independent design (see
+            // the Chat model), so writing to the project would bleed one
+            // session's results into every other session in the same project.
+            const artifactUpdate: Record<string, unknown> = {}
+            if (artifactPayload.requirements) artifactUpdate.requirements = artifactPayload.requirements
+            if (artifactPayload.architecture) artifactUpdate.architecture = artifactPayload.architecture
+            if (artifactPayload.bom) artifactUpdate.bom = artifactPayload.bom
+            if (artifactPayload.eda_data) artifactUpdate.eda_data = artifactPayload.eda_data
+            if (artifactPayload.pcb_ir) artifactUpdate.pcb_ir = artifactPayload.pcb_ir
+            if (artifactPayload.validation) artifactUpdate.validation = artifactPayload.validation
+            if (artifactPayload.handoff_validation) artifactUpdate.handoff_validation = artifactPayload.handoff_validation
+            if (artifactPayload.documentation) artifactUpdate.documentation = artifactPayload.documentation
+            if (artifactPayload.code_generation) artifactUpdate.code_generation = artifactPayload.code_generation
 
+            if (Object.keys(artifactUpdate).length > 0 && targetChatId) {
+              updateChatArtifacts.mutate({ id: targetChatId, data: artifactUpdate })
+            }
+
+            // The project's title, unlike the design artifacts above, is a
+            // project-level concept shared by every session in it.
             if (payload.requirements && typeof payload.requirements === 'object') {
               const reqs = payload.requirements as Record<string, unknown>
               const projName = typeof reqs.project_name === 'string' ? reqs.project_name.trim() : null
               if (projName && projName.toLowerCase() !== 'untitled project') {
-                updatePayload.title = projName
+                updateProject.mutate({ id: projectId, data: { title: projName } })
               }
-              setActiveTab('requirements')
-            }
-
-            if (Object.keys(updatePayload).length > 0) {
-              updateProject.mutate({ id: projectId, data: updatePayload })
+              // `requirements` is echoed back in the serialised state on
+              // EVERY run, single-node revisions included (it's carried-over
+              // state, not something that node produced) — so jumping to the
+              // Requirements tab here unconditionally used to hijack the view
+              // away from whatever tab a targeted revision was actually about.
+              // Only a genuine full-pipeline run touches requirements_node
+              // itself; a single-node run's runCompletedNodes never includes
+              // it, which is exactly the signal to tell the two apart.
+              if (runCompletedNodes.includes('requirements')) {
+                setActiveTab('requirements')
+              }
             }
           }
 
@@ -526,13 +604,25 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           }
 
           // The pipeline's last act is a PCB handoff, so the board run starts
-          // here instead of waiting for someone to find the button. Guarded on
-          // a handoff that actually carries components: a run that failed
-          // before pcb_ir, or a chat turn that only answered a question, has
-          // nothing to build and must not announce that it is building it.
+          // here instead of waiting for someone to find the button — but only
+          // the FIRST time (no board yet) or when the user specifically asked
+          // about the PCB/board itself. Without that second guard, ANY
+          // revision request that didn't match a narrower keyword (see
+          // _infer_single_node_action) falls back to a full-workflow re-run,
+          // which touches 'pcb' just like every other stage — and would
+          // silently rebuild the physical board every time regardless of what
+          // was actually asked to change, making it look like every revision
+          // "only remakes the PCB" no matter which tab it was really about.
           const handoff = payload.pcb_ir as { components?: unknown[] } | null | undefined
           const handoffComponents = Array.isArray(handoff?.components) ? handoff.components.length : 0
-          if (handoffComponents > 0 && useWorkspaceStore.getState().boardJob.status !== 'running') {
+          const isPcbTargetedRevision = runCompletedNodes.length === 1 && runCompletedNodes[0] === 'pcb'
+          const shouldAutoBuildBoard = !boardExistedBeforeThisRun || isPcbTargetedRevision
+          if (
+            handoffComponents > 0 &&
+            runCompletedNodes.includes('pcb') &&
+            shouldAutoBuildBoard &&
+            useWorkspaceStore.getState().boardJob.status !== 'running'
+          ) {
             postAssistant(BOARD_STARTING, targetChatId)
 
             await generateBoard()
@@ -542,7 +632,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             // one (the POST itself was refused). The second case never produces
             // a state change the watcher can recognise, so it is reported here.
             const started = useWorkspaceStore.getState().boardJob
-            if (started.jobId) announcedBoardJobRef.current = started.jobId
+            if (started.jobId) announcedBoardJobRef.current = { jobId: started.jobId, chatId: targetChatId }
             else if (started.status === 'error') postAssistant(boardFailure(started.error), targetChatId)
           }
 
@@ -599,23 +689,35 @@ export function ChatInterface({ projectId }: { projectId: string }) {
         }
       }
     },
-    [projectId, activeChatId, messages, setAiOutput, setActiveTab, setPipelineRun, updateProject, generateBoard, postAssistant]
+    [projectId, activeChatId, setActiveChatId, messages, setAiOutput, setActiveTab, setPipelineRun, updateProject, updateChatArtifacts, generateBoard, postAssistant]
   )
 
-  // Auto-run initial prompt passed from new project initial screen
+  // Auto-run initial prompt passed from new project initial screen.
+  //
+  // Waits for activeChatId: on a brand-new project this effect and the
+  // pick-a-chat effect above both start on mount, and firing immediately
+  // raced them — this effect's own inline chatId fallback in runAgent could
+  // create ITS OWN new chat at the same time the other effect created a
+  // different one, and whichever finished last would win, sometimes leaving
+  // the visible conversation attached to the wrong (empty) chat, which read
+  // as the whole chat flashing away right after sending. Waiting for the
+  // pick-a-chat effect to actually resolve one first makes this the only
+  // writer in the common case, so there's nothing left to race.
   useEffect(() => {
-    if (pendingPrompt) {
+    if (pendingPrompt && activeChatId) {
       const p = pendingPrompt
       setPendingPrompt(null)
       runAgent(p)
     }
-  }, [pendingPrompt, setPendingPrompt, runAgent])
+  }, [pendingPrompt, activeChatId, setPendingPrompt, runAgent])
 
   const send = () => {
-    if ((!input.trim() && selectedOptions.length === 0) || loading) return
+    if ((!input.trim() && selectedOptions.length === 0 && attachments.length === 0) || loading) return
+    if (speech.isListening) speech.toggle(input)
     const customAnswer = input.trim()
     const request = [
       selectedOptions.length > 0 ? `Selected answers:\n- ${selectedOptions.join('\n- ')}` : '',
+      attachments.length > 0 ? `Attached file(s): ${attachments.map((a) => a.name).join(', ')}` : '',
       customAnswer,
     ]
       .filter(Boolean)
@@ -623,6 +725,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     setInput('')
     setSelectedOptions([])
     setActiveQuestionId(null)
+    setAttachments([])
     runAgent(request)
   }
 
@@ -632,11 +735,67 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     )
   }
 
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadingFile(true)
+    try {
+      const res = (await fileApi.upload(file, projectId)) as { _id?: string; id?: string }
+      const id = res?._id || res?.id || `${Date.now()}`
+      setAttachments((prev) => [...prev, { id, name: file.name }])
+      toast.success(`Attached ${file.name}`)
+    } catch {
+      toast.error(`Failed to upload ${file.name}`)
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
+  const removeAttachment = (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id))
+
+  const handleMicClick = () => {
+    if (!speech.isSupported) {
+      toast.error('Voice input is not supported in this browser.')
+      return
+    }
+    speech.toggle(input)
+  }
+
   const composer = (
     <div className="mx-auto w-full max-w-[780px] px-5">
+      {attachments.length > 0 && (
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {attachments.map((a) => (
+            <span
+              key={a.id}
+              className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground"
+            >
+              {a.name}
+              <button
+                type="button"
+                onClick={() => removeAttachment(a.id)}
+                aria-label={`Remove ${a.name}`}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
       <div className="flex h-[58px] items-center gap-2 rounded-full border border-foreground/15 bg-card/90 px-3 shadow-[0_14px_50px_rgba(0,0,0,0.22)] backdrop-blur-md transition-colors focus-within:border-foreground/35">
-        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Attach a file">
-          <Paperclip className="h-4 w-4" />
+        <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected} />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={uploadingFile}
+          className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+          title="Attach a file"
+        >
+          {uploadingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
         </Button>
         <ModelSelector value={selectedModel} onChange={setSelectedModel} disabled={loading} />
         <Input
@@ -648,16 +807,31 @@ export function ChatInterface({ projectId }: { projectId: string }) {
               send()
             }
           }}
-          placeholder={selectedOptions.length ? 'Add any details, or send your selections...' : placeholder || placeholderPrompts[0]}
+          placeholder={
+            speech.isListening
+              ? 'Listening...'
+              : selectedOptions.length
+                ? 'Add any details, or send your selections...'
+                : placeholder || placeholderPrompts[0]
+          }
           className="h-10 flex-1 border-0 bg-transparent px-1 text-sm shadow-none placeholder:text-muted-foreground/80 focus-visible:ring-0"
         />
-        <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Use voice input">
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          onClick={handleMicClick}
+          className={`h-9 w-9 shrink-0 rounded-full transition-colors ${
+            speech.isListening ? 'animate-pulse text-red-500 hover:text-red-500' : 'text-muted-foreground hover:text-foreground'
+          }`}
+          title={speech.isListening ? 'Stop voice input' : 'Use voice input'}
+        >
           <Mic className="h-4 w-4" />
         </Button>
         <Button
           type="button"
           onClick={send}
-          disabled={(!input.trim() && selectedOptions.length === 0) || loading}
+          disabled={(!input.trim() && selectedOptions.length === 0 && attachments.length === 0) || loading}
           size="icon"
           className="h-9 w-9 shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90"
         >

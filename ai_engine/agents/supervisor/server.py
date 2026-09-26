@@ -244,6 +244,76 @@ def _action_for_agent_type(agent_type: str | None) -> str | None:
     return mapping.get(agent_type)
 
 
+# Ordered most-downstream-first: a message mentioning several stage-ish
+# words routes to the most specific (and most expensive to skip) one.
+#
+# These are short *stems*, not full words, on purpose: chat input is typed
+# fast and typo'd often ("architechture" for "architecture" is the message
+# that motivated this whole mechanism -- it does not contain "architecture"
+# as a substring, but does contain "archi"). A stem long enough to be
+# specific to one domain word is more typo-tolerant than the full spelling.
+_REVISION_KEYWORDS: list[tuple[str, tuple[str, ...]]] = [
+    ("generate_code", ("firmware", "the code", "generate code", "write the code", "driver code", "code stub", "code generation")),
+    ("generate_documentation", ("docum", "readme", "doc package", "docs page")),
+    ("generate_validation", ("validat", "drc", "design rule check")),
+    ("generate_pcb", ("pcb", "board layout", "routing", "trace width", "footprint placement")),
+    ("generate_eda", ("eda enrichment", "footprint data", "symbol data", "eda dataset")),
+    ("generate_components", ("bom", "compon", "parts list", "supplier", "cost breakdown", "swap the part", "replace the part")),
+    ("generate_architecture", ("archi", "block diagram", "subsystem", "topology", "the diagram")),
+]
+
+# What must already be on the state for that single-node action to make
+# sense as a revision. If it's missing, there's nothing to revise yet, so
+# the request falls through to the full pipeline instead.
+_SINGLE_NODE_PREREQ: dict[str, tuple[str, ...]] = {
+    "generate_code": ("validation", "handoff_validation"),
+    "generate_documentation": ("validation", "handoff_validation"),
+    "generate_validation": ("pcb_ir",),
+    "generate_pcb": ("eda_data",),
+    "generate_eda": ("bom",),
+    "generate_components": ("architecture",),
+    "generate_architecture": ("requirements",),
+}
+
+_SINGLE_NODE_TO_GRAPH_NAME: dict[str, str] = {
+    "generate_requirements": "requirements",
+    "generate_architecture": "architecture",
+    "generate_components": "component",
+    "generate_eda": "eda_enrichment",
+    "generate_pcb": "pcb",
+    "generate_validation": "validation",
+    "generate_documentation": "documentation",
+    "generate_code": "code_generation",
+}
+
+
+def _infer_single_node_action(user_input: str, state: CircuitState) -> str | None:
+    """Best-effort routing so a targeted revision ("make the architecture
+    more detailed") re-runs only the one relevant pipeline stage instead of
+    the full linear graph cascading all the way through a fresh BOM, PCB,
+    validation, documentation and code build every single chat turn.
+
+    Deliberately conservative: only fires once a design already exists
+    (requirements on the state) and only for a stage whose prerequisite is
+    also already on the state. This is a keyword heuristic, not real intent
+    understanding -- a message that matches nothing, or matches a stage
+    that isn't buildable yet, falls through to the full workflow, which is
+    always correct, just not always the cheapest.
+    """
+    if not state.get("requirements"):
+        return None
+    text = (user_input or "").lower().strip()
+    if not text:
+        return None
+    for action, keywords in _REVISION_KEYWORDS:
+        if any(kw in text for kw in keywords):
+            prereqs = _SINGLE_NODE_PREREQ.get(action, ())
+            if prereqs and not any(state.get(key) for key in prereqs):
+                return None
+            return action
+    return None
+
+
 def _run_single_node(action: str, state: CircuitState) -> CircuitState:
     node_fn = SINGLE_NODE_ACTIONS.get(action)
     if node_fn is None:
@@ -407,6 +477,37 @@ def _stream_generator(payload: SupervisorRequest):
         yield from _stream_board_events(initial_state, job_id)
         return
 
+    action = payload.action or "run_workflow"
+    if action == "run_workflow":
+        inferred = _infer_single_node_action(initial_state.get("user_input") or "", initial_state)
+        if inferred:
+            logger.info("Routing run_workflow -> %s based on message intent (jobId=%s)", inferred, job_id)
+            action = inferred
+
+    # A targeted revision: run exactly one stage and stop, instead of the
+    # full graph cascading through everything downstream of it. This is what
+    # makes "make the architecture more detailed" touch only architecture
+    # rather than also regenerating the BOM, PCB, docs and code.
+    if action in SINGLE_NODE_ACTIONS:
+        node_name = _SINGLE_NODE_TO_GRAPH_NAME.get(action, action)
+        label = _NODE_LABELS.get(node_name, node_name)
+        yield _sse_event({"jobId": job_id, "node": "__start__", "label": "Pipeline starting"}, event="progress")
+        yield _sse_event(
+            {"jobId": job_id, "node": node_name, "label": label, "status": "running", "errors": []},
+            event="progress",
+        )
+        try:
+            final_state = _run_single_node(action, initial_state)
+        except Exception as exc:
+            logger.exception("Single-node action failed")
+            yield _sse_event({"jobId": job_id, "error": str(exc), "node": node_name}, event="error")
+            return
+        yield _sse_event(
+            {"jobId": job_id, "data": _serialize_state(final_state), "status": "completed"},
+            event="complete",
+        )
+        return
+
     # Tell the client we're starting.
     yield _sse_event({"jobId": job_id, "node": "__start__", "label": "Pipeline starting"}, event="progress")
 
@@ -549,32 +650,37 @@ class CodeChatResponse(BaseModel):
 def code_chat_endpoint(req: CodeChatRequest):
     """Specific endpoint for iterative code editing using Groq."""
     llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.1, api_key=os.getenv("GROQ_API_KEY"))
-    structured_llm = llm.with_structured_output(CodeChatResponse)
-    
+    # method="json_schema": gpt-oss-120b's Harmony tool-call format breaks
+    # with_structured_output's default "function_calling" method (the model
+    # tries to call a tool literally named "json" and LangChain rejects it as
+    # tool_use_failed) -- same failure already fixed this way in
+    # requirement_agent.py. Without it this endpoint throws on every call.
+    structured_llm = llm.with_structured_output(CodeChatResponse, method="json_schema")
+
     # Format the current files as context
-    context = "CURRENT FILES:\\n"
+    context = "CURRENT FILES:\n"
     for f in req.files:
-        context += f"\\n--- {f.get('filename')} ---\\n{f.get('code')}\\n"
+        context += f"\n--- {f.get('filename')} ---\n{f.get('code')}\n"
         
     system_msg = SystemMessage(content=
-        "You are an expert embedded firmware and software engineer. You are chatting with a user about their generated code.\\n"
-        "1. Analyze the user's request carefully.\\n"
-        "2. Review the CURRENT FILES.\\n"
-        "3. If the user asks for code changes, rewrite the affected files entirely and return them in updated_files. If you return files, you MUST return the full code for them, not just snippets!\\n"
-        "4. If no files need changing, set updated_files to null.\\n"
+        "You are an expert embedded firmware and software engineer. You are chatting with a user about their generated code.\n"
+        "1. Analyze the user's request carefully.\n"
+        "2. Review the CURRENT FILES.\n"
+        "3. If the user asks for code changes, rewrite the affected files entirely and return them in updated_files. If you return files, you MUST return the full code for them, not just snippets!\n"
+        "4. If no files need changing, set updated_files to null.\n"
         "5. Keep your conversational reply concise and helpful."
     )
-    
+
     chat_history = []
     for m in req.messages:
         if m.get("role") == "user":
             chat_history.append(HumanMessage(content=m.get("content", "")))
         else:
             chat_history.append(AIMessage(content=m.get("content", "")))
-            
+
     # Insert context into the last user message
     if chat_history and isinstance(chat_history[-1], HumanMessage):
-        chat_history[-1].content = f"{context}\\n\\nUSER REQUEST: {chat_history[-1].content}"
+        chat_history[-1].content = f"{context}\n\nUSER REQUEST: {chat_history[-1].content}"
     else:
         chat_history.append(HumanMessage(content=f"{context}\\n\\nUSER REQUEST: Hello, review the code."))
         

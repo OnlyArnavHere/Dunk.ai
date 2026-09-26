@@ -12,22 +12,27 @@ import { PcbView } from './views/pcb-view'
 import { NewProjectChat } from './new-project-chat'
 import { EdaViewer } from './views/eda-viewer'
 import { CodeView } from './views/code-view'
-import { useWorkspaceStore } from '@/lib/store'
+import { useWorkspaceStore, type AiOutput } from '@/lib/store'
 
-const tabs = [
+// `node` is the LangGraph node name the backend emits over the `ai:progress`
+// socket event (see ai_engine/agents/supervisor/graph.py). `outputKey` is the
+// AiOutput field that same stage's result lands in — the two are NOT the same
+// string for every tab (eda/pcb/docs/code all differ), so they're kept
+// separate rather than reusing one id for both lookups.
+const tabs: Array<{ id: string; label: string; node: string; outputKey?: keyof AiOutput | Array<keyof AiOutput> }> = [
   { id: 'chat', label: 'Chat', node: '' },
-  { id: 'requirements', label: 'Requirements', node: 'requirements' },
-  { id: 'architecture', label: 'Architecture', node: 'architecture' },
-  { id: 'bom', label: 'BOM', node: 'component' },
-  { id: 'eda', label: 'EDA', node: 'eda_enrichment' },
-  { id: 'pcb', label: 'PCB', node: 'pcb' },
-  { id: 'validation', label: 'Validation', node: 'validation' },
-  { id: 'docs', label: 'Docs', node: 'documentation' },
-  { id: 'code', label: 'Code', node: 'code_generation' },
+  { id: 'requirements', label: 'Requirements', node: 'requirements', outputKey: 'requirements' },
+  { id: 'architecture', label: 'Architecture', node: 'architecture', outputKey: 'architecture' },
+  { id: 'bom', label: 'BOM', node: 'component', outputKey: 'bom' },
+  { id: 'eda', label: 'EDA', node: 'eda_enrichment', outputKey: 'eda_data' },
+  { id: 'pcb', label: 'PCB', node: 'pcb', outputKey: 'pcb_ir' },
+  { id: 'validation', label: 'Validation', node: 'validation', outputKey: ['handoff_validation', 'validation'] },
+  { id: 'docs', label: 'Docs', node: 'documentation', outputKey: 'documentation' },
+  { id: 'code', label: 'Code', node: 'code_generation', outputKey: 'code_generation' },
 ]
 
 export function MainEditor() {
-  const { activeProjectId, activeTab, setActiveTab, pipelineProgress, aiOutput } = useWorkspaceStore()
+  const { activeProjectId, activeTab, setActiveTab, pipelineProgress, aiOutput, boardJob } = useWorkspaceStore()
 
   if (!activeProjectId) {
     return <NewProjectChat />
@@ -39,11 +44,27 @@ export function MainEditor() {
       <div className="z-20 border-b border-foreground/10 bg-background/85 px-8 pt-6 shrink-0 backdrop-blur-xl">
         <div className="flex items-center gap-2 pb-6 overflow-x-auto">
           {tabs.map((tab) => {
-            const isRunning = tab.node && pipelineProgress.activeNode === tab.node
+            // The PCB tab shows the actual generated board (traces, 3D view,
+            // gerbers) — a separate, much longer-running job (dunkai-designer,
+            // tracked as `boardJob`) that starts only AFTER the main pipeline's
+            // fast 'pcb' node finishes producing pcb_ir. Reflecting pcb_ir here
+            // like every other tab reflects its own node output made the tab
+            // turn green the moment the IR existed, well before there was any
+            // actual board to look at — including while board generation was
+            // still visibly running.
+            const isRunning =
+              tab.id === 'pcb'
+                ? boardJob.status === 'running' || pipelineProgress.activeNode === tab.node
+                : Boolean(tab.node && pipelineProgress.activeNode === tab.node)
+            const outputKeys = tab.outputKey ? (Array.isArray(tab.outputKey) ? tab.outputKey : [tab.outputKey]) : []
             const isComplete =
-              tab.node &&
-              (pipelineProgress.completedNodes.includes(tab.node) ||
-                (aiOutput && aiOutput[tab.id as keyof typeof aiOutput]))
+              tab.id === 'pcb'
+                ? Boolean(aiOutput?.board)
+                : Boolean(
+                    tab.node &&
+                      (pipelineProgress.completedNodes.includes(tab.node) ||
+                        (aiOutput && outputKeys.some((key) => aiOutput[key])))
+                  )
 
             return (
               <button

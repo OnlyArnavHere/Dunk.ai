@@ -451,14 +451,37 @@ def _validate_graph(graph: dict[str, Any]) -> dict[str, Any]:
     return graph
 
 
-def infer_subsystems(requirements: dict[str, Any], *, model: str | None = None) -> list[dict[str, Any]]:
-    """Stage 1: ask the model to infer the required electronic subsystems."""
+def infer_subsystems(
+    requirements: dict[str, Any],
+    *,
+    model: str | None = None,
+    revision_instruction: str | None = None,
+    existing_subsystems: list[dict[str, Any]] | None = None,
+) -> list[dict[str, Any]]:
+    """Stage 1: ask the model to infer the required electronic subsystems.
+
+    ``revision_instruction``/``existing_subsystems`` are set when this is a
+    targeted "revise the architecture" chat turn on a design that already has
+    one, rather than the initial build -- the instruction and prior subsystem
+    list are prepended as plain-language context ahead of the requirements
+    JSON so the model edits/extends what exists instead of guessing fresh.
+    """
     if not isinstance(requirements, dict):
         raise TypeError("requirements must be a JSON object")
 
+    user_content = json.dumps(requirements)
+    if revision_instruction:
+        context = (
+            f'The user already has a design and asked for this specific revision: '
+            f'"{revision_instruction}"\n'
+        )
+        if existing_subsystems:
+            context += f"Existing subsystems (keep what's still valid, adjust per the revision): {json.dumps(existing_subsystems)}\n"
+        user_content = context + "\nRequirements:\n" + user_content
+
     reply = _call_groq(
         SUBSYSTEM_INFERENCE_PROMPT,
-        json.dumps(requirements),
+        user_content,
         model=model,
     )
     parsed = json.loads(_strip_code_fence(reply))
@@ -504,15 +527,30 @@ def build_graph(subsystems: list[dict[str, Any]], *, model: str | None = None) -
     return {"nodes": nodes, "edges": edges}
 
 
-def build_architecture(requirements: dict[str, Any], *, model: str | None = None) -> dict[str, Any]:
+def build_architecture(
+    requirements: dict[str, Any],
+    *,
+    model: str | None = None,
+    revision_instruction: str | None = None,
+    existing_architecture: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     """Compose stage 1 and stage 2 into the full ``ArchitectureResult``.
 
     All subsystem/interface decisions come from the model. This function
     only aggregates the model's own output by the fields the model itself
     returned (e.g. grouping subsystem labels by the category the model
     assigned) -- it performs no independent domain inference.
+
+    ``revision_instruction``/``existing_architecture`` make this a targeted
+    edit of an already-built architecture (see ``infer_subsystems``) instead
+    of a from-scratch build; both are optional and unused on a first build.
     """
-    subsystems = infer_subsystems(requirements, model=model)
+    subsystems = infer_subsystems(
+        requirements,
+        model=model,
+        revision_instruction=revision_instruction,
+        existing_subsystems=(existing_architecture or {}).get("subsystems"),
+    )
     graph = build_graph(subsystems, model=model)
 
     processing_labels = [s["label"] for s in subsystems if s["category"] == "Processing"]

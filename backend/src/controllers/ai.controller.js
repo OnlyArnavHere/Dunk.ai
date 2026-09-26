@@ -1,6 +1,7 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { send } from '../utils/response.js';
 import { getProject } from '../services/project.service.js';
+import { getChat } from '../services/chat.service.js';
 import {
   callSupervisor,
   callSupervisorStream,
@@ -200,6 +201,13 @@ export const runStream = asyncHandler(async (req, res) => {
     ? await getProject(req.body.projectId, req.user, true)
     : null;
 
+  // Each chat session holds its own pipeline artifacts (see Chat.js) so
+  // switching sessions shows independent requirements/architecture/etc
+  // instead of one design shared across every conversation in the project.
+  // Falls back to the project's own fields when no chat is scoped to this
+  // run (only reachable from an older client that doesn't send chatId yet).
+  const chat = req.body.chatId ? await getChat(req.body.chatId, req.user) : null;
+
   const jobId = uuidv4();
   const io = req.app.get('io');
 
@@ -207,9 +215,13 @@ export const runStream = asyncHandler(async (req, res) => {
   // after a run it exists only in the browser's workspace store. Board
   // generation needs it, so the client sends back the handoff it is holding.
   // This is the user's own design data for a project they already passed the
-  // getProject access check on, so it crosses no privilege boundary; it is
-  // simply the only copy there is.
-  const projectPayload = project ? project.toObject() : {};
+  // getProject/getChat access check on, so it crosses no privilege boundary;
+  // it is simply the only copy there is.
+  const projectPayload = chat
+    ? { ...chat.toObject(), project_name: project?.title, name: project?.title }
+    : project
+      ? project.toObject()
+      : {};
   if (req.body.pcbIr && typeof req.body.pcbIr === 'object') {
     projectPayload.pcb_ir = req.body.pcbIr;
   }
@@ -225,6 +237,7 @@ export const runStream = asyncHandler(async (req, res) => {
     provider: req.body.provider,
     model: req.body.model,
     jobId,
+    chatId: chat?._id || null,
   }).catch((err) => {
     console.error(`[AI Stream] job ${jobId} failed:`, err.message);
   });
