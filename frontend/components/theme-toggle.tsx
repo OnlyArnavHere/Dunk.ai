@@ -14,13 +14,13 @@ export function ThemeToggle() {
   const light = mounted && resolvedTheme === 'light'
   return (
     <Button
-      variant="ghost"
+      variant="outline"
       size="icon"
       aria-label="Toggle theme"
       onClick={() => setTheme(light ? 'dark' : 'light')}
-      className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
+      className="h-9 w-9 rounded-full text-foreground bg-card hover:bg-secondary shadow-sm border border-border"
     >
-      {light ? <Moon className="h-3.5 w-3.5" /> : <Sun className="h-3.5 w-3.5" />}
+      {light ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
     </Button>
   )
 }

@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ArrowUpRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-// Anchors must match section ids actually rendered on the landing page
 const navLinks = [
   { name: "Features", href: "#features" },
   { name: "How it works", href: "#how-it-works" },
@@ -28,123 +27,133 @@ export function Navigation() {
 
   return (
     <header
-      className={`fixed z-50 transition-all duration-500 ${
-        isScrolled 
-          ? "top-4 left-4 right-4" 
-          : "top-0 left-0 right-0"
+      className={`fixed z-50 transition-all duration-700 ${
+        isScrolled ? "top-4 left-4 right-4" : "top-6 left-6 right-6"
       }`}
     >
-      <nav 
-        className={`mx-auto transition-all duration-500 ${
+      <nav
+        className={`mx-auto transition-all duration-700 max-w-[1400px] ${
           isScrolled || isMobileMenuOpen
-            ? "bg-background/80 backdrop-blur-xl border border-foreground/10 rounded-2xl shadow-lg max-w-[1200px]"
-            : "bg-transparent max-w-[1400px]"
+            ? "bg-background/90 backdrop-blur-2xl border border-border shadow-sm px-2"
+            : "bg-transparent px-2"
         }`}
       >
-        <div 
-          className={`flex items-center justify-between transition-all duration-500 px-6 lg:px-8 ${
-            isScrolled ? "h-14" : "h-20"
-          }`} 
+        <div
+          className={`flex items-center justify-between transition-all duration-700 px-6 lg:px-8 ${
+            isScrolled ? "h-16" : "h-20"
+          }`}
         >
           {/* Logo */}
-          <a href="/" className="flex items-center gap-2 group">
-            <span className={`font-display tracking-tight transition-all duration-500 ${isScrolled ? "text-xl" : "text-2xl"}`}>DunkAI</span>
-            <span className={`text-muted-foreground font-mono transition-all duration-500 ${isScrolled ? "text-[10px] mt-0.5" : "text-xs mt-1"}`}>COPILOT</span>
-          </a>
+          <Link href="/" className="flex items-center gap-2 group z-50">
+            <span className="font-serif italic tracking-tight text-foreground text-2xl lg:text-3xl">
+              DunkAI
+            </span>
+          </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center gap-12">
+          <div className="hidden md:flex items-center gap-10">
             {navLinks.map((link) => (
               <a
                 key={link.name}
                 href={link.href}
-                className="text-sm text-foreground/70 hover:text-foreground transition-colors duration-300 relative group"
+                className="text-sm tracking-wide text-foreground/90 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors duration-300 relative group font-medium"
               >
                 {link.name}
-                <span className="absolute -bottom-1 left-0 w-0 h-px bg-foreground transition-all duration-300 group-hover:w-full" />
+                <span className="absolute -bottom-2 left-0 w-0 h-[1px] bg-gradient-to-r from-emerald-500 to-cyan-500 dark:from-emerald-400 dark:to-cyan-400 transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
           </div>
 
-          {/* Desktop CTA */}
+          {/* Desktop CTA & Theme */}
           <div className="hidden md:flex items-center gap-4">
             <ThemeToggle />
-            <a href="/workspace" className={`text-foreground/70 hover:text-foreground transition-all duration-500 ${isScrolled ? "text-xs" : "text-sm"}`}>
-              Launch App
-            </a>
-            <Button
-              asChild
-              size="sm"
-              className={`bg-foreground hover:bg-foreground/90 text-background rounded-full transition-all duration-500 ${isScrolled ? "px-4 h-8 text-xs" : "px-6"}`}
+            <Link
+              href="/login"
+              className="text-sm tracking-wide text-foreground/90 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors duration-300 font-medium"
             >
-              <Link href="/login">
-                Sign in
-              </Link>
-            </Button>
+              Log in
+            </Link>
+            <Link
+              href="/signup"
+              className="group relative flex items-center gap-2 h-10 px-6 rounded-full bg-card shadow-sm border border-border hover:border-emerald-500/40 hover:bg-secondary transition-all duration-300 overflow-hidden hover:-translate-y-0.5 active:translate-y-0 active:scale-95"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 dark:via-emerald-400/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              <span className="relative z-10 text-sm font-semibold tracking-wide text-foreground group-hover:text-foreground transition-colors">
+                Get Started
+              </span>
+              <ArrowUpRight className="w-3.5 h-3.5 text-foreground/50 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 relative z-10" />
+            </Link>
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden p-2"
-            aria-label="Toggle menu"
-          >
-            {isMobileMenuOpen ? (
-              <X className="w-6 h-6" />
-            ) : (
-              <Menu className="w-6 h-6" />
-            )}
-          </button>
+          {/* Mobile Menu Button & Theme */}
+          <div className="md:hidden flex items-center gap-2 z-50">
+            <ThemeToggle />
+            <button
+              type="button"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 text-foreground/80 hover:text-foreground transition-colors"
+              aria-label="Toggle menu"
+            >
+              {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
+          </div>
         </div>
-
       </nav>
-      
+
       {/* Mobile Menu - Full Screen Overlay */}
       <div
-        className={`md:hidden fixed inset-0 bg-background z-40 transition-all duration-500 ${
-          isMobileMenuOpen 
-            ? "opacity-100 pointer-events-auto" 
-            : "opacity-0 pointer-events-none"
+        className={`md:hidden fixed inset-0 bg-background z-40 transition-all duration-700 ${
+          isMobileMenuOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         }`}
         style={{ top: 0 }}
       >
-        <div className="flex flex-col h-full px-8 pt-28 pb-8">
+        <div className="flex flex-col h-full px-8 pt-32 pb-12 overflow-y-auto">
           {/* Navigation Links */}
-          <div className="flex-1 flex flex-col justify-center gap-8">
+          <div className="flex-1 flex flex-col justify-center gap-8 min-h-[min-content]">
             {navLinks.map((link, i) => (
               <a
                 key={link.name}
                 href={link.href}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className={`text-5xl font-display text-foreground hover:text-muted-foreground transition-all duration-500 ${
-                  isMobileMenuOpen 
-                    ? "opacity-100 translate-y-0" 
-                    : "opacity-0 translate-y-4"
+                className={`text-5xl font-serif italic text-foreground hover:text-foreground/70 transition-all duration-500 ${
+                  isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
                 }`}
-                style={{ transitionDelay: isMobileMenuOpen ? `${i * 75}ms` : "0ms" }}
+                style={{ transitionDelay: isMobileMenuOpen ? `${i * 100}ms` : "0ms" }}
               >
                 {link.name}
               </a>
             ))}
           </div>
-          
+
           {/* Bottom CTAs */}
-          <div className={`flex gap-4 pt-8 border-t border-foreground/10 transition-all duration-500 ${
-            isMobileMenuOpen 
-              ? "opacity-100 translate-y-0" 
-              : "opacity-0 translate-y-4"
-          }`}
-          style={{ transitionDelay: isMobileMenuOpen ? "300ms" : "0ms" }}
+          <div
+            className={`flex flex-col gap-4 pt-12 mt-8 border-t border-border transition-all duration-700 ${
+              isMobileMenuOpen ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+            }`}
+            style={{ transitionDelay: isMobileMenuOpen ? "400ms" : "0ms" }}
           >
-            <Button asChild variant="outline" className="flex-1 rounded-full h-14 text-base">
-              <Link href="/workspace" onClick={() => setIsMobileMenuOpen(false)}>
-                Launch App
-              </Link>
-            </Button>
-            <Button asChild className="flex-1 bg-foreground text-background rounded-full h-14 text-base">
-              <Link href="/signup" onClick={() => setIsMobileMenuOpen(false)}>
-                Sign up free
+            <Link 
+              href="/signup"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="group relative flex items-center justify-center gap-2 w-full h-14 rounded-full bg-card shadow-sm border border-border hover:border-emerald-500/40 hover:bg-secondary transition-all duration-300 overflow-hidden active:scale-95"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/0 via-emerald-500/10 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-emerald-500/30 dark:via-emerald-400/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              
+              <span className="relative z-10 text-lg font-semibold tracking-wide text-foreground group-hover:text-foreground transition-colors">
+                Get Started
+              </span>
+              <ArrowUpRight className="w-4 h-4 text-foreground/50 group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 relative z-10" />
+            </Link>
+            <Button
+              asChild
+              variant="outline"
+              className="w-full border-border text-foreground hover:bg-secondary rounded-full h-14 text-lg font-medium"
+            >
+              <Link href="/login" onClick={() => setIsMobileMenuOpen(false)}>
+                Log in
               </Link>
             </Button>
           </div>
