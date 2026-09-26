@@ -381,12 +381,29 @@ def _strip_code_fence(text: str) -> str:
     return text.strip()
 
 
+def _json_generation_failed(exc: Exception) -> bool:
+    """Groq rejected the reply as invalid JSON (json_object mode)."""
+    return "json_validate_failed" in str(exc)
+
+
 def _call_groq(system_prompt: str, user_content: str, *, model: str | None = None,
-               max_tokens: int = 4000) -> str:
+               max_tokens: int = 8000) -> str:
     """Call Groq via langchain_groq and return the reply text.
 
     Requires ``GROQ_API_KEY`` in the environment. Raises ``RuntimeError`` on
     transport or API errors.
+
+    Output budget
+    -------------
+    The gpt-oss models reason before they answer, and ``max_tokens`` covers the
+    reasoning AND the JSON. When the reasoning uses the whole budget, no JSON is
+    written, and Groq rejects the empty reply as ``json_validate_failed`` with
+    ``failed_generation: ''`` — which is how a larger design used to kill the
+    graph stage at the old 4000 cap. Reasoning length varies run to run (1.2k to
+    1.6k tokens for the same 12-subsystem graph, measured), so the cap is 8000,
+    and a rejected reply is retried once at low reasoning effort, which keeps the
+    reasoning short enough for the answer to fit. The cap is a ceiling, not a
+    charge: Groq counts tokens actually used against the per-minute limit.
     """
     api_key = os.environ.get("GROQ_API_KEY")
     if not api_key:
@@ -394,7 +411,11 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
 
     messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_content)]
 
-    def call(name: str):
+    def call(name: str, effort: str | None = None):
+        extra = {}
+        # Only gpt-oss takes low/medium/high; other models (qwen) use different values.
+        if effort and name.startswith("openai/gpt-oss"):
+            extra["reasoning_effort"] = effort
         llm = ChatGroq(
             model=name,
             groq_api_key=api_key,
@@ -402,17 +423,34 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
             max_tokens=max_tokens,
             max_retries=2,
             model_kwargs={"response_format": {"type": "json_object"}},
+            **extra,
         )
         return llm.invoke(messages)
 
     # Rate limits are handled in groq_limits (wait on a per-minute limit, fall
     # back to another model on a spent daily one); anything else is an API error.
+    requested = model or DEFAULT_MODEL
     try:
-        response, _ = invoke_with_limits(call, model or DEFAULT_MODEL, agent="Architecture Agent")
+        response, _ = invoke_with_limits(call, requested, agent="Architecture Agent")
     except GroqQuotaExhausted:
         raise
     except Exception as exc:
-        raise RuntimeError(f"Groq API error: {exc}") from exc
+        if not _json_generation_failed(exc):
+            raise RuntimeError(f"Groq API error: {exc}") from exc
+        print("[Architecture Agent] Model returned no valid JSON; retrying once with low reasoning effort.")
+        try:
+            response, _ = invoke_with_limits(
+                lambda name: call(name, effort="low"), requested, agent="Architecture Agent"
+            )
+        except GroqQuotaExhausted:
+            raise
+        except Exception as retry_exc:
+            if _json_generation_failed(retry_exc):
+                raise RuntimeError(
+                    "the model did not produce valid architecture JSON, twice (it most likely spent its "
+                    "output budget reasoning). Try again, or choose a different model in the chat's model picker."
+                ) from retry_exc
+            raise RuntimeError(f"Groq API error: {retry_exc}") from retry_exc
 
     content = response.content
     if not content:

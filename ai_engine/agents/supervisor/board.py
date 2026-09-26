@@ -38,10 +38,20 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 
 
 def _designer_root() -> Path:
-    """Where dunkai-designer lives. Overridable, because it is a sibling repo."""
+    """Where dunkai-designer lives: DUNKAI_DESIGNER_PATH, else inside this repo.
+
+    It used to be a sibling repo and this defaulted to ``../dunkai-designer``.
+    It now ships in this repo at ``dunkai-designer/``, so the old default pointed
+    at a directory that does not exist and every board failed preflight unless
+    the override was set. The sibling location is still honoured for checkouts
+    that keep it there.
+    """
     override = os.getenv("DUNKAI_DESIGNER_PATH")
     if override:
         return Path(override).expanduser().resolve()
+    in_repo = REPO_ROOT / "dunkai-designer"
+    if in_repo.exists():
+        return in_repo.resolve()
     return (REPO_ROOT.parent / "dunkai-designer").resolve()
 
 
