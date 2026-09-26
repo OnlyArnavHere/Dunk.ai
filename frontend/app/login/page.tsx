@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
-import { AuthShell, GoogleButton } from '@/components/auth/auth-shell'
+import { AuthShell, GoogleButton, PasswordInput } from '@/components/auth/auth-shell'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useAuth } from '@/lib/auth-context'
@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/auth-context'
 export default function LoginPage() {
   const { login } = useAuth()
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
@@ -19,10 +20,7 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
     try {
-      // Assuming a passwordless/magic-link or default password for this UI mockup, 
-      // but since we need a password for the existing backend logic, 
-      // let's show the password field below email for a real implementation
-      await login(email, 'default-password-placeholder')
+      await login(email, password)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed')
     } finally {
@@ -55,19 +53,42 @@ export default function LoginPage() {
             id="email"
             type="email"
             required
+            autoComplete="email"
+            aria-label="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
             className="h-14 rounded-xl bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring text-[17px] px-5"
             disabled={loading}
           />
-          
-          <Button 
-            type="submit" 
-            disabled={loading} 
+
+          <div className="space-y-2">
+            <PasswordInput
+              id="password"
+              required
+              autoComplete="current-password"
+              aria-label="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              disabled={loading}
+            />
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-[13px] text-muted-foreground underline-offset-4 transition-colors hover:text-foreground hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            disabled={loading}
             className="h-14 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-semibold text-[17px]"
           >
-            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Continue with email'}
+            {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Sign in'}
           </Button>
         </form>
 

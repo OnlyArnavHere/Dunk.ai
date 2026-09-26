@@ -38,12 +38,16 @@ from __future__ import annotations
 import json
 import os
 import re
-import time
 import sys
 from typing import Any
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
+
+try:
+    from .groq_limits import GroqQuotaExhausted, invoke_with_limits
+except ImportError:  # imported as a top-level module by the supervisor
+    from groq_limits import GroqQuotaExhausted, invoke_with_limits
 
 # llama-3.3-70b-versatile, as requested. Note: Groq has this on a deprecation
 # path (announced June 17, 2026) in favor of openai/gpt-oss-120b /
@@ -388,35 +392,27 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
     if not api_key:
         raise RuntimeError("GROQ_API_KEY is not set in the environment.")
 
-    llm = ChatGroq(
-        model=model or DEFAULT_MODEL,
-        groq_api_key=api_key,
-        temperature=0,
-        max_tokens=max_tokens,
-        max_retries=2,
-        model_kwargs={"response_format": {"type": "json_object"}},
-    )
-    response = None
-    last_exc = None
-    for attempt in range(6):
-        try:
-            response = llm.invoke([
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_content),
-            ])
-            break
-        except Exception as exc:
-            last_exc = exc
-            err_str = str(exc)
-            if ("429" in err_str or "rate_limit_exceeded" in err_str or "Too Many Requests" in err_str) and attempt < 5:
-                wait_match = re.search(r"try again in ([\d\.]+)s", err_str, re.IGNORECASE)
-                wait_time = float(wait_match.group(1)) + 1.5 if wait_match else (attempt + 1) * 3.5
-                print(f"[Architecture Agent] Groq rate limit 429 encountered for model '{model or DEFAULT_MODEL}'. Waiting {wait_time:.1f}s before retry (attempt {attempt+1}/5)...")
-                time.sleep(wait_time)
-            else:
-                raise RuntimeError(f"Groq API error: {exc}") from exc
-    if response is None:
-        raise RuntimeError(f"Groq API rate limit exceeded after retries: {last_exc}") from last_exc
+    messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_content)]
+
+    def call(name: str):
+        llm = ChatGroq(
+            model=name,
+            groq_api_key=api_key,
+            temperature=0,
+            max_tokens=max_tokens,
+            max_retries=2,
+            model_kwargs={"response_format": {"type": "json_object"}},
+        )
+        return llm.invoke(messages)
+
+    # Rate limits are handled in groq_limits (wait on a per-minute limit, fall
+    # back to another model on a spent daily one); anything else is an API error.
+    try:
+        response, _ = invoke_with_limits(call, model or DEFAULT_MODEL, agent="Architecture Agent")
+    except GroqQuotaExhausted:
+        raise
+    except Exception as exc:
+        raise RuntimeError(f"Groq API error: {exc}") from exc
 
     content = response.content
     if not content:
