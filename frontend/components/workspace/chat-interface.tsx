@@ -736,14 +736,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           {/* Clean, compact loader with unhinged message */}
           {loading && (
             <div className="flex items-center gap-3 text-sm text-muted-foreground rounded-2xl border border-border bg-card px-4 py-3 max-w-[680px]">
-              <video
-                src="/kevin.mp4"
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="h-8 w-8 shrink-0 rounded-lg object-cover"
-              />
+              <img src="/kevin.webp" alt="" className="h-12 w-auto shrink-0" />
               <span className="font-medium text-foreground/90">{unhingedMsg}</span>
             </div>
           )}

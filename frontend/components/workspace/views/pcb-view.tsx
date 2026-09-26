@@ -103,14 +103,7 @@ export function PcbView({ projectId }: { projectId?: string } = {}) {
       <div className="force-dark dark flex h-full w-full flex-col items-center justify-center bg-[#131318] px-6 text-foreground">
         <div className="w-full max-w-md">
           <div className="mb-6 flex items-center gap-3">
-            <video
-              src="/kevin.mp4"
-              autoPlay
-              loop
-              muted
-              playsInline
-              className="h-8 w-8 shrink-0 rounded-lg object-cover"
-            />
+            <img src="/kevin.webp" alt="" className="h-12 w-auto shrink-0" />
             <div className="min-w-0">
               <p className="truncate text-sm">{job.label ?? 'Generating board…'}</p>
               {job.detail && (
