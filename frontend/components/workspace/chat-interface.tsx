@@ -105,7 +105,7 @@ const BOARD_DONE = 'PCB generated — open the PCB tab for the layout, the 3D bo
 const boardFailure = (error: string | null) => `⚠️ PCB generation failed: ${error ?? 'unknown error'}`
 
 export function ChatInterface({ projectId }: { projectId: string }) {
-  const { pendingPrompt, setPendingPrompt, setAiOutput, hydrateAiOutput, setActiveTab, setPipelineProgress, clearPipelineProgress, chatResetCounter, selectedModel, setSelectedModel } = useWorkspaceStore()
+  const { pendingPrompt, setPendingPrompt, setAiOutput, hydrateAiOutput, setActiveTab, setPipelineProgress, clearPipelineProgress, setPipelineRun, chatResetCounter, selectedModel, setSelectedModel } = useWorkspaceStore()
   const updateProject = useUpdateProject()
   // Board generation runs itself off the back of the pipeline; this view owns
   // the trigger because this is where the pipeline's completion lands.
@@ -299,12 +299,14 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     setCompletedNodes([])
     setActiveNode('')
     clearPipelineProgress()
+    // The loader above is dropped, so the run is no longer being narrated here.
+    setPipelineRun('idle')
     loadChatAndHistory()
 
     return () => {
       isMounted = false
     }
-  }, [projectId, clearPipelineProgress, hydrateAiOutput])
+  }, [projectId, clearPipelineProgress, hydrateAiOutput, setPipelineRun])
 
   // ---- Watch for "New Chat" reset signal from sidebar ----
   useEffect(() => {
@@ -317,6 +319,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     setCompletedNodes([])
     setActiveNode('')
     setActiveChatId(null)
+    setPipelineRun('idle')
     // Re-initialize the chat session
     async function reinitChat() {
       try {
@@ -340,6 +343,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
         return [...prev, { id: userMessageId, role: 'user', content: request }]
       })
       setLoading(true)
+      setPipelineRun('running')
       setCompletedNodes([])
       setActiveNode('supervisor')
 
@@ -393,6 +397,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             chatApi.saveMessage(targetChatId, 'assistant', replyText).catch(() => {})
           }
           setLoading(false)
+          setPipelineRun('done')
           setActiveNode('')
           return
         }
@@ -442,6 +447,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             if (targetChatId) {
               chatApi.saveMessage(targetChatId, 'assistant', question, options).catch(() => {})
             }
+            setPipelineRun('question')
             return
           }
 
@@ -461,6 +467,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
               // every current run.
               handoff_validation: (payload.handoff_validation as Record<string, unknown>) ?? null,
               documentation: (payload.documentation as Record<string, unknown>) ?? null,
+              code_generation: (payload.code_generation as Record<string, unknown>) ?? null,
               board: (payload.board as AiOutput['board']) ?? null,
             } satisfies AiOutput
 
@@ -484,6 +491,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             if (artifactPayload.validation) updatePayload.validation = artifactPayload.validation
             if (artifactPayload.handoff_validation) updatePayload.handoff_validation = artifactPayload.handoff_validation
             if (artifactPayload.documentation) updatePayload.documentation = artifactPayload.documentation
+            if (artifactPayload.code_generation) updatePayload.code_generation = artifactPayload.code_generation
 
             if (payload.requirements && typeof payload.requirements === 'object') {
               const reqs = payload.requirements as Record<string, unknown>
@@ -537,11 +545,16 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             if (started.jobId) announcedBoardJobRef.current = started.jobId
             else if (started.status === 'error') postAssistant(boardFailure(started.error), targetChatId)
           }
+
+          // Settled only now, after the board job (if any) is already running,
+          // so the two overlap and the turn never looks idle in between.
+          setPipelineRun(errors?.length ? 'error' : 'done')
         }
 
         const handleError = (socketData: Record<string, any>) => {
           cleanup()
           setLoading(false)
+          setPipelineRun('error')
           setActiveNode('')
 
           const errObj = socketData.error
@@ -572,19 +585,21 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           if (activeChatId) {
             chatApi.saveMessage(activeChatId, 'assistant', reply).catch(() => {})
           }
+          setPipelineRun('done')
         } catch (fallbackErr: unknown) {
           const msg = fallbackErr instanceof Error ? fallbackErr.message : 'Failed to connect to Dunk AI'
           setMessages((prev) => [
             ...prev,
             { id: `${Date.now()}-assistant`, role: 'assistant', content: `⚠️ ${msg}` },
           ])
+          setPipelineRun('error')
         } finally {
           setLoading(false)
           setActiveNode('')
         }
       }
     },
-    [projectId, activeChatId, messages, setAiOutput, setActiveTab, updateProject, generateBoard, postAssistant]
+    [projectId, activeChatId, messages, setAiOutput, setActiveTab, setPipelineRun, updateProject, generateBoard, postAssistant]
   )
 
   // Auto-run initial prompt passed from new project initial screen

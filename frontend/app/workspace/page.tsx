@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { TopBar } from '@/components/workspace/top-bar'
 import { Sidebar } from '@/components/workspace/sidebar'
 import { MainEditor } from '@/components/workspace/main-editor'
+import { Arcade } from '@/components/workspace/arcade/arcade'
 import { ProtectedRoute } from '@/components/layouts/protected-route'
 import { useWorkspaceStore } from '@/lib/store'
 import { useProjects } from '@/hooks/use-projects'
@@ -92,6 +93,11 @@ function WorkspaceContent() {
           <MainEditor />
         </main>
       </div>
+
+      {/* Outside MainEditor on purpose: its views are hidden with display:none
+          when inactive, and the pipeline switches tabs on completion, which
+          would otherwise unmount a game mid-play. */}
+      <Arcade />
     </div>
   )
 }

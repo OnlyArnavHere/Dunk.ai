@@ -52,6 +52,17 @@ export interface PipelineProgress {
   completedNodes: string[]
 }
 
+/**
+ * Where the chat's pipeline run stands, for views outside the chat that need
+ * to know (the arcade). `running` covers the whole turn, INCLUDING the hand-off
+ * to an automatic board run: chat-interface only settles it after that board
+ * job has started, so "pipeline running" and "board running" overlap instead of
+ * leaving a gap in which nothing looks busy. The settled values record how the
+ * turn ended; `idle` means nothing has run, or the run stopped being tracked
+ * (project switch, new chat).
+ */
+export type PipelineRunStatus = 'idle' | 'running' | 'question' | 'done' | 'error'
+
 const idleBoardJob: BoardJob = {
   status: 'idle',
   jobId: null,
@@ -78,6 +89,7 @@ export interface AiOutput {
   // (see ai_engine/agents/supervisor/state.py) and stay separate here.
   handoff_validation: Record<string, unknown> | null
   documentation: Record<string, unknown> | null
+  code_generation: Record<string, unknown> | null
   // Present only after "Generate PCB" has run. Lives inside AiOutput on purpose:
   // a fresh pipeline run replaces the whole object, which clears a board that
   // belongs to a previous BOM rather than showing it against new components.
@@ -100,6 +112,7 @@ const DESIGN_KEYS = [
   'validation',
   'handoff_validation',
   'documentation',
+  'code_generation',
 ] as const
 
 const emptyAiOutput: AiOutput = {
@@ -111,6 +124,7 @@ const emptyAiOutput: AiOutput = {
   validation: null,
   handoff_validation: null,
   documentation: null,
+  code_generation: null,
   board: null,
 }
 
@@ -126,6 +140,7 @@ interface WorkspaceState {
 
   // Pipeline node progress — updated by chat-interface as nodes complete
   pipelineProgress: PipelineProgress
+  pipelineRun: PipelineRunStatus
 
   // Counter incremented by sidebar "New Chat" to signal chat-interface to reset
   chatResetCounter: number
@@ -166,6 +181,7 @@ interface WorkspaceState {
 
   setPipelineProgress: (progress: PipelineProgress) => void
   clearPipelineProgress: () => void
+  setPipelineRun: (status: PipelineRunStatus) => void
   triggerChatReset: () => void
   startBoardJob: (jobId: string) => void
   pushBoardProgress: (update: { stage?: string | null; label?: string | null; detail?: string | null }) => void
@@ -182,6 +198,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   aiOutput: null,
   boardJob: idleBoardJob,
   pipelineProgress: { activeNode: '', completedNodes: [] },
+  pipelineRun: 'idle',
   chatResetCounter: 0,
   selectedModel: 'openai/gpt-oss-120b',
 
@@ -253,6 +270,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
 
   setPipelineProgress: (progress) => set({ pipelineProgress: progress }),
   clearPipelineProgress: () => set({ pipelineProgress: { activeNode: '', completedNodes: [] } }),
+  setPipelineRun: (status) => set({ pipelineRun: status }),
   triggerChatReset: () => set((state) => ({ chatResetCounter: state.chatResetCounter + 1 })),
 
   startBoardJob: (jobId) =>

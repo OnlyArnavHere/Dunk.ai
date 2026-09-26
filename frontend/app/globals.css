@@ -123,6 +123,17 @@
   }
 }
 
+/* Dunk Arcade launcher: the idle ship bobs gently while a job runs. */
+@keyframes arcade-float {
+  0%,
+  100% {
+    transform: translateY(1px);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

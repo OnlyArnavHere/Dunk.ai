@@ -11,6 +11,7 @@ aiRoutes.use(authenticate);
 aiRoutes.use(aiLimiter);
 
 aiRoutes.post('/chat', chatValidation, validate, c.chat);
+aiRoutes.post('/code-chat', c.codeChat);
 aiRoutes.post('/run', runValidation, validate, c.run);
 aiRoutes.post('/run-stream', runValidation, validate, c.runStream);
 aiRoutes.get('/status/:id', c.status);

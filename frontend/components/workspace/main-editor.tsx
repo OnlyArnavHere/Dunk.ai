@@ -11,6 +11,7 @@ import { DocsView } from './views/docs-view'
 import { PcbView } from './views/pcb-view'
 import { NewProjectChat } from './new-project-chat'
 import { EdaViewer } from './views/eda-viewer'
+import { CodeView } from './views/code-view'
 import { useWorkspaceStore } from '@/lib/store'
 
 const tabs = [
@@ -22,6 +23,7 @@ const tabs = [
   { id: 'pcb', label: 'PCB', node: 'pcb' },
   { id: 'validation', label: 'Validation', node: 'validation' },
   { id: 'docs', label: 'Docs', node: 'documentation' },
+  { id: 'code', label: 'Code', node: 'code_generation' },
 ]
 
 export function MainEditor() {
@@ -95,6 +97,9 @@ export function MainEditor() {
         </div>
         <div className={`absolute inset-0 overflow-hidden ${activeTab === 'docs' ? 'block' : 'hidden'}`}>
           <DocsView projectId={activeProjectId} />
+        </div>
+        <div className={`absolute inset-0 overflow-hidden ${activeTab === 'code' ? 'block' : 'hidden'}`}>
+          <CodeView projectId={activeProjectId} />
         </div>
       </div>
     </div>
