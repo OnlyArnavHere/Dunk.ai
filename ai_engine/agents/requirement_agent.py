@@ -36,6 +36,8 @@ from __future__ import annotations
 import ast
 import json
 import os
+import re
+import time
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -73,7 +75,15 @@ HISTORY_WINDOW = min(8, max(4, int(os.getenv("REQUIREMENT_AGENT_HISTORY_WINDOW",
 class HardwareRequirements(BaseModel):
     """Architecture-oriented requirements for the user's hardware project."""
 
-    model_config = ConfigDict(extra="forbid")
+    # "ignore", not "forbid": this is a best-effort LLM output boundary, not a
+    # security boundary. gpt-oss-class models via Groq have been observed
+    # bleeding stray top-level keys into the JSON they return -- schema
+    # metadata like "additionalProperties": false leaking out of the JSON
+    # Schema it was given and into the instance it produced. Failing the
+    # whole turn over one unrecognised key the model invented is the wrong
+    # trade: silently dropping anything not in this schema is what makes this
+    # robust to the NEXT stray key too, not just the ones already seen.
+    model_config = ConfigDict(extra="ignore")
 
     project_name: str | None = Field(default=None, description="Name of the user's hardware project")
     category: str | None = None
@@ -146,7 +156,11 @@ class HardwareRequirements(BaseModel):
 class InterviewResponse(BaseModel):
     """One question or the final validated requirements object."""
 
-    model_config = ConfigDict(extra="forbid")
+    # See HardwareRequirements above: "ignore", not "forbid", for the same
+    # reason -- a stray key the model invented (this exact class of bug
+    # surfaced live as a literal "additionalProperties": false leaking into
+    # the response) must never fail the whole turn.
+    model_config = ConfigDict(extra="ignore")
 
     status: Literal["question", "complete"]
     question: str | None = None
@@ -230,10 +244,16 @@ class InterviewResponse(BaseModel):
             if not self.question or not self.question.strip():
                 raise ValueError("question status requires a question")
             if self.requirements is not None:
-                # The LLM sometimes generates both a question and a partial requirements object.
-                # Instead of crashing the pipeline, we just clear the requirements so the interview continues.
+                # gpt-oss-class models sometimes journal what they've learned so
+                # far into `requirements` (mostly null, one or two fields filled)
+                # even while still asking a follow-up question. That's progress
+                # tracking, not a signal the interview is done -- only
+                # `status == "complete"` means that. Rejecting the whole
+                # response over it used to fail Pydantic validation and lose
+                # the answer the user had just submitted; discarding the
+                # premature requirements here keeps the well-formed question.
                 self.requirements = None
-            
+
             # Capped, but deliberately NOT padded. A previous revision topped
             # every short list up to three with generic strings ("Standard
             # Baseline", "High Performance Mode", ...). Those are not answers to
