@@ -1,0 +1,11 @@
+node_modules/
+
+# Generated projects and their manufacturing outputs. Every file under here is
+# reproducible from a pcb_ir by re-running the pipeline, and a single board is
+# several MB once the glTF is included.
+build/
+dist/
+
+*.log
+.DS_Store
+Thumbs.db
