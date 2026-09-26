@@ -9,7 +9,7 @@
  * stdout is NDJSON progress (see lib/events.mjs). Human output goes to stderr.
  */
 
-import { mkdir, readFile, writeFile, stat } from "node:fs/promises"
+import { mkdir, writeFile, stat } from "node:fs/promises"
 import path from "node:path"
 import process from "node:process"
 import { intake } from "./stages/a-intake.mjs"
@@ -170,14 +170,14 @@ async function main() {
     note(`\n  repair ${attempt}/${args.repairAttempts}: ${outputs.stats.errors} error(s), ${distinct.length} distinct`)
     stage("E", "running", `repair pass ${attempt} — ${outputs.stats.errors} error(s)`)
 
-    const floorplan = await readFile(path.join(workdir, "src", "floorplan.ts"), "utf-8").catch(() => "")
-
     // A failed repair must not lose a board that already builds. The pass is an
     // improvement attempt on top of a result we already have, so a provider that
     // errors — a rejected reply, a rate limit, invalid source — ends the repair
     // loop and keeps the last good outputs instead of failing the whole run.
+    // Each provider reads src/board.tsx itself (there is no separate floorplan
+    // file any more — placement is automatic via layoutMode="grid").
     try {
-      await provider.repair({ workdir, errors: distinct.join("\n"), board: floorplan })
+      await provider.repair({ workdir, errors: distinct.join("\n") })
     } catch (err) {
       note(`  repair ${attempt} failed: ${err.message}`)
       stage("E", "running", `repair pass ${attempt} failed — keeping the previous board`)

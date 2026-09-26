@@ -262,8 +262,19 @@ def architecture_node(state: CircuitState) -> dict[str, Any]:
     from architecture_agent import build_architecture
 
     selected_model = state.get("llm_model") or state.get("designer_model")
+    # An architecture already on the state plus a fresh chat message means
+    # this is a targeted revision ("make it more detailed"), not the initial
+    # build -- pass both through so the agent edits what exists instead of
+    # silently regenerating from the same requirements and ignoring the ask.
+    existing_architecture = state.get("architecture")
+    revision_instruction = state.get("user_input") if existing_architecture else None
     try:
-        architecture = build_architecture(requirements, model=selected_model)
+        architecture = build_architecture(
+            requirements,
+            model=selected_model,
+            revision_instruction=revision_instruction,
+            existing_architecture=existing_architecture,
+        )
     except Exception as exc:
         return _error(f"Architecture Agent failed: {exc}")
 

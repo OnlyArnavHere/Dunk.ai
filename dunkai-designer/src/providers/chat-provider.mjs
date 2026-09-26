@@ -22,6 +22,7 @@ import { mkdir, writeFile, readFile } from "node:fs/promises"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { note } from "../lib/events.mjs"
+import { findUndeclaredNetRefs } from "../lib/nets.mjs"
 import {
   FOOTPRINTER_GUIDE,
   BOARD_FILE_RULES,
@@ -30,6 +31,21 @@ import {
   REPAIR_RULES,
   REPAIR_PREAMBLE,
 } from "./prompts.mjs"
+
+/**
+ * Catch the model copying the skeleton's EXAMPLE part/net verbatim instead of
+ * this design's own resolved parts. Seen live with Groq's gpt-oss-120b: it
+ * reproduced STC89C52RC_40I_PDIP40 / POWER_RAIL from the few-shot example even
+ * though neither appears anywhere in the brief. Checked against the brief
+ * itself (not just "does this string appear") because a real design that
+ * genuinely happens to use that exact part/net name is legitimate.
+ */
+function echoesSkeletonPlaceholder(files, brief) {
+  const text = Object.values(files).join("\n")
+  const usesPlaceholderPart = /STC89C52RC_40I_PDIP40/.test(text) && !brief.includes("STC89C52RC_40I_PDIP40")
+  const usesPlaceholderNet = /POWER_RAIL/.test(text) && !brief.includes("POWER_RAIL")
+  return usesPlaceholderPart && usesPlaceholderNet
+}
 
 /** Strip ``` fences a model may wrap an answer in. */
 export function unfence(text) {
@@ -207,7 +223,7 @@ export function createChatProvider({ name, label, model, chat, maxTokens }) {
 
     /** Stage D — the model returns the sources, this module writes them. */
     async generateProject({ brief, workdir }) {
-      const prompt = [
+      const basePrompt = [
         "Write a complete tscircuit board from the design brief below.",
         "",
         "The brief is the specification. Follow it exactly: every component,",
@@ -219,9 +235,8 @@ export function createChatProvider({ name, label, model, chat, maxTokens }) {
         "",
         TSCIRCUIT_SKELETON,
         "",
-        "Produce these three files:",
+        "Produce these two files:",
         "  src/board.tsx      the board: nets, components, connections",
-        "  src/floorplan.ts   every pcbX/pcbY as one reviewable table",
         "  index.tsx          `import Board from './src/board'; export default Board`",
         "",
         ...BOARD_FILE_RULES,
@@ -229,19 +244,56 @@ export function createChatProvider({ name, label, model, chat, maxTokens }) {
         ...PLACEMENT_RULES,
         "",
         "Reply with ONLY a JSON object, no prose and no code fences, shaped:",
-        '{"files": {"index.tsx": "<file contents>", "src/board.tsx": "<file contents>", "src/floorplan.ts": "<file contents>"}, "summary": "<one or two sentences>"}',
+        '{"files": {"index.tsx": "<file contents>", "src/board.tsx": "<file contents>"}, "summary": "<one or two sentences>"}',
         "Every value must be the COMPLETE text of that file. Do not abbreviate,",
         "do not write placeholders such as ... or TODO, and do not omit a file.",
       ].join("\n")
 
       note(`  provider: ${name} (${model}) generating into ${workdir}`)
 
-      const { content, usage } = await chat([{ role: "user", content: prompt }], { json: true })
-      const parsed = parseJsonObject(content)
-      if (!parsed?.files || typeof parsed.files !== "object") {
-        throw new Error(
-          `${label} did not return a {files:{...}} object — got: ${content.slice(0, 300)}`
-        )
+      const ask = async (extra) => {
+        const prompt = extra ? `${basePrompt}\n\n${extra}` : basePrompt
+        const { content, usage } = await chat([{ role: "user", content: prompt }], { json: true })
+        const parsed = parseJsonObject(content)
+        if (!parsed?.files || typeof parsed.files !== "object") {
+          throw new Error(
+            `${label} did not return a {files:{...}} object — got: ${content.slice(0, 300)}`
+          )
+        }
+        return { parsed, usage }
+      }
+
+      let { parsed, usage } = await ask()
+
+      // Groq's gpt-oss-120b has reproduced the skeleton's example part/net
+      // verbatim instead of this design's own — retry once with an explicit
+      // correction rather than silently shipping a board built from the
+      // wrong components.
+      if (echoesSkeletonPlaceholder(parsed.files, brief)) {
+        note(`  ${name} echoed the skeleton's example part/net — retrying once`)
+        ;({ parsed, usage } = await ask(
+          "Your previous answer copied the SKELETON EXAMPLE's part name and net " +
+            "name (STC89C52RC_40I_PDIP40 / POWER_RAIL) instead of using this " +
+            "design's own resolved parts and nets from the brief above. Write the " +
+            "board again using ONLY the parts and nets the brief actually names."
+        ))
+      }
+
+      // createNetsFromProps silently creates an orphan net on any name
+      // mismatch instead of erroring — see lib/nets.mjs — so this is the one
+      // class of net bug with no DRC message to catch it downstream.
+      const boardTsxDraft = parsed.files["src/board.tsx"] ?? ""
+      const { missing } = boardTsxDraft ? findUndeclaredNetRefs(boardTsxDraft) : { missing: [] }
+      if (missing.length > 0) {
+        note(`  ${name} referenced undeclared net(s): ${missing.join(", ")} — retrying once`)
+        ;({ parsed, usage } = await ask(
+          `Your previous answer referenced these net names without declaring them ` +
+            `with <net name="..." />: ${missing.join(", ")}. tscircuit does not error ` +
+            `on this — it silently creates a new disconnected net instead — so every ` +
+            `pin using one of these names would end up unconnected. Add the missing ` +
+            `<net> declaration(s), or fix the typo if one was intended to match an ` +
+            `existing declared net.`
+        ))
       }
 
       const written = await writeFiles(parsed.files, workdir)
@@ -252,16 +304,14 @@ export function createChatProvider({ name, label, model, chat, maxTokens }) {
     },
 
     /** Repair pass — same contract, and the DRC text is handed over verbatim. */
-    async repair({ workdir, errors, board }) {
-      // board is floorplan.ts; board.tsx comes along too because the fix may
-      // need the outline to grow, and the model cannot ask for it mid-call.
+    async repair({ workdir, errors }) {
       let boardTsx = ""
       try {
         boardTsx = await readFile(path.join(workdir, "src", "board.tsx"), "utf-8")
       } catch {}
 
       const prompt = [
-        "The board you generated does not pass placement checks.",
+        "The board you generated has errors.",
         "",
         ...REPAIR_PREAMBLE,
         "",
@@ -269,27 +319,22 @@ export function createChatProvider({ name, label, model, chat, maxTokens }) {
         errors,
         "=== END ERRORS ===",
         "",
-        "=== CURRENT src/floorplan.ts ===",
-        board,
+        "=== CURRENT src/board.tsx ===",
+        boardTsx,
         "=== END ===",
         "",
-        boardTsx ? "=== CURRENT src/board.tsx ===" : "",
-        boardTsx,
-        boardTsx ? "=== END ===" : "",
-        "",
-        "Fix the placement. Rules:",
+        "Fix it. Rules:",
         ...REPAIR_RULES,
         "",
-        "The netlist is correct — change nothing about which pins connect.",
+        "Change only what the errors above require — do not touch anything else.",
         "Reply with ONLY a JSON object, no prose and no code fences, shaped:",
-        '{"files": {"src/floorplan.ts": "<complete corrected file>"}, "summary": "<what you changed>"}',
-        'Include "src/board.tsx" in files ONLY if the board outline had to grow.',
+        '{"files": {"src/board.tsx": "<complete corrected file>"}, "summary": "<what you changed>"}',
         "Every value must be the COMPLETE text of that file.",
       ]
         .filter((line) => line !== "")
         .join("\n")
 
-      note(`  provider: ${name} (${model}) repairing placement`)
+      note(`  provider: ${name} (${model}) repairing the board`)
 
       const { content } = await chat([{ role: "user", content: prompt }], { json: true })
       const parsed = parseJsonObject(content)

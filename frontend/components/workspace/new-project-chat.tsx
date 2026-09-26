@@ -1,13 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { ArrowUp, Loader2, Mic, Paperclip } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { ArrowUp, Loader2, Mic, Paperclip, X } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWorkspaceStore } from '@/lib/store'
 import { ModelSelector } from './model-selector'
 import { useCreateProject } from '@/hooks/use-projects'
+import { fileApi } from '@/lib/api'
+import { useSpeechToText } from '@/hooks/use-speech-to-text'
 import { toast } from 'sonner'
 
 const suggestions = ['Design a low-power sensor board', 'Review my power architecture', 'Create a KiCad starter project']
@@ -38,6 +40,10 @@ export function NewProjectChat() {
   const [input, setInput] = useState('')
   const [placeholder, setPlaceholder] = useState('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
+  const [attachments, setAttachments] = useState<Array<{ id: string; name: string }>>([])
+  const [uploadingFile, setUploadingFile] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const speech = useSpeechToText(setInput)
 
   useEffect(() => {
     if (input) return
@@ -54,10 +60,12 @@ export function NewProjectChat() {
   }, [input, placeholder, placeholderIndex])
 
   const send = async () => {
-    const prompt = input.trim()
+    if (speech.isListening) speech.toggle(input)
+    const attachmentNote = attachments.length > 0 ? `Attached file(s): ${attachments.map((a) => a.name).join(', ')}` : ''
+    const prompt = [attachmentNote, input.trim()].filter(Boolean).join('\n\n')
     if (!prompt || createProject.isPending) return
     try {
-      const dynamicTitle = generateTitleFromPrompt(prompt)
+      const dynamicTitle = generateTitleFromPrompt(input.trim() || prompt)
       const project = await createProject.mutateAsync({
         title: dynamicTitle,
         description: prompt,
@@ -67,9 +75,37 @@ export function NewProjectChat() {
       setActiveProjectId(project._id)
       setActiveTab('chat')
       setInput('')
+      setAttachments([])
     } catch {
       toast.error('Failed to start the project. Please try again.')
     }
+  }
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setUploadingFile(true)
+    try {
+      const res = (await fileApi.upload(file)) as { _id?: string; id?: string }
+      const id = res?._id || res?.id || `${Date.now()}`
+      setAttachments((prev) => [...prev, { id, name: file.name }])
+      toast.success(`Attached ${file.name}`)
+    } catch {
+      toast.error(`Failed to upload ${file.name}`)
+    } finally {
+      setUploadingFile(false)
+    }
+  }
+
+  const removeAttachment = (id: string) => setAttachments((prev) => prev.filter((a) => a.id !== id))
+
+  const handleMicClick = () => {
+    if (!speech.isSupported) {
+      toast.error('Voice input is not supported in this browser.')
+      return
+    }
+    speech.toggle(input)
   }
 
   const busy = createProject.isPending
@@ -88,9 +124,39 @@ export function NewProjectChat() {
       </div>
       <div className="relative z-10 w-full">
         <div className="mx-auto w-full max-w-[780px] px-5">
+          {attachments.length > 0 && (
+            <div className="mb-2 flex flex-wrap gap-1.5">
+              {attachments.map((a) => (
+                <span
+                  key={a.id}
+                  className="flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1 text-xs text-foreground"
+                >
+                  {a.name}
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(a.id)}
+                    aria-label={`Remove ${a.name}`}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex h-[58px] items-center gap-2 rounded-full border border-foreground/15 bg-card/90 px-3 shadow-[0_14px_50px_rgba(0,0,0,0.22)] backdrop-blur-md transition-colors focus-within:border-foreground/35">
-                <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Attach a file" aria-label="Attach a file">
-              <Paperclip className="h-4 w-4" />
+            <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileSelected} />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingFile || busy}
+              className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+              title="Attach a file"
+              aria-label="Attach a file"
+            >
+              {uploadingFile ? <Loader2 className="h-4 w-4 animate-spin" /> : <Paperclip className="h-4 w-4" />}
             </Button>
             <ModelSelector value={selectedModel} onChange={setSelectedModel} disabled={busy} />
             <Input
@@ -103,16 +169,26 @@ export function NewProjectChat() {
                 }
               }}
               disabled={busy}
-              placeholder={placeholder || placeholderPrompts[0]}
+              placeholder={speech.isListening ? 'Listening...' : placeholder || placeholderPrompts[0]}
               className="h-10 flex-1 border-0 bg-transparent px-1 text-sm shadow-none placeholder:text-muted-foreground/80 focus-visible:ring-0"
             />
-            <Button type="button" variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:text-foreground" title="Use voice input" aria-label="Use voice input">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleMicClick}
+              className={`h-9 w-9 shrink-0 rounded-full transition-colors ${
+                speech.isListening ? 'animate-pulse text-red-500 hover:text-red-500' : 'text-muted-foreground hover:text-foreground'
+              }`}
+              title={speech.isListening ? 'Stop voice input' : 'Use voice input'}
+              aria-label={speech.isListening ? 'Stop voice input' : 'Use voice input'}
+            >
               <Mic className="h-4 w-4" />
             </Button>
             <Button
               type="button"
               onClick={send}
-              disabled={!input.trim() || busy}
+              disabled={(!input.trim() && attachments.length === 0) || busy}
               size="icon"
               className="h-9 w-9 shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90"
             >

@@ -8,6 +8,24 @@ const chatSchema = new mongoose.Schema(
     pinned: { type: Boolean, default: false },
     messageCount: { type: Number, default: 0 },
     lastMessageAt: { type: Date, default: Date.now },
+
+    // Pipeline artifacts, scoped to THIS chat session rather than the project
+    // it belongs to — a project can hold several independent conversations
+    // (see chatRoutes), each exploring its own requirements/architecture/etc,
+    // and mirroring them onto the shared Project would make every session
+    // overwrite every other session's design. Field set mirrors Project.js.
+    requirements: { type: mongoose.Schema.Types.Mixed, default: {} },
+    architecture: { type: mongoose.Schema.Types.Mixed, default: {} },
+    bom: { type: mongoose.Schema.Types.Mixed, default: {} },
+    eda_data: { type: mongoose.Schema.Types.Mixed, default: {} },
+    pcb_ir: { type: mongoose.Schema.Types.Mixed, default: {} },
+    validation: { type: mongoose.Schema.Types.Mixed, default: {} },
+    handoff_validation: { type: mongoose.Schema.Types.Mixed, default: {} },
+    documentation: { type: mongoose.Schema.Types.Mixed, default: {} },
+    code_generation: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // The generated board (dunkai-designer output) — see Project.js's own
+    // `board` field for why this one is stored rather than re-derived.
+    board: { type: mongoose.Schema.Types.Mixed, default: {} },
   },
   { timestamps: true }
 );

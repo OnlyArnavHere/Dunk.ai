@@ -14,6 +14,27 @@ const getOwnedChat = async (id, user) => {
   return chat;
 };
 
+// Exported so other services (e.g. the AI run-stream handler, which needs to
+// read/scope a run to one chat's own artifacts) can reuse the same
+// ownership-checked lookup rather than querying Chat directly.
+export const getChat = getOwnedChat;
+
+// The pipeline-artifact fields this chat can independently hold — see
+// Chat.js. Whitelisted so this endpoint can't be used to write arbitrary
+// fields (title, pinned, etc already have their own routes).
+const ARTIFACT_KEYS = [
+  'requirements',
+  'architecture',
+  'bom',
+  'eda_data',
+  'pcb_ir',
+  'validation',
+  'handoff_validation',
+  'documentation',
+  'code_generation',
+  'board',
+];
+
 // ---- Create chat ----
 
 export const createChat = async (data, user) => {
@@ -138,6 +159,19 @@ export const sendMessage = async (chatId, { content, attachments = [], agentType
 export const renameChat = async (id, title, user) => {
   const chat = await getOwnedChat(id, user);
   chat.title = title;
+  await chat.save();
+  return chat;
+};
+
+// ---- Update this chat's pipeline artifacts (requirements/architecture/etc) ----
+
+export const updateArtifacts = async (id, data, user) => {
+  const chat = await getOwnedChat(id, user);
+  for (const key of ARTIFACT_KEYS) {
+    if (data[key] === undefined) continue;
+    chat[key] = data[key];
+    chat.markModified(key);
+  }
   await chat.save();
   return chat;
 };

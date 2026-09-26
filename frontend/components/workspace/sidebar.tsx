@@ -4,7 +4,6 @@ import React, { useState, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import {
@@ -18,7 +17,6 @@ import {
   Settings,
   ChevronRight,
   Search,
-  Clock,
   Star,
   MoreVertical,
   Copy,
@@ -27,6 +25,7 @@ import {
   AlertCircle,
   Loader2,
   Cpu,
+  Pencil,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -46,9 +45,9 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { useWorkspaceStore } from '@/lib/store'
-import { useProjects, useToggleFavourite, useArchiveProject, useDuplicateProject, useDeleteProject, useUpdateProject } from '@/hooks/use-projects'
-import type { Project } from '@/lib/types'
-import { chatApi } from '@/lib/api'
+import { useProjects, useToggleFavourite, useArchiveProject, useDuplicateProject, useDeleteProject } from '@/hooks/use-projects'
+import { useChats, useCreateChat, useRenameChat, useDeleteChat } from '@/hooks/use-chats'
+import type { Project, Chat } from '@/lib/types'
 import { toast } from 'sonner'
 
 const PROJECT_ICONS = [Zap, Package, CheckCircle, FileText]
@@ -64,6 +63,13 @@ const VIEW_ITEMS = [
 ] as const
 
 type ProjectMenuAction = 'favorite' | 'duplicate' | 'archive' | 'delete'
+
+// Plain scrollable div, not Radix ScrollArea: ScrollArea's Viewport wraps its
+// children in a `display: table` div (see @radix-ui/react-scroll-area),
+// which breaks flex `min-w-0`/`truncate` on everything inside it — project
+// titles and other text were overflowing past the sidebar's fixed width.
+const SCROLL_CLASS =
+  'min-h-0 flex-1 overflow-y-auto overflow-x-hidden [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-track]:bg-transparent'
 
 function getProjectIcon(_id: string, index: number) {
   return PROJECT_ICONS[index % PROJECT_ICONS.length]
@@ -97,18 +103,27 @@ function projectStatusTone(project: Project): string {
 }
 
 export function Sidebar() {
-  const { activeProjectId, setActiveProjectId, activeTab, setActiveTab, sidebarCollapsed, toggleSidebar, clearAiOutput, clearPipelineProgress, triggerChatReset } = useWorkspaceStore()
+  const { activeProjectId, setActiveProjectId, activeTab, setActiveTab, sidebarCollapsed, toggleSidebar } = useWorkspaceStore()
+  const activeChatId = useWorkspaceStore((s) => s.activeChatId)
+  const setActiveChatId = useWorkspaceStore((s) => s.setActiveChatId)
   const { data, isLoading, isError } = useProjects()
   const toggleFavourite = useToggleFavourite()
   const archiveProject = useArchiveProject()
   const duplicateProject = useDuplicateProject()
   const deleteProject = useDeleteProject()
-  const updateProject = useUpdateProject()
   const router = useRouter()
+
+  const { data: chatsData, isLoading: chatsLoading } = useChats(activeProjectId)
+  const createChat = useCreateChat()
+  const renameChatMutation = useRenameChat(activeProjectId)
+  const deleteChatMutation = useDeleteChat(activeProjectId)
+  const chats = chatsData?.items || []
 
   const [search, setSearch] = useState('')
   const [deleteTarget, setDeleteTarget] = useState<Project | null>(null)
-  const [clearingChat, setClearingChat] = useState(false)
+  const [deleteChatTarget, setDeleteChatTarget] = useState<Chat | null>(null)
+  const [renamingChatId, setRenamingChatId] = useState<string | null>(null)
+  const [renameDraft, setRenameDraft] = useState('')
 
   const allProjects = data?.items || []
   const filteredProjects = search
@@ -118,10 +133,6 @@ export function Sidebar() {
       )
     : allProjects
 
-  const recentProjects = [...allProjects]
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, 3)
-
   // Projects are created through the AI chat, not a form — the "+" simply
   // clears the active project so the New Project chat is shown
   const handleNewProject = () => {
@@ -129,60 +140,72 @@ export function Sidebar() {
     setActiveTab('chat')
   }
 
-  // New Chat: clear messages, AI artifacts, and reset the chat interface
-  const handleNewChat = useCallback(async () => {
-    if (!activeProjectId) {
-      setActiveProjectId(null)
-      setActiveTab('chat')
-      return
-    }
-    if (clearingChat) return
-    setClearingChat(true)
-    try {
-      // Fetch the chat for this project and clear its messages
-      const chatsRes = (await chatApi.list(activeProjectId)) as { items?: Array<{ _id: string }> }
-      const chatId = chatsRes?.items?.[0]?._id
-      if (chatId) {
-        await chatApi.clearMessages(chatId)
-      }
-      // Clear AI artifacts from the project in MongoDB
-      updateProject.mutate({
-        id: activeProjectId,
-        data: {
-          requirements: {},
-          architecture: {},
-          bom: {},
-          eda_data: {},
-          pcb_ir: {},
-          validation: {},
-          // Both of these were missing, so "New Chat" cleared the store but
-          // left the saved copies behind and the next project load restored
-          // them: a cleared project came back with its old validation result
-          // and its old board still attached.
-          handoff_validation: {},
-          documentation: {},
-          board: {},
-        } as Record<string, unknown>,
-      })
-      // Clear local store state
-      clearAiOutput()
-      clearPipelineProgress()
-      // Signal the chat interface to reset
-      triggerChatReset()
-      setActiveTab('chat')
-      toast.success('Chat cleared — start fresh!')
-    } catch {
-      toast.error('Failed to clear chat')
-    } finally {
-      setClearingChat(false)
-    }
-  }, [activeProjectId, clearingChat, clearAiOutput, clearPipelineProgress, triggerChatReset, setActiveTab, updateProject, setActiveProjectId])
-
   // Select project: set active ID and switch tab to chat so conversation history is immediately visible
   const handleSelectProject = useCallback((id: string) => {
     setActiveProjectId(id)
     setActiveTab('chat')
   }, [setActiveProjectId, setActiveTab])
+
+  // Switch to a different chat session within the active project.
+  const handleSelectChat = useCallback((id: string) => {
+    setActiveChatId(id)
+    setActiveTab('chat')
+  }, [setActiveChatId, setActiveTab])
+
+  // Start a brand-new conversation thread. Deliberately does NOT touch the
+  // project's requirements/architecture/bom/etc — those belong to the design,
+  // not to any one conversation, and other sessions may still depend on them.
+  const handleNewSession = useCallback(async () => {
+    if (!activeProjectId) return
+    try {
+      const chat = await createChat.mutateAsync({ projectId: activeProjectId, title: 'New chat' })
+      setActiveChatId(chat._id)
+      setActiveTab('chat')
+    } catch {
+      toast.error('Failed to create a new chat session')
+    }
+  }, [activeProjectId, createChat, setActiveChatId, setActiveTab])
+
+  const startRenameChat = (chat: Chat) => {
+    setRenamingChatId(chat._id)
+    setRenameDraft(chat.title)
+  }
+
+  const commitRenameChat = async () => {
+    const id = renamingChatId
+    const title = renameDraft.trim()
+    setRenamingChatId(null)
+    if (!id || !title) return
+    try {
+      await renameChatMutation.mutateAsync({ id, title })
+    } catch {
+      toast.error('Failed to rename session')
+    }
+  }
+
+  const handleDeleteChat = async () => {
+    if (!deleteChatTarget) return
+    const target = deleteChatTarget
+    setDeleteChatTarget(null)
+    try {
+      await deleteChatMutation.mutateAsync(target._id)
+      toast.success('Session deleted')
+      // The active session just disappeared — hand off to another one (or a
+      // fresh one, if that was the last) rather than leaving the chat view
+      // pointed at a chat that no longer exists.
+      if (activeChatId === target._id) {
+        const remaining = chats.filter((c) => c._id !== target._id)
+        if (remaining.length > 0) {
+          setActiveChatId(remaining[0]._id)
+        } else if (activeProjectId) {
+          const chat = await createChat.mutateAsync({ projectId: activeProjectId, title: 'New chat' })
+          setActiveChatId(chat._id)
+        }
+      }
+    } catch {
+      toast.error('Failed to delete session')
+    }
+  }
 
   const handleProjectAction = (action: ProjectMenuAction, project: Project) => {
     if (action === 'favorite') {
@@ -267,7 +290,7 @@ export function Sidebar() {
 
       {sidebarCollapsed ? (
         <TooltipProvider delayDuration={0}>
-          <ScrollArea className="min-h-0 flex-1">
+          <div className={SCROLL_CLASS}>
             <div className="flex h-full min-h-0 flex-col items-center gap-3 px-2 py-3">
               <div className="flex shrink-0 flex-col items-center gap-2">
                 <Tooltip>
@@ -374,11 +397,11 @@ export function Sidebar() {
                 </div>
               </div>
             </div>
-          </ScrollArea>
+          </div>
         </TooltipProvider>
       ) : (
-        <ScrollArea className="min-h-0 flex-1 w-full min-w-0 overflow-hidden">
-          <div className="space-y-4 p-4 w-full min-w-0 overflow-hidden">
+        <div className={SCROLL_CLASS}>
+          <div className="space-y-4 p-4 w-full min-w-0">
             <section className="rounded-2xl border border-sidebar-border/80 bg-sidebar-accent/20 px-3 py-2 shadow-sm">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -503,25 +526,130 @@ export function Sidebar() {
               })}
             </section>
 
+            {activeProjectId && (
+              <section className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-sidebar-foreground/50">Chat sessions</p>
+                  <span className="rounded-full border border-sidebar-border bg-background/60 px-2 py-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-sidebar-foreground/60">
+                    {chats.length}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={handleNewSession}
+                  disabled={createChat.isPending}
+                  className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-sidebar-border/80 px-3 py-2 text-xs font-medium text-sidebar-foreground/70 transition-all duration-200 hover:border-sidebar-foreground/30 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground active:scale-[0.98] disabled:opacity-50 cursor-pointer"
+                >
+                  {createChat.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <MessageSquarePlus className="h-4 w-4" />
+                  )}
+                  New session
+                </button>
+
+                {chatsLoading && (
+                  <div className="space-y-1.5">
+                    {Array.from({ length: 2 }).map((_, i) => (
+                      <Skeleton key={i} className="h-11 w-full rounded-xl" />
+                    ))}
+                  </div>
+                )}
+
+                {!chatsLoading && chats.length === 0 && (
+                  <p className="rounded-xl border border-dashed border-sidebar-border px-3 py-3 text-center text-xs text-sidebar-foreground/45">
+                    No sessions yet
+                  </p>
+                )}
+
+                <div className="space-y-1">
+                  {chats.map((chat) => {
+                    const isActiveChat = activeChatId === chat._id
+                    const isRenaming = renamingChatId === chat._id
+                    return (
+                      <div key={chat._id} className="group flex items-center gap-0.5 rounded-xl w-full min-w-0 overflow-hidden">
+                        {isRenaming ? (
+                          <Input
+                            autoFocus
+                            value={renameDraft}
+                            onChange={(e) => setRenameDraft(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') commitRenameChat()
+                              if (e.key === 'Escape') setRenamingChatId(null)
+                            }}
+                            onBlur={commitRenameChat}
+                            className="h-9 flex-1 rounded-xl border-sidebar-border bg-background/70 px-2.5 text-xs text-sidebar-foreground"
+                          />
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleSelectChat(chat._id)}
+                            className={`flex-1 min-w-0 overflow-hidden flex items-center gap-2 rounded-xl px-2.5 py-2 text-left transition-all duration-200 cursor-pointer select-none active:scale-[0.99] ${
+                              isActiveChat
+                                ? 'bg-sidebar-accent text-sidebar-foreground shadow-sm'
+                                : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground'
+                            }`}
+                          >
+                            <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                            <span className="min-w-0 flex-1 overflow-hidden">
+                              <span className="flex items-center gap-1.5 min-w-0">
+                                <span className="truncate text-xs font-semibold leading-5 block min-w-0">{chat.title}</span>
+                                {chat.pinned && <Star className="h-3 w-3 shrink-0 fill-amber-500 text-amber-500" />}
+                              </span>
+                              <span className="truncate block text-[10px] leading-4 text-sidebar-foreground/50">
+                                {chat.messageCount} messages · {formatRelativeTime(chat.lastMessageAt)}
+                              </span>
+                            </span>
+                          </button>
+                        )}
+
+                        {!isRenaming && (
+                          <div className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  type="button"
+                                  aria-label={`Session actions for ${chat.title}`}
+                                  title={`Session actions for ${chat.title}`}
+                                  className="h-6 w-6 rounded-md text-sidebar-foreground/40 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                                >
+                                  <MoreVertical className="h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="border border-sidebar-border bg-background/95 backdrop-blur-xl">
+                                <DropdownMenuItem
+                                  onClick={() => startRenameChat(chat)}
+                                  className="text-xs cursor-pointer hover:bg-background/50"
+                                >
+                                  <Pencil className="w-3 h-3 mr-2" />
+                                  Rename
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator className="bg-foreground/10" />
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteChatTarget(chat)}
+                                  className="text-xs cursor-pointer text-destructive hover:bg-destructive/10"
+                                >
+                                  <Trash2 className="w-3 h-3 mr-2" />
+                                  Delete
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+              </section>
+            )}
+
             <section className="space-y-2">
               <div className="flex items-center justify-between px-1">
                 <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-sidebar-foreground/50">Views</p>
               </div>
-
-              {/* Always visible New Chat button */}
-              <button
-                type="button"
-                onClick={handleNewChat}
-                disabled={clearingChat}
-                className="flex w-full items-center gap-2.5 rounded-xl border border-dashed border-sidebar-border/80 px-3 py-2 text-xs font-medium text-sidebar-foreground/70 transition-all duration-200 hover:border-sidebar-foreground/30 hover:bg-sidebar-accent/60 hover:text-sidebar-foreground active:scale-[0.98] disabled:opacity-50 cursor-pointer"
-              >
-                {clearingChat ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <MessageSquarePlus className="h-4 w-4" />
-                )}
-                New Chat
-              </button>
 
               <div className="space-y-1">
                 {VIEW_ITEMS.map((tab) => {
@@ -548,39 +676,8 @@ export function Sidebar() {
                 })}
               </div>
             </section>
-
-            <section className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <p className="text-[10px] font-mono uppercase tracking-[0.24em] text-sidebar-foreground/50">Recent</p>
-                <Clock className="h-3.5 w-3.5 text-sidebar-foreground/40" />
-              </div>
-              <div className="space-y-1">
-                {recentProjects.length > 0 ? (
-                  recentProjects.map((project) => (
-                    <button
-                      key={project._id}
-                      type="button"
-                      onClick={() => handleSelectProject(project._id)}
-                      className="w-full rounded-xl px-3 py-2 text-left text-xs text-sidebar-foreground/75 transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                    >
-                      <div className="flex items-center justify-between gap-2 min-w-0">
-                        <p className="truncate min-w-0 font-medium text-sidebar-foreground">{project.title}</p>
-                        <span className="shrink-0 text-[10px] text-sidebar-foreground/45">
-                          {formatRelativeTime(project.updatedAt)}
-                        </span>
-                      </div>
-                      <p className="mt-0.5 truncate text-[11px] text-sidebar-foreground/50">{formatProjectStage(project)}</p>
-                    </button>
-                  ))
-                ) : (
-                  <p className="rounded-xl border border-dashed border-sidebar-border px-3 py-3 text-xs text-sidebar-foreground/45">
-                    No recent activity
-                  </p>
-                )}
-              </div>
-            </section>
           </div>
-        </ScrollArea>
+        </div>
       )}
 
       <div className="shrink-0 border-t border-sidebar-border/80 p-4">
@@ -615,6 +712,29 @@ export function Sidebar() {
               className="bg-destructive text-white hover:bg-destructive/90"
             >
               {deleteProject.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Chat Session Confirmation */}
+      <AlertDialog open={!!deleteChatTarget} onOpenChange={(open) => !open && setDeleteChatTarget(null)}>
+        <AlertDialogContent className="bg-background/95 backdrop-blur-xl border-foreground/10">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this chat session?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`"${deleteChatTarget?.title ?? ''}" and its messages will be permanently removed. This action cannot be undone.`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteChat}
+              disabled={deleteChatMutation.isPending}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              {deleteChatMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

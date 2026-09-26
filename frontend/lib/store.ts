@@ -130,6 +130,11 @@ const emptyAiOutput: AiOutput = {
 
 interface WorkspaceState {
   activeProjectId: string | null
+  // Which chat *session* within the active project is open. A project can
+  // have many chats (see the Chat model); this is the one chat-interface
+  // loads messages for and posts new ones into. Null means "not chosen yet
+  // / let chat-interface pick the most recent one," same as on first load.
+  activeChatId: string | null
   activeTab: string
   sidebarCollapsed: boolean
   pendingPrompt: string | null
@@ -142,14 +147,12 @@ interface WorkspaceState {
   pipelineProgress: PipelineProgress
   pipelineRun: PipelineRunStatus
 
-  // Counter incremented by sidebar "New Chat" to signal chat-interface to reset
-  chatResetCounter: number
-
   // Selected AI Model for chat / supervisor pipeline
   selectedModel: string
   setSelectedModel: (model: string) => void
 
   setActiveProjectId: (id: string | null) => void
+  setActiveChatId: (id: string | null) => void
   setActiveTab: (tab: string) => void
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
@@ -182,7 +185,6 @@ interface WorkspaceState {
   setPipelineProgress: (progress: PipelineProgress) => void
   clearPipelineProgress: () => void
   setPipelineRun: (status: PipelineRunStatus) => void
-  triggerChatReset: () => void
   startBoardJob: (jobId: string) => void
   pushBoardProgress: (update: { stage?: string | null; label?: string | null; detail?: string | null }) => void
   completeBoardJob: (board: BoardArtifact) => void
@@ -192,6 +194,7 @@ interface WorkspaceState {
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   activeProjectId: null,
+  activeChatId: null,
   activeTab: 'chat',
   sidebarCollapsed: true,
   pendingPrompt: null,
@@ -199,11 +202,15 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   boardJob: idleBoardJob,
   pipelineProgress: { activeNode: '', completedNodes: [] },
   pipelineRun: 'idle',
-  chatResetCounter: 0,
   selectedModel: 'openai/gpt-oss-120b',
 
   setSelectedModel: (model) => set({ selectedModel: model }),
-  setActiveProjectId: (id) => set({ activeProjectId: id }),
+  // A different project means a different set of chat sessions -- carrying
+  // the old project's activeChatId forward would have chat-interface try to
+  // load a chat that doesn't belong to (and may not even exist under) the
+  // newly active project.
+  setActiveProjectId: (id) => set({ activeProjectId: id, activeChatId: null }),
+  setActiveChatId: (id) => set({ activeChatId: id }),
   setActiveTab: (tab) => set({ activeTab: tab }),
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
@@ -271,7 +278,6 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   setPipelineProgress: (progress) => set({ pipelineProgress: progress }),
   clearPipelineProgress: () => set({ pipelineProgress: { activeNode: '', completedNodes: [] } }),
   setPipelineRun: (status) => set({ pipelineRun: status }),
-  triggerChatReset: () => set((state) => ({ chatResetCounter: state.chatResetCounter + 1 })),
 
   startBoardJob: (jobId) =>
     set({ boardJob: { ...idleBoardJob, status: 'running', jobId, label: 'Starting board generation' } }),

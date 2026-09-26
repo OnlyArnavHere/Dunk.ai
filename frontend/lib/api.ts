@@ -150,6 +150,9 @@ export const chatApi = {
   list: (projectId: string) =>
     request(`/chats/project/${projectId}`),
 
+  get: (chatId: string) =>
+    request(`/chats/${chatId}`),
+
   messages: (chatId: string, page = 1, limit = 50) =>
     request(`/chats/${chatId}/messages?page=${page}&limit=${limit}`),
 
@@ -163,6 +166,15 @@ export const chatApi = {
     request(`/chats/${chatId}`, {
       method: 'PATCH',
       body: JSON.stringify({ title }),
+    }),
+
+  // Persists this ONE chat session's pipeline artifacts (requirements,
+  // architecture, bom, etc) — each session holds its own, not shared with
+  // other sessions in the same project. See backend Chat.js/chat.service.js.
+  updateArtifacts: (chatId: string, data: Record<string, unknown>) =>
+    request(`/chats/${chatId}/artifacts`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
     }),
 
   saveMessage: (chatId: string, type: 'user' | 'assistant', content: string, options?: string[]) =>
@@ -200,6 +212,7 @@ export const aiApi = {
 
   runStream: (data: {
     projectId?: string
+    chatId?: string
     action?: string
     messages?: Array<{ role: string; content: string }>
     pcbIr?: Record<string, unknown>
@@ -224,6 +237,7 @@ export const aiApi = {
    */
   generateBoard: (
     projectId: string,
+    chatId: string | null,
     pcbIr: Record<string, unknown>,
     opts: { provider?: string; model?: string } = {}
   ) =>
@@ -231,6 +245,7 @@ export const aiApi = {
       method: 'POST',
       body: JSON.stringify({
         projectId,
+        ...(chatId ? { chatId } : {}),
         action: 'generate_board',
         pcbIr,
         ...(opts.provider ? { provider: opts.provider } : {}),
