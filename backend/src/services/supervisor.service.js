@@ -22,11 +22,53 @@ export const deleteJobStatus = (jobId) => {
 };
 
 /**
+ * The request body sent to the Python supervisor, in one place.
+ *
+ * Both callers used to inline `JSON.stringify({ action, project, messages,
+ * files, jobId })`, which silently discarded anything not in that list —
+ * `agentType` was being passed in by the controller and dropped here for every
+ * chat request, even though SupervisorRequest declares it and _handle_chat
+ * depends on it. Optional fields are omitted rather than sent as null so the
+ * Pydantic defaults on the other side still apply.
+ *
+ * @param {object} fields - action, project, messages, files, jobId, agentType, provider, model
+ * @returns {object} body for the supervisor, optional keys omitted when unset
+ */
+const buildSupervisorBody = ({
+  action,
+  project,
+  messages,
+  files,
+  jobId,
+  agentType,
+  provider,
+  model,
+}) => ({
+  action,
+  project,
+  messages,
+  files,
+  jobId,
+  ...(agentType ? { agentType } : {}),
+  ...(provider ? { provider } : {}),
+  ...(model ? { model } : {}),
+});
+
+/**
  * Security boundary: Node.js talks ONLY to the Supervisor Agent.
  * Downstream AI agents (Requirement, Architecture, Component, PCB, Validation, Documentation)
  * are internal to the Python engine and are never addressed directly here.
  */
-export const callSupervisor = async ({ action, project, messages = [], files = [], jobId = null }) => {
+export const callSupervisor = async ({
+  action,
+  project,
+  messages = [],
+  files = [],
+  jobId = null,
+  agentType = null,
+  provider = null,
+  model = null,
+}) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
 
@@ -43,7 +85,11 @@ export const callSupervisor = async ({ action, project, messages = [], files = [
       method: 'POST',
       headers,
       signal: controller.signal,
-      body: JSON.stringify({ action, project, messages, files, jobId }),
+      // Built with buildSupervisorBody so a field added to the contract cannot
+      // be silently dropped here — which is exactly what happened to agentType.
+      body: JSON.stringify(
+        buildSupervisorBody({ action, project, messages, files, jobId, agentType, provider, model })
+      ),
     });
 
     const body = await response.json().catch(() => ({}));
@@ -174,6 +220,42 @@ const parseSSEBuffer = (buffer) => {
 };
 
 /**
+ * Write a completed run's board state onto its Project.
+ *
+ * Every other artifact a run produces is persisted by the browser through
+ * PATCH /projects/:id once ai:complete arrives. The board cannot be: it is the
+ * one artifact that is not re-derivable (its files live under uploads/boards/
+ * and `urls` is the only record of where they are), and a board run can finish
+ * after the tab that started it is gone. So it is written here, where the
+ * completion actually lands, whether or not anyone is still listening.
+ *
+ * The clearing branch mirrors the rule the workspace store applies in memory
+ * (see setAiOutput in frontend/lib/store.ts): a run that delivers new
+ * components retires the board built from the previous ones, because showing
+ * that board beside a different BOM would be a different design than the one on
+ * screen. `{}` rather than null is the "untouched" value the rest of the
+ * Project's Mixed fields use.
+ */
+const persistBoardState = async (project, result) => {
+  const projectId = project?._id;
+  if (!projectId || !result || typeof result !== 'object') return;
+
+  const board = result.board;
+  const hasBoard = board && typeof board === 'object';
+  const componentsReplaced = Boolean(result.bom || result.pcb_ir);
+  if (!hasBoard && !componentsReplaced) return;
+
+  try {
+    const { Project } = await import('../models/Project.js');
+    await Project.updateOne({ _id: projectId }, { $set: { board: hasBoard ? board : {} } });
+  } catch (error) {
+    // A board that is on screen but unsaved is a bad outcome, but it is not
+    // worth tearing down the stream the user is currently watching.
+    console.error(`[AI Stream] could not persist board for project ${projectId}:`, error.message);
+  }
+};
+
+/**
  * Call the Supervisor Agent's streaming endpoint and relay progress over
  * Socket.io.
  *
@@ -190,7 +272,19 @@ const parseSSEBuffer = (buffer) => {
  * @param {object} opts - { action, project, messages, files, jobId }
  * @returns {Promise<object>} final serialised state (from the ``complete`` event)
  */
-export const callSupervisorStream = async (io, { action, project, messages = [], files = [], jobId }) => {
+export const callSupervisorStream = async (
+  io,
+  {
+    action,
+    project,
+    messages = [],
+    files = [],
+    jobId,
+    agentType = null,
+    provider = null,
+    model = null,
+  }
+) => {
   setJobStatus(jobId, 'running');
 
   const headers = { 'content-type': 'application/json' };
@@ -204,7 +298,9 @@ export const callSupervisorStream = async (io, { action, project, messages = [],
       method: 'POST',
       headers,
       // No signal / no timeout — the stream lives as long as the pipeline runs.
-      body: JSON.stringify({ action, project, messages, files, jobId }),
+      body: JSON.stringify(
+        buildSupervisorBody({ action, project, messages, files, jobId, agentType, provider, model })
+      ),
     });
   } catch (error) {
     setJobStatus(jobId, 'failed', { error: 'Supervisor Agent is unavailable' });
@@ -249,6 +345,7 @@ export const callSupervisorStream = async (io, { action, project, messages = [],
           emitAIComplete(io, jobId, data);
           finalResult = data.data || data;
           setJobStatus(jobId, 'completed', finalResult);
+          await persistBoardState(project, finalResult);
         }
       }
     }

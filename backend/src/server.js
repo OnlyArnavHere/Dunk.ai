@@ -1,8 +1,11 @@
+import dns from 'node:dns';
 import http from 'node:http';
 import { app } from './app.js';
 import { env } from './config/env.js';
 import { connectDatabase } from './config/database.js';
 import { initSocket } from './sockets/index.js';
+
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 const start = async () => {
   try {
