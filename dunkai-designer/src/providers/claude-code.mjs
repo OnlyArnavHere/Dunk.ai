@@ -30,6 +30,13 @@
  *     stage — "claude-code working · 2m 30s · Write src/board.tsx" — and
  *   - an idle watchdog kills the process with a clear error if it produces no
  *     event at all for CLAUDE_CODE_IDLE_TIMEOUT_MS (default 5 minutes).
+ *
+ * The stream includes partial messages (--include-partial-messages), i.e. the
+ * token deltas as the model thinks and writes. Without them an event arrives
+ * only when a whole message is finished, and Opus writing all of board.tsx in
+ * one Write call is a single message that can take more than five minutes — a
+ * real run was killed by the watchdog mid-write exactly that way. With deltas,
+ * five silent minutes means the CLI really has stopped.
  */
 
 import { spawn, spawnSync } from "node:child_process"
@@ -37,7 +44,7 @@ import { existsSync } from "node:fs"
 import { readFile } from "node:fs/promises"
 import os from "node:os"
 import path from "node:path"
-import { note } from "../lib/events.mjs"
+import { note, stage } from "../lib/events.mjs"
 import { findUndeclaredNetRefs } from "../lib/nets.mjs"
 import {
   FOOTPRINTER_GUIDE,
@@ -164,6 +171,15 @@ const formatElapsed = (ms) => {
 
 /** A short "what is it doing" line from one stream-json event, if it says anything. */
 function describeEvent(event) {
+  if (event.type === "stream_event") {
+    // Partial messages: say what the model is producing right now.
+    const inner = event.event ?? {}
+    if (inner.type === "content_block_start" && inner.content_block?.type === "tool_use") {
+      return `${inner.content_block.name} (composing)`
+    }
+    if (inner.type === "content_block_delta" && inner.delta?.type === "thinking_delta") return "thinking"
+    return null
+  }
   if (event.type !== "assistant") return null
   for (const block of event.message?.content ?? []) {
     if (block.type === "tool_use") {
@@ -197,7 +213,7 @@ function runClaude(args, { cwd, timeoutMs, stageId, label }) {
     // No shell: the binary path is resolved, and the prompt argument contains
     // quotes and newlines that a shell would mangle. stdin is closed because
     // nothing is ever piped in; the prompt travels as an argument.
-    const child = spawn(binary, [...args, "--output-format", "stream-json", "--verbose"], {
+    const child = spawn(binary, [...args, "--output-format", "stream-json", "--verbose", "--include-partial-messages"], {
       cwd,
       env: cliEnv(),
       stdio: ["ignore", "pipe", "pipe"],
@@ -405,27 +421,18 @@ export function createClaudeCodeProvider(options = {}) {
 
       note(`  provider: claude-code (${model}) generating into ${workdir}`)
 
-      const runGenerate = (prompt) =>
+      // runClaude sets the output format itself (stream-json, which drives the
+      // heartbeat and idle watchdog) and resolves with `{ result }`.
+      const runGenerate = (prompt, label = "writing the board") =>
         runClaude(
-          [
-            "-p",
-            prompt,
-            "--output-format",
-            "json",
-            "--model",
-            model,
-            "--permission-mode",
-            "acceptEdits",
-            "--add-dir",
-            workdir,
-          ],
-          { cwd: workdir, timeoutMs }
+          ["-p", prompt, "--model", model, "--permission-mode", "acceptEdits", "--add-dir", workdir],
+          { cwd: workdir, timeoutMs, stageId: "D", label }
         )
 
       const readBoardTsx = () =>
         readFile(path.join(workdir, "src", "board.tsx"), "utf-8").catch(() => "")
 
-      let { stdout } = await runGenerate(basePrompt)
+      let { result } = await runGenerate(basePrompt)
       let boardTsx = await readBoardTsx()
 
       // Writes through file tools rather than our own writeFiles, so these
@@ -435,12 +442,13 @@ export function createClaudeCodeProvider(options = {}) {
       const usesPlaceholderNet = /POWER_RAIL/.test(boardTsx) && !brief.includes("POWER_RAIL")
       if (usesPlaceholderPart && usesPlaceholderNet) {
         note(`  claude-code echoed the skeleton's example part/net — retrying once`)
-        ;({ stdout } = await runGenerate(
+        ;({ result } = await runGenerate(
           "src/board.tsx copied the example part name and net name " +
             "(STC89C52RC_40I_PDIP40 / POWER_RAIL) from a skeleton reference instead " +
             "of using this design's own resolved parts and nets. Rewrite " +
             "src/board.tsx using ONLY the parts and nets named in this brief:\n\n" +
-            brief
+            brief,
+          "replacing copied skeleton parts"
         ))
         boardTsx = await readBoardTsx()
       }
@@ -448,12 +456,13 @@ export function createClaudeCodeProvider(options = {}) {
       const { missing } = boardTsx ? findUndeclaredNetRefs(boardTsx) : { missing: [] }
       if (missing.length > 0) {
         note(`  claude-code referenced undeclared net(s): ${missing.join(", ")} — retrying once`)
-        ;({ stdout } = await runGenerate(
+        ;({ result } = await runGenerate(
           `src/board.tsx references these net names without declaring them with ` +
             `<net name="..." />: ${missing.join(", ")}. tscircuit does not error on ` +
             `this — it silently creates a new disconnected net instead. Add the ` +
             `missing <net> declaration(s) to src/board.tsx, or fix the typo if one ` +
-            `was intended to match an existing declared net.`
+            `was intended to match an existing declared net.`,
+          "declaring missing nets"
         ))
       }
 

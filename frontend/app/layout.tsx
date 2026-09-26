@@ -31,7 +31,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`bg-background ${playfair.variable}`} suppressHydrationWarning>
-      <body className="font-sans antialiased">
+      {/* Browser extensions (Grammarly and others) add attributes to <body>
+          before React hydrates, which it reports as a mismatch. This covers
+          attributes on <body> itself only; its children are still checked. */}
+      <body className="font-sans antialiased" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <QueryProvider>
             <AuthProvider>

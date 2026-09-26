@@ -5,61 +5,54 @@ import { useWorkspaceStore, type BoardJob, type PipelineRunStatus } from '@/lib/
 import { ArcadeWindow, WINDOW_EXIT_MS, type ArcadeNotice } from './arcade-window'
 
 /**
- * Dunk Arcade — a mini game offered while an AI job is running.
- *
- * A "job" is one continuous stretch of work: a chat pipeline turn, the board
- * run it hands off to, or a board started by hand from the BOM tab. Each job
- * gets exactly one session:
+ * Dunk Arcade — a mini game that is always on hand in the workspace.
  *
  *   ship ──double-click──> launching ──> open <──> minimized
- *     │                                   │
- *     │                                   ├── job ends: notice over the game
- *     │                                   └── close ──> closing ──> landing ──┐
- *     │                                                                       │
- *     └── job ends ─────────────────────────────────────────────> departing <─┘
+ *    ▲                                    │
+ *    │                                    ├── a job ends: notice over the game
+ *    │                                    │     ├── follow it: switch tab, game minimized (kept)
+ *    │                                    │     └── keep playing
+ *    └──────── landing <── closing <──────┴── close (that game ends)
  *
- * Leaving is always animated, in reverse of the arrival: the window shrinks back
- * into its corner, the battle ship turns back into the idle ship, and the bubble
- * shrinks away. After `departing` the session is gone if the job has ended, or
- * parked as `closed` if it is still running — a closed game stays closed until
- * the next job, so the exit is a goodbye, not an offer to reopen.
+ * The ship never goes away. Closing plays the arrival in reverse — the window
+ * shrinks back into its corner and the battle ship turns back into the idle
+ * ship — and lands on the ship again, ready for a fresh game. A job finishing
+ * never ends the game either: the player is told (a notice they cannot miss, and
+ * a minimized game is brought back up to show it) and then chooses.
  *
  * The arcade only READS job state from the store. It never touches the socket
- * listeners or the requests that drive the run, so nothing it does can delay
- * or swallow an ai:complete.
+ * listeners or the requests that drive a run, so nothing it does can delay or
+ * swallow an ai:complete.
  */
 
 /** Play lengths of ship-launch.gif and ship-land.gif, as printed by
  *  scripts/prepare-arcade-assets.py. */
 const LAUNCH_MS = 1750
 const LAND_MS = 1270
-/** How long the bubble takes to shrink away, the reverse of its zoom-in. */
-const SHIP_EXIT_MS = 300
 
 const IDLE_SHIP_SRC = '/arcade/idle-ship.gif'
 const LAUNCH_SRC = '/arcade/ship-launch.gif'
 const LAND_SRC = '/arcade/ship-land.gif'
 
-/** How long the "double-click to play" hint shows at the start of a job. */
+/** How long the "double-click to play" hint shows when a job starts. */
 const HINT_MS = 5000
 
-// The launcher bubble. The launch animation plays inside the same bubble: both
-// GIFs share one crop box, so the ship transforms in place without a jump.
+// The launcher bubble. The launch and landing animations play inside the same
+// bubble: all three GIFs share one crop box, so the ship transforms in place.
 const BUBBLE =
   'flex h-16 w-16 select-none items-center justify-center rounded-full border border-border bg-card/90 shadow-[0_14px_50px_rgba(0,0,0,0.3)] backdrop-blur-md'
 
-type Phase = 'ship' | 'launching' | 'open' | 'closing' | 'landing' | 'departing' | 'closed'
+type Phase = 'ship' | 'launching' | 'open' | 'closing' | 'landing'
 
 type Outcome = 'board-ready' | 'board-failed' | 'question' | 'design-ready' | 'failed'
 
-interface Session {
-  id: number
+interface ArcadeState {
   phase: Phase
   minimized: boolean
-  /** The job this session belongs to has stopped. */
-  ended: boolean
-  /** How it ended, when there is something to announce. */
+  /** A finished job to announce over the game, until the player responds. */
   outcome: Outcome | null
+  /** Counts launches: keys each game (a fresh one per launch) and its GIF URLs. */
+  game: number
 }
 
 const NODE_LABELS: Record<string, string> = {
@@ -83,7 +76,7 @@ const OUTCOME_TAB: Record<Outcome, string> = {
 }
 
 /**
- * How the job ended, read off the store at the moment it stopped being busy.
+ * How a job ended, read off the store at the moment it stopped being busy.
  * `null` means the run was abandoned rather than finished (the chat switched
  * project or started a new chat), which has nothing to announce.
  */
@@ -116,15 +109,16 @@ export function Arcade() {
 
   const busy = pipelineRun === 'running' || boardJob.status === 'running'
 
-  const [session, setSession] = useState<Session | null>(null)
+  const [arcade, setArcade] = useState<ArcadeState>({ phase: 'ship', minimized: false, outcome: null, game: 0 })
   const [showHint, setShowHint] = useState(false)
-  const nextId = useRef(0)
-  // Whether this job has touched board generation, and the board job object as
-  // it stood when the job began. The second catches a board that failed before
-  // it ever reached `running` (its POST was refused) — a state change the
-  // `running` watcher alone would never see.
+
+  // Whether the current job has touched board generation, and the board job
+  // object as it stood when the job began. The second catches a board that
+  // failed before it ever reached `running` (its POST was refused) — a state
+  // change the `running` watcher alone would never see.
   const boardInvolved = useRef(false)
   const boardJobAtStart = useRef<BoardJob | null>(null)
+  const wasBusy = useRef(false)
 
   useEffect(() => {
     if (boardJob.status === 'running') boardInvolved.current = true
@@ -132,103 +126,77 @@ export function Arcade() {
 
   // ---- job start / end ----------------------------------------------------------
   useEffect(() => {
+    if (busy === wasBusy.current) return
+    wasBusy.current = busy
+
     if (busy) {
-      setSession((current) => {
-        if (current && !current.ended) return current // same job, still running
-        boardInvolved.current = useWorkspaceStore.getState().boardJob.status === 'running'
-        boardJobAtStart.current = useWorkspaceStore.getState().boardJob
-        nextId.current += 1
-        return { id: nextId.current, phase: 'ship', minimized: false, ended: false, outcome: null }
-      })
-      return
+      const state = useWorkspaceStore.getState()
+      boardInvolved.current = state.boardJob.status === 'running'
+      boardJobAtStart.current = state.boardJob
+      // A notice about the previous job is stale once the next one is running.
+      setArcade((a) => (a.outcome ? { ...a, outcome: null } : a))
+      setShowHint(true)
+      const t = window.setTimeout(() => setShowHint(false), HINT_MS)
+      return () => {
+        window.clearTimeout(t)
+        setShowHint(false)
+      }
     }
 
     const state = useWorkspaceStore.getState()
     const boardChanged = boardJobAtStart.current !== null && state.boardJob !== boardJobAtStart.current
     const outcome = outcomeOf(state.pipelineRun, state.boardJob, boardInvolved.current || boardChanged)
+    if (!outcome) return
 
-    setSession((current) => {
-      if (!current || current.ended) return current
-      switch (current.phase) {
-        case 'ship':
-          // Never played: the ship takes its leave, reversing its entrance.
-          return { ...current, ended: true, phase: 'departing' }
-        case 'closed':
-          // The player already closed this game; there is nothing left on screen.
-          return null
-        case 'launching':
-        case 'open':
-          // In the game, or on the way into it: stop and say so. A minimized
-          // game is brought back up, because a notice nobody can see is a
-          // swallowed one.
-          if (outcome) return { ...current, ended: true, outcome, minimized: false }
-          // Abandoned (project switch, new chat): nothing to announce, so it
-          // leaves the way a close does.
-          return { ...current, ended: true, phase: current.phase === 'open' ? 'closing' : 'departing' }
-        default:
-          // Already on its way out; let the exit finish, then remove it.
-          return { ...current, ended: true }
-      }
-    })
+    // Announced only to someone in the game (or on the way into it); at the
+    // ship, the chat's own message is where the result is read. A minimized
+    // game is brought back up, because a notice nobody can see is a swallowed one.
+    setArcade((a) => (a.phase === 'open' || a.phase === 'launching' ? { ...a, outcome, minimized: false } : a))
   }, [busy])
 
-  // A short hint at the start of each job, so the ship reads as something to use.
-  const sessionId = session?.id
-  const phase = session?.phase
-  useEffect(() => {
-    if (phase !== 'ship') return
-    setShowHint(true)
-    const t = window.setTimeout(() => setShowHint(false), HINT_MS)
-    return () => window.clearTimeout(t)
-  }, [sessionId, phase])
-
-  const update = useCallback((patch: Partial<Session>) => {
-    setSession((current) => (current ? { ...current, ...patch } : current))
-  }, [])
-
   /**
-   * Move from one phase to the next, but only if the session is still in the
-   * phase the caller started from — a timer or animation that outlives its
-   * phase must not drag a newer state backwards. `gone` ends the exit: the
-   * session is removed if its job is over, or parked as `closed` if it is not.
+   * Move from one phase to the next, but only if still in the phase the caller
+   * started from — a timer or animation that outlives its phase must not drag a
+   * newer state backwards.
    */
-  const advance = useCallback((from: Phase, to: Phase | 'gone') => {
-    setSession((current) => {
-      if (!current || current.phase !== from) return current
-      if (to === 'gone') return current.ended ? null : { ...current, phase: 'closed' }
-      return { ...current, phase: to }
-    })
+  const advance = useCallback((from: Phase, to: Phase) => {
+    setArcade((a) => (a.phase === from ? { ...a, phase: to } : a))
   }, [])
 
   const launch = useCallback(() => {
-    advance('ship', prefersReducedMotion() ? 'open' : 'launching')
-  }, [advance])
+    setShowHint(false)
+    setArcade((a) =>
+      a.phase === 'ship'
+        ? { phase: prefersReducedMotion() ? 'open' : 'launching', minimized: false, outcome: null, game: a.game + 1 }
+        : a
+    )
+  }, [])
 
-  // Closing is final for this job: the exit sequence ends in `closed` (job
-  // still running) or removal (job over), and no ship is offered again until
-  // the next job starts.
-  const close = useCallback(() => advance('open', 'closing'), [advance])
+  // Closing ends this game and flies back to the ship, which stays.
+  const close = useCallback(() => {
+    setArcade((a) => (a.phase === 'open' ? { ...a, phase: 'closing', outcome: null } : a))
+  }, [])
 
+  // Go and look at the result, keeping the game: it is minimized, not closed.
   const followNotice = useCallback(() => {
-    if (session?.outcome) setActiveTab(OUTCOME_TAB[session.outcome])
-    close()
-  }, [session?.outcome, setActiveTab, close])
+    if (arcade.outcome) setActiveTab(OUTCOME_TAB[arcade.outcome])
+    setArcade((a) => ({ ...a, outcome: null, minimized: true }))
+  }, [arcade.outcome, setActiveTab])
 
-  // The two exit steps that are timed rather than driven by a GIF.
+  const keepPlaying = useCallback(() => setArcade((a) => ({ ...a, outcome: null })), [])
+
+  // The window's exit is timed; the landing is driven by its GIF below.
+  const phase = arcade.phase
   useEffect(() => {
-    let t: number | undefined
-    if (phase === 'closing') {
-      // The window has shrunk away; unmounting it here is what ends the game.
-      t = window.setTimeout(() => advance('closing', prefersReducedMotion() ? 'departing' : 'landing'), WINDOW_EXIT_MS)
-    } else if (phase === 'departing') {
-      t = window.setTimeout(() => advance('departing', 'gone'), SHIP_EXIT_MS)
-    }
+    if (phase !== 'closing') return
+    const t = window.setTimeout(
+      () => advance('closing', prefersReducedMotion() ? 'ship' : 'landing'),
+      WINDOW_EXIT_MS
+    )
     return () => window.clearTimeout(t)
-  }, [sessionId, phase, advance])
+  }, [phase, advance])
 
-  if (!session || session.phase === 'closed') return null
-
-  if (session.phase === 'ship') {
+  if (phase === 'ship') {
     const onKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
       // A keyboard cannot double-click; Enter/Space is its equivalent.
       if (event.key === 'Enter' || event.key === ' ') {
@@ -236,6 +204,7 @@ export function Arcade() {
         launch()
       }
     }
+    const hint = busy ? 'Double-click to play while Dunk AI works' : 'Double-click to play'
 
     return (
       // The container spans the hint label too, which is invisible most of the
@@ -247,7 +216,7 @@ export function Arcade() {
             showHint ? 'opacity-100' : 'opacity-0'
           }`}
         >
-          Double-click to play while Dunk AI works
+          {hint}
         </span>
         <button
           type="button"
@@ -255,8 +224,8 @@ export function Arcade() {
           onKeyDown={onKeyDown}
           onMouseEnter={() => setShowHint(true)}
           onMouseLeave={() => setShowHint(false)}
-          title="Double-click to play while Dunk AI works"
-          aria-label="Dunk Arcade. Double-click, or press Enter, to play while Dunk AI works."
+          title={hint}
+          aria-label={`Dunk Arcade. ${hint.replace('Double-click', 'Double-click, or press Enter,')}.`}
           className={`${BUBBLE} pointer-events-auto transition-[transform,border-color] duration-200 hover:scale-105 hover:border-foreground/30 active:scale-95 animate-in fade-in-0 zoom-in-90`}
         >
           <img
@@ -274,53 +243,46 @@ export function Arcade() {
 
   // Each play of a play-once GIF gets its own URL: browsers share one animation
   // timeline per image URL, so a second play would start on its final frame.
-  if (session.phase === 'launching') {
+  if (phase === 'launching') {
     return (
       <ShipAnimation
-        src={`${LAUNCH_SRC}?run=${session.id}`}
+        src={`${LAUNCH_SRC}?run=${arcade.game}`}
         durationMs={LAUNCH_MS}
         onDone={() => advance('launching', 'open')}
       />
     )
   }
 
-  if (session.phase === 'landing') {
+  if (phase === 'landing') {
     return (
       <ShipAnimation
-        src={`${LAND_SRC}?run=${session.id}`}
+        src={`${LAND_SRC}?run=${arcade.game}`}
         durationMs={LAND_MS}
-        onDone={() => advance('landing', 'departing')}
+        onDone={() => advance('landing', 'ship')}
       />
     )
   }
 
-  if (session.phase === 'departing') {
-    return (
-      <div
-        aria-hidden
-        style={{ animationDuration: `${SHIP_EXIT_MS}ms` }}
-        className={`pointer-events-none fixed bottom-[132px] right-6 z-40 ${BUBBLE} animate-out fade-out zoom-out-75`}
-      >
-        <img src={IDLE_SHIP_SRC} alt="" width={56} height={56} />
-      </div>
-    )
-  }
-
-  const notice = session.outcome ? noticeFor(session.outcome, boardJob.error, boardStats?.errors) : null
-  const status =
-    boardJob.status === 'running' ? boardJob.label || 'Generating board' : NODE_LABELS[activeNode] || 'Working'
+  const notice = arcade.outcome ? noticeFor(arcade.outcome, boardJob.error, boardStats?.errors) : null
+  const status = !busy
+    ? 'Dunk AI is idle'
+    : boardJob.status === 'running'
+      ? boardJob.label || 'Generating board'
+      : NODE_LABELS[activeNode] || 'Working'
 
   return (
     <ArcadeWindow
-      key={session.id}
-      minimized={session.minimized}
-      closing={session.phase === 'closing'}
+      key={arcade.game}
+      minimized={arcade.minimized}
+      closing={phase === 'closing'}
       notice={notice}
+      working={busy}
       status={status}
-      onMinimize={() => update({ minimized: true })}
-      onRestore={() => update({ minimized: false })}
+      onMinimize={() => setArcade((a) => ({ ...a, minimized: true }))}
+      onRestore={() => setArcade((a) => ({ ...a, minimized: false }))}
       onClose={close}
       onNoticeAction={followNotice}
+      onKeepPlaying={keepPlaying}
     />
   )
 }

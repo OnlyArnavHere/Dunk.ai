@@ -29,14 +29,19 @@ interface ArcadeWindowProps {
   minimized: boolean
   /** Playing the close animation: the game is stopped and the window shrinks away. */
   closing: boolean
-  /** Set once the job has finished; the game stops and this is shown over it. */
+  /** Set once a job has finished; the game pauses and this is shown over it. */
   notice: ArcadeNotice | null
-  /** Live status of the job, shown under the game while it runs. */
+  /** An AI job is running; the footer shows its live status with a spinner. */
+  working: boolean
+  /** Live status of the job, or that Dunk AI is idle. */
   status: string
   onMinimize: () => void
   onRestore: () => void
   onClose: () => void
+  /** Go to the result; the game is kept (minimized). */
   onNoticeAction: () => void
+  /** Dismiss the notice and carry on with the same game. */
+  onKeepPlaying: () => void
 }
 
 // ---- geometry -------------------------------------------------------------------
@@ -111,11 +116,13 @@ export function ArcadeWindow({
   minimized,
   closing,
   notice,
+  working,
   status,
   onMinimize,
   onRestore,
   onClose,
   onNoticeAction,
+  onKeepPlaying,
 }: ArcadeWindowProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const shooterRef = useRef<Shooter | null>(null)
@@ -401,14 +408,14 @@ export function ArcadeWindow({
                 </div>
                 <p className="mt-1.5 text-xs leading-5 text-muted-foreground">{notice.body}</p>
                 {stats.score > 0 && (
-                  <p className="mt-2 font-mono text-[10px] tabular-nums text-muted-foreground">Final score {score}</p>
+                  <p className="mt-2 font-mono text-[10px] tabular-nums text-muted-foreground">Score {score}</p>
                 )}
                 <div className="mt-4 flex gap-2">
                   <Button type="button" size="sm" className="h-8 flex-1 text-xs" onClick={onNoticeAction} autoFocus>
                     {notice.action}
                   </Button>
-                  <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={onClose}>
-                    Close
+                  <Button type="button" size="sm" variant="outline" className="h-8 text-xs" onClick={onKeepPlaying}>
+                    Keep playing
                   </Button>
                 </div>
               </div>
@@ -416,13 +423,15 @@ export function ArcadeWindow({
           )}
         </div>
 
-        {/* Live job status, so the run is never out of sight while playing. */}
+        {/* Live job status, so a run is never out of sight while playing. */}
         <div
           style={{ height: FOOTER }}
           className="flex items-center gap-2 border-t border-border pl-2.5 pr-5 text-[10px] text-muted-foreground"
         >
           {notice ? (
             <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${TONE_RING[notice.tone]}`} />
+          ) : !working ? (
+            <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-muted-foreground/40" />
           ) : (
             <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
           )}
