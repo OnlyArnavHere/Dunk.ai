@@ -36,8 +36,6 @@ from __future__ import annotations
 import ast
 import json
 import os
-import re
-import time
 from functools import lru_cache
 from typing import Any, Literal
 
@@ -45,6 +43,11 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_groq import ChatGroq
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
+
+try:
+    from .groq_limits import GroqQuotaExhausted, invoke_with_limits
+except ImportError:  # imported as a top-level module by the supervisor
+    from groq_limits import GroqQuotaExhausted, invoke_with_limits
 
 __all__ = [
     "HardwareRequirements",
@@ -445,28 +448,15 @@ def run_interview(user_input: str, history: list[Any] | None = None, model: str 
             )
         current_input = turn_instruction + "\nCURRENT USER ANSWER:\n" + user_input.strip()
 
-        chain = _get_interview_chain(model)
-        result = None
-        last_exc = None
-        for attempt in range(6):
-            try:
-                result = chain.invoke({
-                    "history": to_langchain_history(history),
-                    "input": current_input,
-                })
-                break
-            except Exception as exc:
-                last_exc = exc
-                err_str = str(exc)
-                if ("429" in err_str or "rate_limit_exceeded" in err_str or "Too Many Requests" in err_str) and attempt < 5:
-                    wait_match = re.search(r"try again in ([\d\.]+)s", err_str, re.IGNORECASE)
-                    wait_time = float(wait_match.group(1)) + 1.5 if wait_match else (attempt + 1) * 3.5
-                    print(f"[Requirement Agent] Groq rate limit 429 encountered for model '{model or MODEL_NAME}'. Waiting {wait_time:.1f}s before retry (attempt {attempt+1}/5)...")
-                    time.sleep(wait_time)
-                else:
-                    raise
-        if result is None:
-            raise RuntimeError(f"LangChain/Groq rate limit exceeded after retries: {last_exc}") from last_exc
+        payload = {"history": to_langchain_history(history), "input": current_input}
+        # Rate limits are handled in groq_limits: a per-minute limit waits, a
+        # spent daily allowance moves on to a fallback model. `model` becomes
+        # whichever one answered, so the options call below uses it too.
+        result, model = invoke_with_limits(
+            lambda name: _get_interview_chain(name).invoke(payload),
+            model or MODEL_NAME,
+            agent="Requirement Agent",
+        )
         response = InterviewResponse.model_validate(result)
 
         if asked >= min(budget, MAX_INTERVIEW_TURNS) and response.status == "question":
@@ -484,7 +474,9 @@ def run_interview(user_input: str, history: list[Any] | None = None, model: str 
                 pass
 
         return response
-    except ValidationError:
+    except (ValidationError, GroqQuotaExhausted):
+        # The quota message is already written for the user; wrapping it in
+        # "LangChain/Groq interview failed: ..." would only bury it.
         raise
     except Exception as exc:
         raise RuntimeError(f"LangChain/Groq interview failed: {exc}") from exc

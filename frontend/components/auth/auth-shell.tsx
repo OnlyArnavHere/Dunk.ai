@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
-import { Moon, Sun, Monitor } from 'lucide-react'
+import { useEffect, useState, type ComponentProps } from 'react'
+import { Eye, EyeOff, Moon, Sun, Monitor } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { useAuth } from '@/lib/auth-context'
 
 export function AuthShell({ children, title, description }: { children: React.ReactNode; eyebrow?: string; title: string; description: string }) {
@@ -58,6 +59,31 @@ export function AuthShell({ children, title, description }: { children: React.Re
         </div>
       </section>
     </main>
+  )
+}
+
+/** The auth pages' password field, with a show/hide toggle. */
+export function PasswordInput({ disabled, ...props }: Omit<ComponentProps<typeof Input>, 'type'>) {
+  const [visible, setVisible] = useState(false)
+  return (
+    <div className="relative">
+      <Input
+        {...props}
+        type={visible ? 'text' : 'password'}
+        disabled={disabled}
+        className="h-14 rounded-xl bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring text-[17px] pl-5 pr-14"
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((v) => !v)}
+        disabled={disabled}
+        aria-label={visible ? 'Hide password' : 'Show password'}
+        aria-pressed={visible}
+        className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50"
+      >
+        {visible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+      </button>
+    </div>
   )
 }
 
