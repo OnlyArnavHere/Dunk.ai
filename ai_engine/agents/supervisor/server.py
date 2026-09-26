@@ -19,12 +19,15 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
+from langchain_groq import ChatGroq
+from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 try:
     from .board import board_node, stream_board
     from .graph import compile_graph, run_workflow, stream_workflow
     from .nodes import (
         architecture_node,
+        code_generation_node,
         component_node,
         documentation_node,
         eda_enrichment_node,
@@ -38,6 +41,7 @@ except ImportError:
     from graph import compile_graph, run_workflow, stream_workflow
     from nodes import (
         architecture_node,
+        code_generation_node,
         component_node,
         documentation_node,
         eda_enrichment_node,
@@ -78,6 +82,7 @@ SINGLE_NODE_ACTIONS = {
     "generate_pcb": pcb_node,
     "generate_validation": validation_node,
     "generate_documentation": documentation_node,
+    "generate_code": code_generation_node,
     # Runs dunkai-designer over an existing pcb_ir. Deliberately NOT a node in
     # the linear graph: the board is built when the user asks for it, not on
     # every chat turn, and it costs minutes and a provider call.
@@ -164,7 +169,7 @@ def _build_initial_state(payload: SupervisorRequest) -> CircuitState:
     if architecture:
         state["architecture"] = architecture
 
-    for key in ("bom", "eda_data", "pcb_ir", "validation", "handoff_validation", "documentation", "board"):
+    for key in ("bom", "eda_data", "pcb_ir", "validation", "handoff_validation", "documentation", "code_generation", "board"):
         value = project.get(key)
         if isinstance(value, dict) and value:
             state[key] = value  # type: ignore[literal-required]
@@ -210,6 +215,7 @@ def _serialize_state(state: CircuitState) -> dict[str, Any]:
         # well_formed != passed, and neither means "buildable" -- see nodes.py.
         "handoff_validation": state.get("handoff_validation"),
         "documentation": state.get("documentation"),
+        "code_generation": state.get("code_generation"),
         # Generated board artifacts, when "Generate PCB" has been run.
         "board": state.get("board"),
         "messages": messages,
@@ -322,6 +328,7 @@ _NODE_LABELS: dict[str, str] = {
     "pcb": "Generating PCB layout",
     "validation": "Running validation checks",
     "documentation": "Compiling documentation",
+    "code_generation": "Generating code suggestions",
 }
 
 
@@ -521,6 +528,59 @@ def supervisor_stream_endpoint(payload: SupervisorRequest):
             "X-Accel-Buffering": "no",  # Disable nginx buffering if proxied.
         },
     )
+
+
+class CodeChatRequest(BaseModel):
+    files: list[dict]
+    messages: list[dict]
+
+class CodeFileUpdate(BaseModel):
+    filename: str = Field(description="Name of the file to create or update")
+    code: str = Field(description="The complete new or updated code for the file")
+    description: str = Field(description="Short description of what the code does")
+    category: str = Field(description="Category (firmware, driver, config, ai_ml)", default="firmware")
+    language: str = Field(description="Language identifier (c, cpp, python, etc)", default="c")
+
+class CodeChatResponse(BaseModel):
+    reply: str = Field(description="Conversational reply to the user's prompt")
+    updated_files: list[CodeFileUpdate] | None = Field(description="List of files to update or create, if any", default=None)
+
+@app.post("/api/v1/supervisor/code-chat", response_model=CodeChatResponse)
+def code_chat_endpoint(req: CodeChatRequest):
+    """Specific endpoint for iterative code editing using Groq."""
+    llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.1, api_key=os.getenv("GROQ_API_KEY"))
+    structured_llm = llm.with_structured_output(CodeChatResponse)
+    
+    # Format the current files as context
+    context = "CURRENT FILES:\\n"
+    for f in req.files:
+        context += f"\\n--- {f.get('filename')} ---\\n{f.get('code')}\\n"
+        
+    system_msg = SystemMessage(content=
+        "You are an expert embedded firmware and software engineer. You are chatting with a user about their generated code.\\n"
+        "1. Analyze the user's request carefully.\\n"
+        "2. Review the CURRENT FILES.\\n"
+        "3. If the user asks for code changes, rewrite the affected files entirely and return them in updated_files. If you return files, you MUST return the full code for them, not just snippets!\\n"
+        "4. If no files need changing, set updated_files to null.\\n"
+        "5. Keep your conversational reply concise and helpful."
+    )
+    
+    chat_history = []
+    for m in req.messages:
+        if m.get("role") == "user":
+            chat_history.append(HumanMessage(content=m.get("content", "")))
+        else:
+            chat_history.append(AIMessage(content=m.get("content", "")))
+            
+    # Insert context into the last user message
+    if chat_history and isinstance(chat_history[-1], HumanMessage):
+        chat_history[-1].content = f"{context}\\n\\nUSER REQUEST: {chat_history[-1].content}"
+    else:
+        chat_history.append(HumanMessage(content=f"{context}\\n\\nUSER REQUEST: Hello, review the code."))
+        
+    messages = [system_msg] + chat_history
+    result = structured_llm.invoke(messages)
+    return result
 
 
 def main() -> None:

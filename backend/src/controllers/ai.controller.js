@@ -30,6 +30,53 @@ export const chat = asyncHandler(async (req, res) => {
   send(res, { message: 'AI chat response', data: result });
 });
 
+// POST /api/v1/ai/code-chat
+export const codeChat = asyncHandler(async (req, res) => {
+  const supervisorUrl = process.env.SUPERVISOR_AGENT_URL || 'http://127.0.0.1:8000';
+  
+  const response = await fetch(`${supervisorUrl}/api/v1/supervisor/code-chat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      files: req.body.files || [],
+      messages: req.body.messages || []
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`Supervisor code-chat failed: ${response.statusText}`);
+  }
+
+  const data = await response.json();
+  
+  // Save new code to DB — best effort, never crash the response
+  try {
+    if (data.updated_files?.length > 0 && req.body.projectId) {
+      const project = await getProject(req.body.projectId, req.user);
+      if (project) {
+        if (!project.code_generation) project.code_generation = {};
+        if (!project.code_generation.files) project.code_generation.files = [];
+        const existingFiles = project.code_generation.files;
+        for (const updated of data.updated_files) {
+          const idx = existingFiles.findIndex(f => f.filename === updated.filename);
+          if (idx !== -1) {
+            existingFiles[idx] = { ...existingFiles[idx], ...updated };
+          } else {
+            existingFiles.push(updated);
+          }
+        }
+        project.markModified('code_generation');
+        await project.save();
+      }
+    }
+  } catch (saveErr) {
+    // Log but don't fail the response — the reply still goes back to the user
+    console.warn('[codeChat] DB save skipped:', saveErr?.message);
+  }
+
+  send(res, { message: 'Code chat response', data });
+});
+
 // POST /api/v1/ai/run
 export const run = asyncHandler(async (req, res) => {
   const project = req.body.projectId

@@ -999,3 +999,424 @@ def documentation_node(state: CircuitState) -> dict[str, Any]:
         "workflow_status": state.get("workflow_status") or "completed",
         **_append_message("Documentation package generated."),
     }
+
+
+# ---------------------------------------------------------------------------
+# Code Generation Agent (suggests starter code from pipeline state)
+# ---------------------------------------------------------------------------
+
+def code_generation_node(state: CircuitState) -> dict[str, Any]:
+    """Generate suggested code files based on the project's architecture and BOM.
+
+    Inspects the requirements, architecture model, and BOM to determine what
+    types of code the user would need (firmware, drivers, Arduino sketches,
+    Python scripts, etc.) and produces starter implementations for each.
+    """
+    requirements = _requirements_from_state(state) or {}
+    architecture = _architecture_from_state(state) or {}
+    bom = state.get("bom") or {}
+    rows = bom.get("rows") or []
+
+    arch_model = architecture.get("architecture_model") or {}
+    processing_unit = arch_model.get("processing_unit") or "microcontroller"
+    interfaces = arch_model.get("interfaces") or []
+    project_name = _project_name(state)
+    objective = requirements.get("objective") or "hardware project"
+    category = requirements.get("category") or ""
+
+    # ---- Determine which code files to suggest ----
+    files: list[dict[str, Any]] = []
+
+    # 1. Main firmware / embedded code
+    pu_lower = processing_unit.lower()
+    if any(kw in pu_lower for kw in ("stm32", "arm", "cortex")):
+        lang = "c"
+        filename = "main.c"
+        desc = f"STM32 firmware entry point for {project_name}"
+        code = _generate_stm32_stub(project_name, interfaces, rows)
+    elif any(kw in pu_lower for kw in ("esp32", "esp8266")):
+        lang = "cpp"
+        filename = "main.ino"
+        desc = f"ESP32 Arduino sketch for {project_name}"
+        code = _generate_esp32_stub(project_name, interfaces, rows)
+    elif any(kw in pu_lower for kw in ("arduino", "atmega", "avr")):
+        lang = "cpp"
+        filename = "main.ino"
+        desc = f"Arduino sketch for {project_name}"
+        code = _generate_arduino_stub(project_name, interfaces, rows)
+    elif any(kw in pu_lower for kw in ("raspberry", "rpi", "linux")):
+        lang = "python"
+        filename = "main.py"
+        desc = f"Python driver for {project_name}"
+        code = _generate_python_stub(project_name, interfaces, rows)
+    else:
+        lang = "c"
+        filename = "main.c"
+        desc = f"Embedded firmware for {project_name}"
+        code = _generate_generic_c_stub(project_name, interfaces, rows)
+
+    files.append({
+        "filename": filename,
+        "language": lang,
+        "description": desc,
+        "code": code,
+        "category": "firmware",
+    })
+
+    # 2. If I2C or SPI interfaces detected, add a peripheral driver
+    iface_lower = [i.lower() for i in interfaces]
+    if any("i2c" in i for i in iface_lower):
+        files.append({
+            "filename": "i2c_driver.c" if lang == "c" else "i2c_driver.py",
+            "language": lang if lang in ("c", "python") else "c",
+            "description": "I2C peripheral driver",
+            "code": _generate_i2c_driver(lang, rows),
+            "category": "driver",
+        })
+
+    if any("spi" in i for i in iface_lower):
+        files.append({
+            "filename": "spi_driver.c" if lang == "c" else "spi_driver.py",
+            "language": lang if lang in ("c", "python") else "c",
+            "description": "SPI peripheral driver",
+            "code": _generate_spi_driver(lang, rows),
+            "category": "driver",
+        })
+
+    # 3. If AI/ML category, suggest a Python inference script
+    cat_lower = category.lower()
+    obj_lower = objective.lower()
+    if any(kw in cat_lower + obj_lower for kw in ("ai", "ml", "machine learning", "neural", "vision", "camera")):
+        files.append({
+            "filename": "inference.py",
+            "language": "python",
+            "description": "Python ML inference script",
+            "code": _generate_ml_stub(project_name, objective),
+            "category": "ai_ml",
+        })
+
+    # 4. Always suggest a config / pin-mapping header
+    files.append({
+        "filename": "pin_config.h" if lang in ("c", "cpp") else "config.py",
+        "language": lang if lang in ("c", "cpp", "python") else "c",
+        "description": "Pin mapping and hardware configuration",
+        "code": _generate_pin_config(lang, rows, interfaces),
+        "category": "config",
+    })
+
+    code_generation = {
+        "project_name": project_name,
+        "processing_unit": processing_unit,
+        "files": files,
+        "total_files": len(files),
+        "languages_used": list(set(f["language"] for f in files)),
+    }
+
+    return {
+        "current_node": "code_generation",
+        "code_generation": code_generation,
+        "workflow_status": "completed",
+        **_append_message(f"Generated {len(files)} code file(s) for {project_name}."),
+    }
+
+
+# ---- Code generation helpers ----
+
+def _component_names(rows: list[dict[str, Any]], limit: int = 5) -> list[str]:
+    """Extract a short list of component names from BOM rows."""
+    names = []
+    for row in rows[:limit]:
+        name = row.get("mfr_part") or row.get("reference") or row.get("manufacturer") or "component"
+        names.append(str(name))
+    return names
+
+
+def _generate_stm32_stub(name: str, interfaces: list[str], rows: list[dict]) -> str:
+    parts = _component_names(rows)
+    iface_inits = "\n".join(f"  // TODO: Initialize {iface}" for iface in interfaces) or "  // TODO: Initialize peripherals"
+    return f"""/**
+ * {name} - STM32 Firmware
+ * Auto-generated by DunkAI Code Generation Agent
+ * Components: {', '.join(parts)}
+ */
+
+#include "stm32l4xx_hal.h"
+#include "pin_config.h"
+
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+
+int main(void) {{
+  HAL_Init();
+  SystemClock_Config();
+  MX_GPIO_Init();
+
+{iface_inits}
+
+  while (1) {{
+    // Main loop
+    HAL_Delay(100);
+  }}
+}}
+"""
+
+
+def _generate_esp32_stub(name: str, interfaces: list[str], rows: list[dict]) -> str:
+    parts = _component_names(rows)
+    return f"""/**
+ * {name} - ESP32 Firmware
+ * Auto-generated by DunkAI Code Generation Agent
+ * Components: {', '.join(parts)}
+ */
+
+#include <Arduino.h>
+{"#include <WiFi.h>" if any("wifi" in i.lower() for i in interfaces) else ""}
+{"#include <Wire.h>" if any("i2c" in i.lower() for i in interfaces) else ""}
+{"#include <SPI.h>" if any("spi" in i.lower() for i in interfaces) else ""}
+
+void setup() {{
+  Serial.begin(115200);
+  Serial.println("{name} starting...");
+
+  // TODO: Initialize peripherals
+}}
+
+void loop() {{
+  // TODO: Main application logic
+  delay(100);
+}}
+"""
+
+
+def _generate_arduino_stub(name: str, interfaces: list[str], rows: list[dict]) -> str:
+    parts = _component_names(rows)
+    return f"""/**
+ * {name} - Arduino Sketch
+ * Auto-generated by DunkAI Code Generation Agent
+ * Components: {', '.join(parts)}
+ */
+
+{"#include <Wire.h>" if any("i2c" in i.lower() for i in interfaces) else ""}
+{"#include <SPI.h>" if any("spi" in i.lower() for i in interfaces) else ""}
+
+void setup() {{
+  Serial.begin(9600);
+  Serial.println("{name} initialized");
+
+  // TODO: Initialize sensors and actuators
+}}
+
+void loop() {{
+  // TODO: Read sensors, process data, control outputs
+  delay(100);
+}}
+"""
+
+
+def _generate_python_stub(name: str, interfaces: list[str], rows: list[dict]) -> str:
+    parts = _component_names(rows)
+    imports = []
+    if any("i2c" in i.lower() for i in interfaces):
+        imports.append("import smbus2")
+    if any("spi" in i.lower() for i in interfaces):
+        imports.append("import spidev")
+    if any("gpio" in i.lower() or "digital" in i.lower() for i in interfaces):
+        imports.append("import RPi.GPIO as GPIO")
+    imports_str = "\n".join(imports) or "# import board-specific libraries"
+    return f'''"""
+{name} - Python Driver
+Auto-generated by DunkAI Code Generation Agent
+Components: {", ".join(parts)}
+"""
+
+{imports_str}
+from config import PINS
+
+
+def init():
+    """Initialize hardware peripherals."""
+    # TODO: Setup GPIO, I2C, SPI, etc.
+    print("{name} initialized")
+
+
+def main():
+    """Main application loop."""
+    init()
+    try:
+        while True:
+            # TODO: Read sensors, process data
+            pass
+    except KeyboardInterrupt:
+        print("Shutting down")
+
+
+if __name__ == "__main__":
+    main()
+'''
+
+
+def _generate_generic_c_stub(name: str, interfaces: list[str], rows: list[dict]) -> str:
+    parts = _component_names(rows)
+    return f"""/**
+ * {name} - Embedded Firmware
+ * Auto-generated by DunkAI Code Generation Agent
+ * Components: {', '.join(parts)}
+ */
+
+#include "pin_config.h"
+
+void system_init(void);
+
+int main(void) {{
+  system_init();
+
+  while (1) {{
+    // Main loop
+  }}
+  return 0;
+}}
+
+void system_init(void) {{
+  // TODO: Initialize clocks, GPIOs, peripherals
+}}
+"""
+
+
+def _generate_i2c_driver(lang: str, rows: list[dict]) -> str:
+    if lang == "python":
+        return '''"""I2C peripheral driver - auto-generated by DunkAI"""
+import smbus2
+
+I2C_BUS = 1
+
+def read_register(addr: int, reg: int, length: int = 1) -> list[int]:
+    with smbus2.SMBus(I2C_BUS) as bus:
+        return bus.read_i2c_block_data(addr, reg, length)
+
+def write_register(addr: int, reg: int, data: list[int]) -> None:
+    with smbus2.SMBus(I2C_BUS) as bus:
+        bus.write_i2c_block_data(addr, reg, data)
+'''
+    return """/* I2C peripheral driver - auto-generated by DunkAI */
+#include "pin_config.h"
+
+void i2c_init(void) {
+  // TODO: Configure I2C peripheral
+}
+
+uint8_t i2c_read(uint8_t addr, uint8_t reg) {
+  // TODO: Implement I2C read
+  return 0;
+}
+
+void i2c_write(uint8_t addr, uint8_t reg, uint8_t data) {
+  // TODO: Implement I2C write
+}
+"""
+
+
+def _generate_spi_driver(lang: str, rows: list[dict]) -> str:
+    if lang == "python":
+        return '''"""SPI peripheral driver - auto-generated by DunkAI"""
+import spidev
+
+spi = spidev.SpiDev()
+
+def init(bus: int = 0, device: int = 0, speed: int = 1000000) -> None:
+    spi.open(bus, device)
+    spi.max_speed_hz = speed
+
+def transfer(data: list[int]) -> list[int]:
+    return spi.xfer2(data)
+
+def close() -> None:
+    spi.close()
+'''
+    return """/* SPI peripheral driver - auto-generated by DunkAI */
+#include "pin_config.h"
+
+void spi_init(void) {
+  // TODO: Configure SPI peripheral
+}
+
+uint8_t spi_transfer(uint8_t data) {
+  // TODO: Implement SPI transfer
+  return 0;
+}
+"""
+
+
+def _generate_ml_stub(name: str, objective: str) -> str:
+    return f'''"""
+{name} - ML Inference Script
+Auto-generated by DunkAI Code Generation Agent
+Objective: {objective}
+"""
+
+import numpy as np
+
+# TODO: Replace with your trained model path
+MODEL_PATH = "model.tflite"
+
+
+def load_model(path: str = MODEL_PATH):
+    """Load the ML model for inference."""
+    try:
+        import tflite_runtime.interpreter as tflite
+        interpreter = tflite.Interpreter(model_path=path)
+        interpreter.allocate_tensors()
+        return interpreter
+    except ImportError:
+        print("Install tflite-runtime: pip install tflite-runtime")
+        return None
+
+
+def predict(interpreter, input_data: np.ndarray) -> np.ndarray:
+    """Run inference on input data."""
+    input_details = interpreter.get_input_details()
+    output_details = interpreter.get_output_details()
+
+    interpreter.set_tensor(input_details[0]["index"], input_data)
+    interpreter.invoke()
+
+    return interpreter.get_tensor(output_details[0]["index"])
+
+
+if __name__ == "__main__":
+    model = load_model()
+    if model:
+        # TODO: Replace with actual sensor data
+        sample = np.zeros((1, 224, 224, 3), dtype=np.float32)
+        result = predict(model, sample)
+        print(f"Prediction: {{result}}")
+'''
+
+
+def _generate_pin_config(lang: str, rows: list[dict], interfaces: list[str]) -> str:
+    if lang == "python":
+        pins = "\n".join(f'    "{row.get("reference", f"PIN_{i}")}": {i + 2},' for i, row in enumerate(rows[:10]))
+        return f'''"""Pin mapping and hardware configuration - auto-generated by DunkAI"""
+
+PINS = {{
+{pins}
+}}
+
+# Interface configuration
+INTERFACES = {interfaces!r}
+'''
+    # C/C++ header
+    defines = "\n".join(
+        f"#define PIN_{row.get('reference', f'COMP_{i}').upper().replace(' ', '_').replace('-', '_')}  {i}"
+        for i, row in enumerate(rows[:10])
+    )
+    return f"""/* Pin mapping and hardware configuration - auto-generated by DunkAI */
+#ifndef PIN_CONFIG_H
+#define PIN_CONFIG_H
+
+{defines}
+
+/* Interfaces: {', '.join(interfaces) or 'none configured'} */
+
+#endif /* PIN_CONFIG_H */
+"""
+

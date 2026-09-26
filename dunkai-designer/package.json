@@ -1,0 +1,40 @@
+{
+  "name": "dunkai-designer",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "description": "Turns a dunkai pcb_ir handoff into a real tscircuit project and its manufacturing outputs.",
+  "bin": {
+    "dunkai-designer": "./src/cli.mjs"
+  },
+  "scripts": {
+    "design": "node src/cli.mjs",
+    "test": "node --test \"test/**/*.test.mjs\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@gltf-transform/core": "4.5.0",
+    "@gltf-transform/extensions": "4.5.0",
+    "@gltf-transform/functions": "4.5.0",
+    "@tscircuit/props": "0.0.664",
+    "circuit-json-to-gerber": "0.0.107",
+    "circuit-json-to-gltf": "0.0.128",
+    "circuit-json-to-pnp-csv": "0.0.16",
+    "circuit-to-svg": "0.0.424",
+    "format-si-unit": "0.0.12",
+    "meshoptimizer": "1.2.0",
+    "react": "19.3.0",
+    "three": "0.186.0",
+    "tscircuit": "0.0.2621",
+    "zod": "3.25.76"
+  },
+  "devDependencies": {
+    "@types/react": "^19.1.0",
+    "typescript": "5.9.3"
+  },
+  "overrides": {
+    "@tscircuit/circuit-json-util": "0.0.115",
+    "@tscircuit/cli": "0.1.2124",
+    "zod": "3.25.76"
+  }
+}

@@ -232,7 +232,9 @@ class InterviewResponse(BaseModel):
             if not self.question or not self.question.strip():
                 raise ValueError("question status requires a question")
             if self.requirements is not None:
-                raise ValueError("question status cannot include final requirements")
+                # The LLM sometimes generates both a question and a partial requirements object.
+                # Instead of crashing the pipeline, we just clear the requirements so the interview continues.
+                self.requirements = None
             
             # Capped, but deliberately NOT padded. A previous revision topped
             # every short list up to three with generic strings ("Standard
@@ -316,7 +318,7 @@ def _get_option_chain(model: str | None = None):
         ("system", _OPTION_SYSTEM_PROMPT),
         ("human", "Question: {question}"),
     ])
-    return option_prompt | _get_llm(model).with_structured_output(QuestionOptions)
+    return option_prompt | _get_llm(model).with_structured_output(QuestionOptions, method="json_schema")
 
 
 @lru_cache(maxsize=8)
@@ -326,7 +328,7 @@ def _get_interview_chain(model: str | None = None):
         MessagesPlaceholder("history"),
         ("human", "{input}"),
     ])
-    return prompt | _get_llm(model).with_structured_output(InterviewResponse)
+    return prompt | _get_llm(model).with_structured_output(InterviewResponse, method="json_schema")
 
 
 # ---------------------------------------------------------------------------
