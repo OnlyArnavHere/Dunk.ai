@@ -33,6 +33,7 @@ try:
         eda_enrichment_node,
         pcb_node,
         requirements_node,
+        safety_node,
         validation_node,
     )
     from .state import CircuitState, _merge_errors
@@ -47,6 +48,7 @@ except ImportError:
         eda_enrichment_node,
         pcb_node,
         requirements_node,
+        safety_node,
         validation_node,
     )
     from state import CircuitState, _merge_errors
@@ -227,6 +229,11 @@ def _serialize_state(state: CircuitState) -> dict[str, Any]:
         "interview_selection_mode": state.get("interview_selection_mode"),
         "current_node": state.get("current_node"),
         "bom_csv_path": state.get("bom_csv_path"),
+        # The requester sees the verdict only. The full record (category,
+        # reasoning, conversation) travels as `safety_audit`, which the Node
+        # backend removes before anything reaches the browser, and stores.
+        "safety": {"verdict": (state.get("safety") or {}).get("verdict")} if state.get("safety") else None,
+        "safety_audit": state.get("safety"),
     }
 
 
@@ -318,7 +325,10 @@ def _run_single_node(action: str, state: CircuitState) -> CircuitState:
     node_fn = SINGLE_NODE_ACTIONS.get(action)
     if node_fn is None:
         raise HTTPException(status_code=400, detail=f"Unknown action: {action}")
+    return _run_single_node_fn(node_fn, state)
 
+
+def _run_single_node_fn(node_fn, state: CircuitState) -> CircuitState:
     update = node_fn(state)
     merged: CircuitState = dict(state)
     for key, value in update.items():
@@ -334,7 +344,15 @@ def _run_single_node(action: str, state: CircuitState) -> CircuitState:
 def _handle_chat(payload: SupervisorRequest) -> dict[str, Any]:
     action = _action_for_agent_type(payload.agentType) or "generate_requirements"
     state = _build_initial_state(payload)
-    final_state = _run_single_node(action, state)
+
+    # The same gate the graph applies: this path runs an agent directly.
+    checked = _run_single_node_fn(safety_node, state)
+    if checked.get("workflow_status") == "blocked":
+        messages = checked.get("messages") or []
+        reply = str(getattr(messages[-1], "content", "")) if messages else "This request can't be processed."
+        return {"reply": reply, "data": _serialize_state(checked)}
+
+    final_state = _run_single_node(action, checked)
     data = _serialize_state(final_state)
 
     if final_state.get("interview_status") == "question":
@@ -391,6 +409,7 @@ def supervisor_endpoint(payload: SupervisorRequest) -> dict[str, Any]:
 # Human-readable labels shown in progress events.
 _NODE_LABELS: dict[str, str] = {
     "supervisor": "Starting workflow",
+    "safety": "Checking the request",
     "requirements": "Analysing requirements",
     "architecture": "Generating architecture",
     "component": "Selecting components & building BOM",
@@ -645,10 +664,27 @@ class CodeFileUpdate(BaseModel):
 class CodeChatResponse(BaseModel):
     reply: str = Field(description="Conversational reply to the user's prompt")
     updated_files: list[CodeFileUpdate] | None = Field(description="List of files to update or create, if any", default=None)
+    # Set only when the safety gate blocked the turn. Internal: the Node backend
+    # strips it before the response reaches the browser, and stores it.
+    safety_audit: dict[str, Any] | None = None
 
 @app.post("/api/v1/supervisor/code-chat", response_model=CodeChatResponse)
 def code_chat_endpoint(req: CodeChatRequest):
     """Specific endpoint for iterative code editing using Groq."""
+    # The same safety gate as the design chat: this is a chat turn too, and it
+    # writes firmware. Classified against the whole code-chat conversation.
+    from safety_classifier import classify
+
+    latest = next(
+        (m.get("content") for m in reversed(req.messages) if m.get("role") == "user" and m.get("content")),
+        None,
+    )
+    history = req.messages[:-1] if req.messages and req.messages[-1].get("content") == latest else req.messages
+    verdict = classify(history, latest)
+    if verdict.blocks:
+        return CodeChatResponse(reply=verdict.message or "This request can't be processed.",
+                                updated_files=None, safety_audit=verdict.audit())
+
     llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.1, api_key=os.getenv("GROQ_API_KEY"))
     # method="json_schema": gpt-oss-120b's Harmony tool-call format breaks
     # with_structured_output's default "function_calling" method (the model

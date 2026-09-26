@@ -195,6 +195,28 @@ def supervisor_node(state: CircuitState) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Safety gate (safety_classifier.py)
+# ---------------------------------------------------------------------------
+
+def safety_node(state: CircuitState) -> dict[str, Any]:
+    """Classify the conversation so far before any design work runs.
+
+    A blocked turn ends the run here with a neutral message and
+    workflow_status "blocked". `safety` holds the full audit record (verdict,
+    category, reasoning, conversation); the server serialises only the verdict
+    for the requester, and the Node backend strips and stores the rest.
+    """
+    from safety_classifier import classify
+
+    result = classify(state.get("interview_history"), state.get("user_input"))
+    update: dict[str, Any] = {"current_node": "safety", "safety": result.audit()}
+    if result.blocks:
+        update["workflow_status"] = "blocked"
+        update.update(_append_message(result.message or "This request can't be processed."))
+    return update
+
+
+# ---------------------------------------------------------------------------
 # Requirements Agent (existing requirement_agent.py)
 # ---------------------------------------------------------------------------
 

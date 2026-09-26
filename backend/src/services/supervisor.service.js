@@ -55,6 +55,69 @@ const buildSupervisorBody = ({
 });
 
 /**
+ * Remove the safety classifier's audit record from a supervisor result.
+ *
+ * The supervisor sends the full record (category, reasoning, conversation) as
+ * `safety_audit` so it can be stored; the requester may see only the verdict
+ * (`safety`). This must run before a result is returned to the client, emitted
+ * on a socket, or saved anywhere a client can read it back. It looks at the top
+ * level and one level down, because chat replies and SSE events wrap the state
+ * in `data`. Mutates `result`; returns the record, or null.
+ *
+ * @param {object} result - a supervisor response, or the payload of an SSE event
+ * @returns {object|null} the audit record, if there was one
+ */
+export const takeSafetyAudit = (result) => {
+  let audit = null;
+  for (const holder of [result, result?.data]) {
+    if (holder && typeof holder === 'object' && 'safety_audit' in holder) {
+      audit = audit ?? holder.safety_audit;
+      delete holder.safety_audit;
+    }
+  }
+  return audit;
+};
+
+/**
+ * Record a stopped request. `review` is held for a human (status pending);
+ * `reject` is kept as an audit trail. `allow` and `skipped` are not stored, and
+ * `unavailable` (the classifier itself failed) is a system fault, not a
+ * decision about the content, so it is logged rather than queued.
+ * Never throws: a failed write must not break the response the user is waiting on.
+ *
+ * @param {object|null} audit - from takeSafetyAudit
+ * @param {object} context - userId, projectId, chatId, jobId, source
+ */
+export const persistSafetyAudit = async (audit, { userId, projectId, chatId, jobId, source } = {}) => {
+  if (!audit || typeof audit !== 'object') return;
+  if (audit.verdict === 'unavailable') {
+    console.warn(`[Safety] classifier unavailable for job ${jobId ?? '-'}: ${audit.reasoning ?? ''}`);
+    return;
+  }
+  if (audit.verdict !== 'reject' && audit.verdict !== 'review') return;
+
+  try {
+    const { SafetyReview } = await import('../models/SafetyReview.js');
+    await SafetyReview.create({
+      user: userId ?? null,
+      project: projectId ?? null,
+      chat: chatId ?? null,
+      jobId: jobId ?? null,
+      source: source ?? 'design_chat',
+      verdict: audit.verdict,
+      category: audit.category ?? null,
+      confidence: typeof audit.confidence === 'number' ? audit.confidence : null,
+      reasoning: audit.reasoning ?? '',
+      model: audit.model ?? null,
+      conversation: Array.isArray(audit.conversation) ? audit.conversation : [],
+      status: audit.verdict === 'review' ? 'pending' : 'rejected',
+    });
+  } catch (error) {
+    console.error(`[Safety] could not record ${audit.verdict} for job ${jobId ?? '-'}:`, error.message);
+  }
+};
+
+/**
  * Security boundary: Node.js talks ONLY to the Supervisor Agent.
  * Downstream AI agents (Requirement, Architecture, Component, PCB, Validation, Documentation)
  * are internal to the Python engine and are never addressed directly here.
@@ -68,6 +131,7 @@ export const callSupervisor = async ({
   agentType = null,
   provider = null,
   model = null,
+  audit = {},
 }) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 120000);
@@ -98,7 +162,10 @@ export const callSupervisor = async ({
       throw new ApiError(502, body.message || 'Supervisor Agent request failed');
     }
 
-    return body.data || body;
+    const result = body.data || body;
+    // Before the result reaches the controller, and so the client.
+    await persistSafetyAudit(takeSafetyAudit(result), { ...audit, jobId });
+    return result;
   } catch (error) {
     if (error instanceof ApiError) throw error;
     if (error.name === 'AbortError') {
@@ -292,6 +359,7 @@ export const callSupervisorStream = async (
     provider = null,
     model = null,
     chatId = null,
+    audit = {},
   }
 ) => {
   setJobStatus(jobId, 'running');
@@ -350,8 +418,11 @@ export const callSupervisorStream = async (
           return data; // Stream closed by Python after an error event.
 
         } else if (event === 'complete') {
+          // Stripped before the emit: the socket goes straight to the browser.
+          const safetyAudit = takeSafetyAudit(data);
           const { emitAIComplete } = await import('../sockets/index.js');
           emitAIComplete(io, jobId, data);
+          await persistSafetyAudit(safetyAudit, { ...audit, chatId, jobId });
           finalResult = data.data || data;
           setJobStatus(jobId, 'completed', finalResult);
           await persistBoardState(project, chatId, finalResult);

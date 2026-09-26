@@ -12,6 +12,7 @@ try:
     from .nodes import (
         architecture_node,
         code_generation_node,
+        safety_node,
         component_node,
         documentation_node,
         eda_enrichment_node,
@@ -25,6 +26,7 @@ except ImportError:
     from nodes import (
         architecture_node,
         code_generation_node,
+        safety_node,
         component_node,
         documentation_node,
         eda_enrichment_node,
@@ -34,6 +36,13 @@ except ImportError:
         validation_node,
     )
     from state import CircuitState
+
+
+def _route_after_safety(state: CircuitState) -> Literal["requirements", "__end__"]:
+    """A turn the safety classifier blocked ends here, before any design agent."""
+    if state.get("workflow_status") == "blocked":
+        return END
+    return "requirements"
 
 
 def _route_after_requirements(state: CircuitState) -> Literal["architecture", "__end__"]:
@@ -51,6 +60,7 @@ def build_graph() -> StateGraph:
     graph = StateGraph(CircuitState)
 
     graph.add_node("supervisor", supervisor_node)
+    graph.add_node("safety", safety_node)
     graph.add_node("requirements", requirements_node)
     graph.add_node("architecture", architecture_node)
     graph.add_node("component", component_node)
@@ -61,7 +71,8 @@ def build_graph() -> StateGraph:
     graph.add_node("code_generation", code_generation_node)
 
     graph.add_edge(START, "supervisor")
-    graph.add_edge("supervisor", "requirements")
+    graph.add_edge("supervisor", "safety")
+    graph.add_conditional_edges("safety", _route_after_safety)
     graph.add_conditional_edges("requirements", _route_after_requirements)
     graph.add_edge("architecture", "component")
     graph.add_edge("component", "eda_enrichment")

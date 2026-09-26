@@ -33,6 +33,10 @@ class CircuitState(TypedDict, total=False):
     handoff_validation: dict[str, Any]
     documentation: dict[str, Any]
     code_generation: dict[str, Any]
+    # Safety classifier result for this turn: the FULL audit record, including
+    # the internal reasoning. Never serialised to the requester as-is — see
+    # _serialize_state in server.py.
+    safety: dict[str, Any]
     # Generated board artifacts (dunkai-designer output): URLs, sizes and build
     # stats. Deliberately NOT merged into `pcb_ir` — pcb_ir is dunkai's handoff,
     # and a consumer must be able to tell "what we asked for" from "what was

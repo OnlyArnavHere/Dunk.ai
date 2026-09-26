@@ -58,6 +58,7 @@ interface ArcadeState {
 const NODE_LABELS: Record<string, string> = {
   __start__: 'Starting workflow',
   supervisor: 'Starting workflow',
+  safety: 'Checking the request',
   requirements: 'Analysing requirements',
   architecture: 'Generating architecture',
   component: 'Selecting components & building BOM',
