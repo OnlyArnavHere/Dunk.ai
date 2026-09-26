@@ -24,7 +24,6 @@ import {
 } from '@/components/ui/table';
 import { useWorkspaceStore } from '@/lib/store';
 import { useBoardGeneration } from '@/hooks/use-board-generation';
-import { ProviderPicker } from '@/components/workspace/provider-picker';
 
 interface BOMViewProps {
   projectId: string;
@@ -121,8 +120,9 @@ export function BOMView({ projectId }: BOMViewProps) {
   const [currency, setCurrency] = useState<'INR' | 'USD'>('USD');
 
   // Component selection finishes here, so this is where the board gets built.
-  const { generate, canGenerate, componentCount, job, board, provider, setProvider } =
-    useBoardGeneration(projectId);
+  // The model used here is the Settings default ("Default agent/model for PCB
+  // generation"); this button only re-runs with it.
+  const { generate, canGenerate, componentCount, job, board } = useBoardGeneration(projectId);
 
   const startGeneration = () => {
     // Switch to the PCB tab so the run is visible: that view renders the live
@@ -257,12 +257,6 @@ export function BOMView({ projectId }: BOMViewProps) {
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
               ) : (
-                <>
-                <ProviderPicker
-                  value={provider}
-                  onChange={setProvider}
-                  disabled={job.status === 'running'}
-                />
                 <Button
                   size="sm"
                   onClick={startGeneration}
@@ -280,7 +274,6 @@ export function BOMView({ projectId }: BOMViewProps) {
                   )}
                   {job.status === 'running' ? 'Generating…' : 'Generate PCB'}
                 </Button>
-                </>
               )}
             </div>
           </div>

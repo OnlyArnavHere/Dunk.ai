@@ -11,13 +11,44 @@ import { Loader2, ImageOff, ZoomIn, ZoomOut, Maximize } from 'lucide-react'
  * <img> gives no way to report a failed load distinctly from an empty render;
  * and inlining lets the transform live on a wrapper so zooming stays crisp
  * instead of resampling a raster.
+ *
+ * It is inlined into a shadow root rather than straight into the page. A
+ * tscircuit artifact carries its own <style> block, and a <style> injected into
+ * the document is global -- it is not scoped to the SVG it arrived in. The
+ * schematic declares `.boundary { fill: rgb(245, 241, 237) }`, the PCB draws its
+ * background as `<rect class="boundary" fill="#000">`, and a CSS declaration
+ * outranks a presentation attribute, so whenever both artifacts were mounted at
+ * once (PcbView and DocsView are never unmounted -- see main-editor.tsx) the
+ * schematic repainted the PCB's background cream. A shadow root keeps each
+ * artifact's stylesheet to itself.
  */
+
+// Sizing that used to come from the `[&>svg]:...` Tailwind variants on the
+// wrapper. Outer selectors cannot match inside a shadow root, so the rules move
+// in with the markup.
+const SHADOW_STYLE = `
+  :host {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+  }
+  svg {
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
+  }
+`
+
 export function ArtifactSvg({ src, label }: { src: string; label: string }) {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [markup, setMarkup] = useState('')
   const [error, setError] = useState('')
 
   const viewportRef = useRef<HTMLDivElement>(null)
+  const hostRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const dragRef = useRef<{ x: number; y: number; ox: number; oy: number } | null>(null)
@@ -50,6 +81,19 @@ export function ArtifactSvg({ src, label }: { src: string; label: string }) {
       cancelled = true
     }
   }, [src])
+
+  // Attach on first paint of the ready state and refill whenever the markup
+  // changes. attachShadow throws if called twice on the same element, so an
+  // existing root is reused.
+  useEffect(() => {
+    const host = hostRef.current
+    if (!host || !markup) return
+    const shadow = host.shadowRoot ?? host.attachShadow({ mode: 'open' })
+    shadow.innerHTML = `<style>${SHADOW_STYLE}</style>${markup}`
+    return () => {
+      shadow.innerHTML = ''
+    }
+  }, [markup])
 
   const reset = useCallback(() => {
     setScale(1)
@@ -105,12 +149,12 @@ export function ArtifactSvg({ src, label }: { src: string; label: string }) {
         onPointerLeave={onPointerUp}
       >
         <div
-          className="flex h-full w-full items-center justify-center [&>svg]:h-auto [&>svg]:max-h-full [&>svg]:w-auto [&>svg]:max-w-full"
+          ref={hostRef}
+          className="h-full w-full"
           style={{
             transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
             transformOrigin: 'center center',
           }}
-          dangerouslySetInnerHTML={{ __html: markup }}
         />
       </div>
 

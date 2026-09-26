@@ -21,6 +21,7 @@ export const updateProjectValidation = [
   body('validation').optional(),
   body('handoff_validation').optional(),
   body('documentation').optional(),
+  body('board').optional(),
 ];
 
 export const shareProjectValidation = [

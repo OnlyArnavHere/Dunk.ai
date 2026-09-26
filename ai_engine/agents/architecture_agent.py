@@ -59,6 +59,62 @@ ALLOWED_INTERFACES = {
     "SDIO", "Power", "BLE", "WiFi", "RF", "Audio", "Analog", "ADC", "PWM", "I2S",
 }
 
+# The model names subsystems in its own words, and a screen is the standard
+# example: it reports "Display" where this taxonomy files it under "Output".
+# Those near-misses used to abort the whole pipeline, so map the common ones
+# onto the canonical category instead. This is spelling, not domain reasoning
+# -- a category with no entry here still raises, so a genuinely new concept
+# surfaces rather than being silently folded into the wrong bucket.
+_CATEGORY_SYNONYMS = {
+    "display": "Output",
+    "screen": "Output",
+    "lcd": "Output",
+    "oled": "Output",
+    "led": "Output",
+    "indicator": "Output",
+    "actuator": "Output",
+    "ui": "Output",
+    "user interface": "Output",
+    "audio": "Output",
+    "sensing": "Sensor",
+    "sensors": "Sensor",
+    "power management": "Power",
+    "battery": "Power",
+    "compute": "Processing",
+    "processor": "Processing",
+    "mcu": "Processing",
+    "microcontroller": "Processing",
+    "comms": "Communication",
+    "connectivity": "Communication",
+    "wireless": "Communication",
+    "memory/storage": "Storage",
+}
+
+
+def _canon_category(category: Any) -> str:
+    """Fold a model-supplied category onto the canonical spelling."""
+    text = str(category or "").strip()
+    synonym = _CATEGORY_SYNONYMS.get(text.lower())
+    if synonym:
+        return synonym
+    # Title-case recovers casing drift ("power" -> "Power"). Every allowed
+    # category is a single word, so this cannot mangle a legitimate value.
+    return text.title()
+
+
+def _canon_interface(interface: Any) -> str:
+    """Fold a model-supplied interface onto the canonical spelling.
+
+    Matched case-insensitively against ALLOWED_INTERFACES rather than
+    title-cased, because the canonical forms are not title-case ("WiFi",
+    "GPIO", "I2C") and ``"wifi".title()`` would not round-trip.
+    """
+    text = str(interface or "").strip()
+    for allowed in ALLOWED_INTERFACES:
+        if text.lower() == allowed.lower():
+            return allowed
+    return text
+
 SUBSYSTEM_INFERENCE_PROMPT = """\
 # ROLE
 You are a Senior Embedded Systems Architect with expertise in consumer electronics, industrial automation, IoT, robotics, medical devices, automotive electronics, and embedded hardware system design.
@@ -182,7 +238,23 @@ Return JSON only, with no preamble, no markdown fences, and no commentary.
         }
     ]
 }
-Allowed categories: Processing, Power, Communication, Input, Output, Sensor, Storage, Security, Memory, Clock, Expansion, Network.
+--------------------------------------------------
+# CATEGORY (STRICT)
+The "category" field MUST be copied verbatim from this list. It is a closed set.
+Processing, Power, Communication, Input, Output, Sensor, Storage, Security, Memory, Clock, Expansion, Network.
+
+Do NOT invent a category, not even an obviously sensible one. Map the subsystem
+onto the closest value above instead:
+- A display, screen, LCD, OLED, LED, indicator, buzzer, speaker or any actuator
+  that presents information to the user is "Output" -- NOT "Display".
+- A button, keypad, touch panel, switch or dial is "Input".
+- A measuring element (temperature, IMU, light, current sense) is "Sensor".
+- A regulator, PMIC, charger, battery or supply rail is "Power".
+- An MCU, SoC, CPU or FPGA is "Processing".
+- A radio, modem, BLE/WiFi module or transceiver is "Communication".
+If nothing fits well, choose the nearest value and explain the compromise in
+"reason". Any category outside the list above is rejected and the whole design
+run fails.
 """
 
 GRAPH_CONSTRUCTION_PROMPT = """\
@@ -206,6 +278,9 @@ Generate
 3 Interfaces
 --------------------------------------------------
 Allowed Categories
+Copy these verbatim. The set is closed -- do not invent a category. A display,
+screen, LCD, OLED, LED or buzzer is "Output", never "Display". Anything outside
+this list is rejected and the run fails.
 Processing
 Power
 Communication
@@ -234,6 +309,10 @@ BLE
 WiFi
 RF
 Audio
+Analog
+ADC
+PWM
+I2S
 --------------------------------------------------
 Rules
 Every processing unit must connect to
@@ -349,22 +428,30 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
 def _validate_subsystems(subsystems: list[dict[str, Any]]) -> list[dict[str, Any]]:
     validated = []
     for subsystem in subsystems:
-        category = subsystem.get("category")
+        raw = subsystem.get("category")
+        category = _canon_category(raw)
         if category not in ALLOWED_CATEGORIES:
-            raise ValueError(f"Model returned an unsupported subsystem category: {category!r}")
+            raise ValueError(f"Model returned an unsupported subsystem category: {raw!r}")
+        # Write the canonical value back: everything downstream buckets on an
+        # exact string match (user_interface_modules == "Output", etc.).
+        subsystem["category"] = category
         validated.append(subsystem)
     return validated
 
 
 def _validate_graph(graph: dict[str, Any]) -> dict[str, Any]:
     for node in graph.get("nodes", []):
-        category = node.get("category")
+        raw = node.get("category")
+        category = _canon_category(raw)
         if category not in ALLOWED_CATEGORIES:
-            raise ValueError(f"Model returned an unsupported node category: {category!r}")
+            raise ValueError(f"Model returned an unsupported node category: {raw!r}")
+        node["category"] = category
     for edge in graph.get("edges", []):
-        interface = edge.get("interface")
+        raw = edge.get("interface")
+        interface = _canon_interface(raw)
         if interface not in ALLOWED_INTERFACES:
-            raise ValueError(f"Model returned an unsupported edge interface: {interface!r}")
+            raise ValueError(f"Model returned an unsupported edge interface: {raw!r}")
+        edge["interface"] = interface
     return graph
 
 

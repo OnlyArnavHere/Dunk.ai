@@ -16,29 +16,36 @@ interface ProviderPickerProps {
   onChange: (next: BoardProviderId) => void;
   /** Locked while a run is in flight: the provider is baked into that job. */
   disabled?: boolean;
+  /** Overrides the trigger width, which the compact toolbar sizing assumes. */
+  className?: string;
 }
 
 /**
  * Which model generates the board.
  *
- * Sits next to the Generate button rather than in Settings because it is a
- * per-run decision with a real cost/quality trade-off, not a preference you set
- * once — and because the run it applies to starts here. The choice is remembered
- * between runs by useBoardGeneration.
+ * Lives in Settings, as "Default agent/model for PCB generation". It used to
+ * sit beside the Generate button as a per-run decision, but generation is no
+ * longer something you start by hand — it follows the chat pipeline — so there
+ * is no per-run moment left to make the choice in. The value is persisted by
+ * readStoredBoardProvider / writeStoredBoardProvider in lib/providers.ts and
+ * read fresh each time a run starts.
  */
-export function ProviderPicker({ value, onChange, disabled }: ProviderPickerProps) {
+export function ProviderPicker({ value, onChange, disabled, className }: ProviderPickerProps) {
   const active = BOARD_PROVIDERS.find((p) => p.id === value);
 
   return (
     <Select value={value} onValueChange={(v) => onChange(v as BoardProviderId)} disabled={disabled}>
       <SelectTrigger
         size="sm"
-        className="w-[150px] border-border text-muted-foreground"
+        className={className ?? 'w-[150px] border-border text-muted-foreground'}
         aria-label="Board generation model"
         title={active ? `${active.label} — ${active.hint}` : 'Board generation model'}
       >
         <Cpu className="w-3.5 h-3.5 mr-1.5 shrink-0" />
-        <SelectValue placeholder="Model" />
+        {/* Explicit children: the default SelectValue mirrors the whole chosen
+            item, and each item here is a two-line name-plus-hint block that the
+            trigger is far too small to show. */}
+        <SelectValue placeholder="Model">{active?.label}</SelectValue>
       </SelectTrigger>
       <SelectContent>
         {BOARD_PROVIDERS.map((provider) => (

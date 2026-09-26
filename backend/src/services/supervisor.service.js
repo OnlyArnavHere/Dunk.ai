@@ -220,6 +220,42 @@ const parseSSEBuffer = (buffer) => {
 };
 
 /**
+ * Write a completed run's board state onto its Project.
+ *
+ * Every other artifact a run produces is persisted by the browser through
+ * PATCH /projects/:id once ai:complete arrives. The board cannot be: it is the
+ * one artifact that is not re-derivable (its files live under uploads/boards/
+ * and `urls` is the only record of where they are), and a board run can finish
+ * after the tab that started it is gone. So it is written here, where the
+ * completion actually lands, whether or not anyone is still listening.
+ *
+ * The clearing branch mirrors the rule the workspace store applies in memory
+ * (see setAiOutput in frontend/lib/store.ts): a run that delivers new
+ * components retires the board built from the previous ones, because showing
+ * that board beside a different BOM would be a different design than the one on
+ * screen. `{}` rather than null is the "untouched" value the rest of the
+ * Project's Mixed fields use.
+ */
+const persistBoardState = async (project, result) => {
+  const projectId = project?._id;
+  if (!projectId || !result || typeof result !== 'object') return;
+
+  const board = result.board;
+  const hasBoard = board && typeof board === 'object';
+  const componentsReplaced = Boolean(result.bom || result.pcb_ir);
+  if (!hasBoard && !componentsReplaced) return;
+
+  try {
+    const { Project } = await import('../models/Project.js');
+    await Project.updateOne({ _id: projectId }, { $set: { board: hasBoard ? board : {} } });
+  } catch (error) {
+    // A board that is on screen but unsaved is a bad outcome, but it is not
+    // worth tearing down the stream the user is currently watching.
+    console.error(`[AI Stream] could not persist board for project ${projectId}:`, error.message);
+  }
+};
+
+/**
  * Call the Supervisor Agent's streaming endpoint and relay progress over
  * Socket.io.
  *
@@ -309,6 +345,7 @@ export const callSupervisorStream = async (
           emitAIComplete(io, jobId, data);
           finalResult = data.data || data;
           setJobStatus(jobId, 'completed', finalResult);
+          await persistBoardState(project, finalResult);
         }
       }
     }

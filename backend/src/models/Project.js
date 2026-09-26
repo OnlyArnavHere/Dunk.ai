@@ -39,6 +39,12 @@ const projectSchema = new mongoose.Schema(
     // it meant the Validation tab was empty again after a reload.
     handoff_validation: { type: mongoose.Schema.Types.Mixed, default: {} },
     documentation: { type: mongoose.Schema.Types.Mixed, default: {} },
+    // The generated board (dunkai-designer output). Unlike the artifacts above
+    // it is not produced by the chat pipeline but by "Generate PCB", and unlike
+    // them it is not re-derivable: the files live under uploads/boards/ and
+    // `urls` is the only record of where. Stored here so the PCB, Validation and
+    // Docs tabs survive a project switch or a reload.
+    board: { type: mongoose.Schema.Types.Mixed, default: {} },
 
     // Stats
     stats: {
