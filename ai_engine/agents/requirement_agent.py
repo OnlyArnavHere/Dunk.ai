@@ -150,7 +150,21 @@ class InterviewResponse(BaseModel):
 
     status: Literal["question", "complete"]
     question: str | None = None
-    options: list[str] | None = None
+    # The dict arm is deliberate and must stay in the annotation.
+    #
+    # Groq validates tool-call arguments against this model's JSON schema on
+    # its own server and returns 400 tool_use_failed on a mismatch, so the
+    # response never reaches Pydantic. A `mode="before"` validator alone
+    # cannot rescue a bad shape -- the call has already failed a hop earlier.
+    # Widening the schema is what lets the payload through to be normalised.
+    #
+    # Observed live: asked a grouped question, the model answered with one
+    # option list per sub-question --
+    #   {"parameters": [...], "power_source": [...], "budget": [...]}
+    # -- and Groq rejected the whole turn with
+    #   `/options`: expected array, but got object
+    # which surfaced as "Requirement Agent failed" and ended the run.
+    options: list[str] | dict[str, Any] | None = None
     selection_mode: Literal["single", "multiple"] = "multiple"
     requirements: HardwareRequirements | None = None
 
@@ -164,23 +178,48 @@ class InterviewResponse(BaseModel):
     @field_validator("options", mode="before")
     @classmethod
     def normalize_options(cls, value: Any) -> list[str] | None:
-        """Normalize provider wrappers into human-readable option labels."""
+        """Reduce whatever the model sent to a flat list of choice labels.
+
+        Covers three shapes seen from real providers:
+
+        * a JSON string, sometimes wrapping the list in {"options": [...]};
+        * a list whose items are dicts carrying label/text/value;
+        * a dict keyed by sub-question, one option list per facet, which Groq
+          rejects outright (see the `options` annotation above).
+
+        The grouped dict is FLATTENED rather than discarded. The chips are
+        multi-select (`selection_mode`, and `toggleOption` in the chat UI), so
+        the user can pick one choice from each facet and the send path joins
+        them; collapsing the facets loses nothing they could not express.
+        """
         if value is None:
             return None
+
         if isinstance(value, str):
             try:
                 parsed = json.loads(value.strip())
             except json.JSONDecodeError:
                 parsed = [value]
-            value = parsed.get("options") if isinstance(parsed, dict) else parsed
-        if not isinstance(value, list):
+            value = parsed
+
+        if isinstance(value, dict):
+            # A provider wrapper names the list; a grouped question does not.
+            inner = value.get("options")
+            value = inner if inner is not None else list(value.values())
+
+        if not isinstance(value, (list, tuple)):
             return None
+
         labels: list[str] = []
         for item in value:
-            if isinstance(item, dict):
-                item = item.get("label") or item.get("text") or item.get("value")
-            if isinstance(item, str):
-                label = item.strip()
+            # One nesting level, from the same per-facet grouping habit.
+            items = item if isinstance(item, (list, tuple)) else [item]
+            for entry in items:
+                if isinstance(entry, dict):
+                    entry = entry.get("label") or entry.get("text") or entry.get("value")
+                if entry is None:
+                    continue
+                label = str(entry).strip()
                 if label and label not in labels:
                     labels.append(label)
         return labels[:6] if labels else None
@@ -193,23 +232,14 @@ class InterviewResponse(BaseModel):
             if self.requirements is not None:
                 raise ValueError("question status cannot include final requirements")
             
-            # Ensure 3 to 6 separated options are ALWAYS present for multi-select interaction
-            opts = list(self.options or [])
-            if len(opts) < 3:
-                defaults = [
-                    "Standard Baseline",
-                    "High Performance Mode",
-                    "Ultra Low-Power Mode",
-                    "Modular Expansion Support",
-                    "Rugged Outdoor Protection",
-                    "Compact Form-Factor"
-                ]
-                for default_opt in defaults:
-                    if default_opt not in opts:
-                        opts.append(default_opt)
-                    if len(opts) >= 3:
-                        break
-            self.options = opts[:6]
+            # Capped, but deliberately NOT padded. A previous revision topped
+            # every short list up to three with generic strings ("Standard
+            # Baseline", "High Performance Mode", ...). Those are not answers to
+            # the question asked: clicking one sends it back as the user's real
+            # answer and it lands in the requirements that drive the whole
+            # pipeline. run_interview asks the model for real,
+            # project-specific choices instead, via _get_option_chain.
+            self.options = list(self.options or [])[:6] or None
 
         elif self.requirements is None:
             raise ValueError("complete status requires requirements")
@@ -229,6 +259,8 @@ Every question MUST include 3 to 6 concise, separated, atomic multiple-choice op
 Keep each option short (1 to 5 words), atomic, and independently selectable so the user can select multiple options according to their specific requirements. Do NOT combine multiple unrelated options into a single long paragraph option.
 
 Set selection_mode to "multiple" by default so the user can check off multiple choices at once.
+
+Return options as a flat JSON array of strings, or null -- never an object keyed by sub-question, and never a list of lists. When a question covers several details, flatten every choice into that one array; the user can select more than one.
 
 You are dunkai's Requirement Analysis Agent. dunkai is the software product, not the user's hardware project.
 
@@ -260,22 +292,39 @@ SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(min_turns=MIN_INTERVIEW_TURNS, ma
 # is invoked.
 # ---------------------------------------------------------------------------
 
-@lru_cache(maxsize=1)
-def _get_llm() -> ChatGroq:
+@lru_cache(maxsize=8)
+def _get_llm(model: str | None = None) -> ChatGroq:
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         raise EnvironmentError("Set GROQ_API_KEY before running the Requirement Agent.")
-    return ChatGroq(model=MODEL_NAME, groq_api_key=api_key, temperature=TEMPERATURE, max_retries=2)
+    return ChatGroq(model=model or MODEL_NAME, groq_api_key=api_key, temperature=TEMPERATURE, max_retries=2)
 
 
-@lru_cache(maxsize=1)
-def _get_interview_chain():
+_OPTION_SYSTEM_PROMPT = (
+    "Generate 3 to 6 useful answer choices for the question. Choices must be "
+    "specific to this hardware project and to the question asked, short (1-5 "
+    "words), atomic and independently selectable, so the user may pick several. "
+    "Do not answer the question. Return only the options field."
+)
+
+
+@lru_cache(maxsize=8)
+def _get_option_chain(model: str | None = None):
+    option_prompt = ChatPromptTemplate.from_messages([
+        ("system", _OPTION_SYSTEM_PROMPT),
+        ("human", "Question: {question}"),
+    ])
+    return option_prompt | _get_llm(model).with_structured_output(QuestionOptions)
+
+
+@lru_cache(maxsize=8)
+def _get_interview_chain(model: str | None = None):
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         MessagesPlaceholder("history"),
         ("human", "{input}"),
     ])
-    return prompt | _get_llm().with_structured_output(InterviewResponse)
+    return prompt | _get_llm(model).with_structured_output(InterviewResponse)
 
 
 # ---------------------------------------------------------------------------
@@ -344,7 +393,7 @@ def _interview_budget(user_input: str, history: list[Any] | None = None) -> int:
 # Public API
 # ---------------------------------------------------------------------------
 
-def run_interview(user_input: str, history: list[Any] | None = None) -> InterviewResponse:
+def run_interview(user_input: str, history: list[Any] | None = None, model: str | None = None) -> InterviewResponse:
     """Advance the interview by one turn.
 
     Makes exactly one LLM call. Every question is schema-validated to include
@@ -374,14 +423,43 @@ def run_interview(user_input: str, history: list[Any] | None = None) -> Intervie
             )
         current_input = turn_instruction + "\nCURRENT USER ANSWER:\n" + user_input.strip()
 
-        result = _get_interview_chain().invoke({
-            "history": to_langchain_history(history),
-            "input": current_input,
-        })
+        chain = _get_interview_chain(model)
+        result = None
+        last_exc = None
+        for attempt in range(6):
+            try:
+                result = chain.invoke({
+                    "history": to_langchain_history(history),
+                    "input": current_input,
+                })
+                break
+            except Exception as exc:
+                last_exc = exc
+                err_str = str(exc)
+                if ("429" in err_str or "rate_limit_exceeded" in err_str or "Too Many Requests" in err_str) and attempt < 5:
+                    wait_match = re.search(r"try again in ([\d\.]+)s", err_str, re.IGNORECASE)
+                    wait_time = float(wait_match.group(1)) + 1.5 if wait_match else (attempt + 1) * 3.5
+                    print(f"[Requirement Agent] Groq rate limit 429 encountered for model '{model or MODEL_NAME}'. Waiting {wait_time:.1f}s before retry (attempt {attempt+1}/5)...")
+                    time.sleep(wait_time)
+                else:
+                    raise
+        if result is None:
+            raise RuntimeError(f"LangChain/Groq rate limit exceeded after retries: {last_exc}") from last_exc
         response = InterviewResponse.model_validate(result)
 
         if asked >= min(budget, MAX_INTERVIEW_TURNS) and response.status == "question":
             raise RuntimeError("Interview question limit reached without a complete requirements response.")
+        # The model is asked for 3-6 options, but does not always comply. A
+        # second, cheap call asks for real ones rather than inventing filler;
+        # if it fails, the question is simply open-ended, which is honest.
+        if response.status == "question" and response.question and len(response.options or []) < 3:
+            try:
+                generated = _get_option_chain(model).invoke({"question": response.question})
+                options = QuestionOptions.model_validate(generated).options
+                if options:
+                    response = response.model_copy(update={"options": options})
+            except Exception:
+                pass
 
         return response
     except ValidationError:

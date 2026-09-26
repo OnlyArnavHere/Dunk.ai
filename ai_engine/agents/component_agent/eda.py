@@ -46,6 +46,11 @@ class DynamicPCBIRGenerator:
         pkg_col = next((c for c in ['package', 'footprint'] if c in df.columns), None)
         cat_col = next((c for c in ['category', 'subsystem', 'type', 'part_class'] if c in df.columns), None)
         qty_col = next((c for c in ['build_quantity', 'quantity', 'qty'] if c in df.columns), None)
+        # Distinct from `part_col` above, which may fall back to an lcsc column
+        # as a NAME when no MPN column exists. This is the catalogue NUMBER,
+        # forwarded so the downstream PCB module can resolve by a known-good
+        # identifier rather than re-deriving it from the MPN string.
+        lcsc_col = next((c for c in ['lcsc', 'lcsc_part', 'jlcpcb_part'] if c in df.columns), None)
 
         components = []
         for _, row in df.iterrows():
@@ -63,22 +68,47 @@ class DynamicPCBIRGenerator:
             # Priority: Live API Package -> CSV Package -> Default
             final_package = meta["package"] if meta["package"] else csv_package
 
-            components.append({
+            lcsc = None
+            if lcsc_col:
+                raw_lcsc = str(row[lcsc_col]).strip()
+                if raw_lcsc and raw_lcsc.lower() != 'nan':
+                    lcsc = raw_lcsc
+
+            component = {
                 "ref_id": ref,
                 "part_class": str(row[cat_col]).lower().strip() if cat_col and str(row[cat_col]) != 'nan' else "ic",
                 "part_number": meta["mfr_part"],
                 "package": final_package,
                 "quantity": int(row[qty_col]) if qty_col and str(row[qty_col]).isdigit() else 1
-            })
+            }
+            # OPTIONAL and additive: emitted only when actually known, so a BOM
+            # without the column produces exactly the record shape as before and
+            # downstream consumers that do not read it are unaffected.
+            if lcsc:
+                component["lcsc"] = lcsc
+
+            components.append(component)
             
         return components
 
     def validate_nets(self, components: List[Dict[str, Any]], nets: List[Dict[str, Any]]) -> List[str]:
-        """Checks for orphan ref_ids in nets that do not exist in components."""
+        """Checks for orphan ref_ids in nets that do not exist in components.
+
+        Handles both net shapes: schema 1.0's ``connections: ["U1.SDA"]`` and
+        schema 2.0's ``members: [{"ref_id": "U1", "role": "DATA"}]``.
+        """
         declared_refs = {c["ref_id"] for c in components}
         warnings = []
-        
+
         for net in nets:
+            # schema 2.0
+            for member in net.get("members", []):
+                ref_id = member.get("ref_id")
+                if ref_id not in declared_refs:
+                    warnings.append(
+                        f"⚠️ Warning: Member '{ref_id}' in net '{net['name']}' references unknown RefID '{ref_id}'"
+                    )
+            # schema 1.0
             for conn in net.get("connections", []):
                 ref_id = conn.split(".")[0]
                 if ref_id not in declared_refs:
@@ -86,24 +116,25 @@ class DynamicPCBIRGenerator:
         return warnings
 
     def build_pcb_ir(
-        self, 
-        design_name: str, 
-        bom_csv_path: str, 
-        net_connections: List[Dict[str, Any]], 
+        self,
+        design_name: str,
+        bom_csv_path: str,
+        net_connections: List[Dict[str, Any]],
         layer_count: int = 4,
         width_mm: float = 100.0,
-        height_mm: float = 60.0
+        height_mm: float = 60.0,
+        schema_version: str = "2.0",
     ) -> Dict[str, Any]:
-        
+
         components = self.parse_bom_csv(bom_csv_path)
-        
+
         # Check validation warnings
         warnings = self.validate_nets(components, net_connections)
         for w in warnings:
             print(w)
-            
+
         return {
-            "schema_version": "1.0",
+            "schema_version": schema_version,
             "design_name": design_name,
             "components": components,
             "nets": net_connections,

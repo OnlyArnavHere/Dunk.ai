@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Generator, Literal
 
+from functools import lru_cache
+
 from langgraph.graph import END, START, StateGraph
 
 try:
@@ -66,9 +68,6 @@ def build_graph() -> StateGraph:
     graph.add_edge("documentation", END)
 
     return graph
-
-
-from functools import lru_cache
 
 
 @lru_cache(maxsize=1)

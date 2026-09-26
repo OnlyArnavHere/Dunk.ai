@@ -33,6 +33,7 @@ import math
 from typing import Any, Dict, List, Optional
 
 import config
+import coverage
 import utils
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s | %(message)s")
@@ -109,19 +110,155 @@ def _score_semantic_similarity(candidate: Dict[str, Any]) -> float:
     return max(0.0, min(1.0, similarity))
 
 
+# Values a catalogue attribute uses to mean "not populated". Treated as ABSENT
+# evidence, never as a negative answer.
+_ATTR_PLACEHOLDERS = {"", "-", "--", "n/a", "na", "none", "null", "unknown"}
+
+# Confidence tiers for interface evidence. Full marks require STRUCTURED proof;
+# free text can never reach 1.0, because a datasheet blurb mentioning "I2C" is
+# marketing copy, not a capability claim.
+_IFACE_VERIFIED_MATCH = 1.00     # real resolved pins confirm it -> strongest
+_IFACE_VERIFIED_ABSENT = 0.05    # every pad named, interface genuinely absent
+_IFACE_STRUCTURED_MATCH = 1.00   # attribute names the interface -> believe it
+_IFACE_TEXT_ONLY = 0.60          # only free text mentions it -> weak, unverified
+_IFACE_NO_EVIDENCE = 0.30        # nothing either way -> unknown, not a failure
+_IFACE_STRUCTURED_CONTRADICTS = 0.15  # attribute lists interfaces, ours absent
+
+
+def _structured_interfaces(candidate: Dict[str, Any]) -> Optional[str]:
+    """Interface text from STRUCTURED catalogue attributes only.
+
+    Returns None when the part carries no populated interface attribute — which
+    means *unknown*, not *absent*. Distinguishing those two is the whole point of
+    this function: only 18 of 240 real candidates surveyed carried a populated
+    `Interface` attribute (all in one subsystem), so treating its absence as a
+    negative would fail ~92% of parts for lacking a field the catalogue simply
+    does not fill in.
+    """
+    attributes = utils.get_attributes(candidate)
+    if not isinstance(attributes, dict):
+        return None
+
+    values = [
+        str(value)
+        for key, value in attributes.items()
+        if "interface" in str(key).lower()
+        and str(value).strip().lower() not in _ATTR_PLACEHOLDERS
+    ]
+    return " ".join(values).lower() if values else None
+
+
 def _score_interface_match(candidate: Dict[str, Any], request: Dict[str, Any]) -> float:
+    """Score how well a candidate satisfies the requested interfaces.
+
+    Previously this substring-matched the request against
+    `utils.get_searchable_text()` — description, title, subcategory, category,
+    mfr_part and every attribute value flattened into one blob. At 25 points
+    (tied heaviest weight) that rewarded a part for MENTIONING an interface
+    rather than having one: any datasheet blurb containing "I2C" scored full
+    marks. That is very likely part of why parts lacking a requested function
+    kept winning their role.
+
+    Structured attribute data is now required for full marks. Three states are
+    kept genuinely distinct, because collapsing them is how a "don't know"
+    becomes a false claim:
+
+      verified pins .......... 1.00  resolved footprint confirms it (strongest)
+      verified absent ........ 0.05  every pad named, interface genuinely absent
+      confirmed by attribute .. 1.00  the catalogue says it has this
+      free text only ......... 0.60  plausible, unverified — cannot reach 1.0
+      no evidence ............ 0.30  unknown; NOT scored as absent
+      attribute contradicts .. 0.15  the one sound negative
+
+    Note the last is 0.15 rather than 0.0: a populated interface attribute is
+    not guaranteed exhaustive, so it is strong evidence against, not proof.
+    """
+    # Prefer the structured requirements from parser.py, which have already had
+    # Power and the wireless three removed by interface_taxonomy. Scoring those
+    # was never meaningful: "has Power" is true of every part in the catalogue
+    # (and Power was more than half of all observed edges), and BLE/WiFi/RF
+    # describe a link through the air, so no board-level part requirement
+    # exists for them at all.
+    #
+    # Falls back to the flat lists when `interface_requirements` is absent, so a
+    # hand-built request (tests, the __main__ demo) still scores as before.
+    structured = request.get("interface_requirements")
+    if structured is not None:
+        source = [
+            entry.get("interface")
+            for entry in structured
+            if entry.get("relationship") != "not_applicable"
+        ]
+    else:
+        source = (request.get("interfaces") or []) + (request.get("power_interfaces") or [])
+
     required = set(
         i.strip().lower()
-        for i in (request.get("interfaces") or []) + (request.get("power_interfaces") or [])
+        for i in source
         if i and str(i).strip()
     )
     if not required:
         # Nothing specific was required, so nothing to fail on.
         return 1.0
 
+    # Tier 0 — verified pin data from the downstream PCB module. This is the
+    # only evidence derived from the part's REAL resolved footprint, so it
+    # outranks both catalogue attributes and free text.
+    #
+    # Returns None for every unknown case (part not resolved, or naming
+    # incomplete so absence is unproven). None falls through to the tiers below
+    # rather than becoming a score — collapsing "not checked" into "absent" is
+    # the false negative this whole scoring function exists to avoid.
+    confidences = {
+        interface: coverage.interface_confidence(candidate, interface)
+        for interface in required
+    }
+
+    # A verified ABSENCE on any required interface is disqualifying, and is
+    # applied as a ceiling rather than as one term in an average.
+    #
+    # This previously averaged: `matched / len(required)` counted the confirmed
+    # interfaces and silently DISCARDED the verified-absent ones. A part proven
+    # to lack a required bus therefore scored 1.00 * (1/2) = 0.50 whenever it
+    # confirmed some other required interface — beating a part where that bus
+    # was merely unknown (0.30). Real instance: AD4057, a linear charger with a
+    # fully-named 6-pad footprint and no I2C, won U2 against an I2C net because
+    # its confirmed Power rail averaged the proven absence away.
+    #
+    # Partial credit is meaningless here: if the part cannot carry a required
+    # net, the other interfaces it does have will not make the design build. So
+    # a proven "no" can never outrank an "unknown", no matter how many other
+    # required interfaces the part confirms.
+    if any(c is not None and c <= 0.0 for c in confidences.values()):
+        return _IFACE_VERIFIED_ABSENT
+
+    confirmed = [i for i, c in confidences.items() if c is not None and c >= 1.0]
+    if confirmed:
+        if len(confirmed) == len(required):
+            return _IFACE_VERIFIED_MATCH
+        # The rest are unknown, not absent. Scale by what was actually proven,
+        # but never below the no-evidence score: having confirmed SOME required
+        # interface must not rank worse than having confirmed none.
+        return max(
+            _IFACE_NO_EVIDENCE,
+            _IFACE_VERIFIED_MATCH * (len(confirmed) / len(required)),
+        )
+
+    structured = _structured_interfaces(candidate)
+    if structured is not None:
+        matched = sum(1 for interface in required if interface in structured)
+        if matched:
+            # Partial credit scales, but a full match earns the full score.
+            return _IFACE_STRUCTURED_MATCH * (matched / len(required))
+        return _IFACE_STRUCTURED_CONTRADICTS
+
+    # No structured interface data for this part. Fall back to free text, but
+    # capped — this is a hint, not a capability claim.
     text = utils.get_searchable_text(candidate)
     matched = sum(1 for interface in required if interface in text)
-    return matched / len(required)
+    if matched:
+        return _IFACE_TEXT_ONLY * (matched / len(required))
+    return _IFACE_NO_EVIDENCE
 
 
 def _score_stock_availability(candidate: Dict[str, Any]) -> float:
