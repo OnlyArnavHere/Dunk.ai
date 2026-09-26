@@ -4,12 +4,10 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
-import { AnimatedTetrahedron } from "./animated-tetrahedron";
 
 export function CtaSection() {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLDivElement>(null);
-  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -18,78 +16,63 @@ export function CtaSection() {
       },
       { threshold: 0.2 }
     );
-
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMousePosition({
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100,
-    });
-  };
-
   return (
-    <section ref={sectionRef} className="relative py-24 lg:py-32 overflow-hidden">
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-        <div
-          className={`relative border border-foreground transition-all duration-1000 ${
-            isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-          }`}
-          onMouseMove={handleMouseMove}
-        >
-          {/* Spotlight effect — uses currentColor so it works in both themes */}
-          <div 
-            className="absolute inset-0 opacity-10 pointer-events-none transition-opacity duration-300 text-foreground"
-            style={{
-              background: `radial-gradient(600px circle at ${mousePosition.x}% ${mousePosition.y}%, currentColor, transparent 40%)`
-            }}
-          />
-          
-          <div className="relative z-10 px-8 lg:px-16 py-16 lg:py-24">
-            <div className="flex flex-col lg:flex-row items-center justify-between gap-12">
-              {/* Left content */}
-              <div className="flex-1">
-                <h2 className="text-4xl lg:text-7xl font-display tracking-tight mb-8 leading-[0.95]">
-                  Ready to build
-                  <br />
-                  something great?
-                </h2>
+    <section ref={sectionRef} className="relative py-40 lg:py-56 bg-background border-t border-emerald-500/10 overflow-hidden">
+      {/* Background Engineering Visual (Subtle Grid + Glow) */}
+      <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+        <div className="w-full h-full max-w-[1200px] opacity-[0.03] dark:mix-blend-screen" style={{ backgroundImage: 'radial-gradient(#10b981 2px, transparent 2px)', backgroundSize: '60px 60px' }} />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[1000px] h-[1000px] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,rgba(6,182,212,0.03)_30%,rgba(0,0,0,0)_60%)] blur-3xl animate-[pulse_8s_ease-in-out_infinite]" />
+        
+        {/* Subtle moving abstract trace */}
+        <svg className="absolute inset-0 w-full h-full opacity-20" viewBox="0 0 1000 1000" preserveAspectRatio="none">
+           <defs>
+             <linearGradient id="cta-trace" x1="0" y1="0" x2="1" y2="0">
+               <stop offset="0%" stopColor="#10b981" />
+               <stop offset="100%" stopColor="#06b6d4" />
+             </linearGradient>
+           </defs>
+           <path d="M 0 800 L 300 800 L 400 500 L 600 500 L 700 200 L 1000 200" fill="none" stroke="url(#cta-trace)" strokeWidth="1.5" strokeDasharray="10 20">
+             <animate attributeName="stroke-dashoffset" from="30" to="0" dur="2s" repeatCount="indefinite" />
+           </path>
+        </svg>
+      </div>
 
-                <p className="text-xl text-muted-foreground mb-12 leading-relaxed max-w-xl">
-                  Join engineering teams shipping hardware faster with DunkAI. 
-                  Start free, scale infinitely.
-                </p>
+      <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12 flex flex-col items-center text-center">
+        <div className={`w-px h-24 bg-gradient-to-b from-transparent to-border mb-12 transition-all duration-1000 ease-out ${
+          isVisible ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-12"
+        }`} />
 
-                <div className="flex flex-col sm:flex-row items-start gap-4">
-                  <Button asChild size="lg" className="bg-foreground hover:bg-foreground/90 text-background px-8 h-14 text-base rounded-full group">
-                    <Link href="/signup">
-                      Start building free
-                      <ArrowRight className="w-4 h-4 ml-2 transition-transform group-hover:translate-x-1" />
-                    </Link>
-                  </Button>
-                  <Button asChild size="lg" variant="outline" className="h-14 px-8 text-base rounded-full border-foreground/20 hover:bg-foreground/5">
-                    <Link href="/workspace">Launch workspace</Link>
-                  </Button>
-                </div>
+        <h2 className={`text-6xl lg:text-[100px] font-light tracking-[-0.03em] text-foreground leading-[0.9] mb-10 transition-all duration-1000 ease-out delay-100 ${
+          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
+        }`}>
+          Ready to build
+          <br />
+          <span className="font-serif italic text-muted-foreground">something great?</span>
+        </h2>
 
-                <p className="text-sm text-muted-foreground mt-8 font-mono">
-                  No credit card required
-                </p>
-              </div>
+        <p className={`text-xl lg:text-3xl text-muted-foreground mb-16 leading-relaxed max-w-3xl mx-auto font-light transition-all duration-1000 delay-300 ease-out ${
+          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}>
+          Join engineering teams shipping hardware faster with DunkAI. 
+          Start free, scale infinitely.
+        </p>
 
-              {/* Right animation */}
-              <div className="hidden lg:flex items-center justify-center w-[500px] h-[500px] -mr-16">
-                <AnimatedTetrahedron />
-              </div>
-            </div>
-          </div>
-
-          {/* Decorative corner */}
-          <div className="absolute top-0 right-0 w-32 h-32 border-b border-l border-foreground/10" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 border-t border-r border-foreground/10" />
+        <div className={`flex flex-col sm:flex-row items-center justify-center gap-6 transition-all duration-1000 delay-500 ease-out ${
+          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
+        }`}>
+          <Button asChild size="lg" className="bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-white border-none px-12 h-16 text-lg rounded-full group font-medium shadow-[0_0_40px_rgba(16,185,129,0.3)] transition-all hover:scale-105">
+            <Link href="/signup">
+              Start building free
+              <ArrowRight className="w-5 h-5 ml-3 transition-transform group-hover:translate-x-1.5" />
+            </Link>
+          </Button>
+          <Button asChild size="lg" variant="outline" className="h-16 px-12 text-lg rounded-full border-emerald-500/30 text-emerald-600 dark:text-emerald-100/80 hover:text-foreground dark:hover:text-white hover:bg-emerald-500/10 font-medium transition-all hover:border-emerald-500/50 bg-background">
+            <Link href="/workspace">Launch workspace</Link>
+          </Button>
         </div>
       </div>
     </section>

@@ -39,9 +39,9 @@ export default function LoginPage() {
         <GoogleButton />
         
         <div className="flex items-center gap-3 py-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="font-sans text-[13px] uppercase tracking-wider text-white/50 font-semibold">or</span>
-          <div className="h-px flex-1 bg-white/10" />
+          <div className="h-px flex-1 bg-border" />
+          <span className="font-sans text-[13px] uppercase tracking-wider text-muted-foreground font-semibold">or</span>
+          <div className="h-px flex-1 bg-border" />
         </div>
 
         {error && (
@@ -58,22 +58,22 @@ export default function LoginPage() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Enter your email"
-            className="h-14 rounded-xl bg-[#282828] border-white/10 text-white placeholder:text-white/40 focus-visible:ring-1 focus-visible:ring-white/20 text-[17px] px-5"
+            className="h-14 rounded-xl bg-background border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-ring text-[17px] px-5"
             disabled={loading}
           />
           
           <Button 
             type="submit" 
             disabled={loading} 
-            className="h-14 w-full rounded-xl bg-[#EFECE6] text-black hover:bg-white transition-colors font-semibold text-[17px]"
+            className="h-14 w-full rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-colors font-semibold text-[17px]"
           >
             {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Continue with email'}
           </Button>
         </form>
 
-        <p className="text-center text-[15px] text-white/60 pt-3">
+        <p className="text-center text-[15px] text-muted-foreground pt-3">
           Don't have an account?{' '}
-          <Link href="/signup" className="text-white hover:underline underline-offset-4 transition-colors font-semibold">
+          <Link href="/signup" className="text-foreground hover:underline underline-offset-4 transition-colors font-semibold">
             Sign up
           </Link>
         </p>

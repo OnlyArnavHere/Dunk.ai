@@ -100,6 +100,25 @@ const money = (value: unknown): string => {
   return Number.isFinite(n) ? `$${n.toFixed(2)}` : '—'
 }
 
+/**
+ * HardwareRequirements fields are typed `list[str] | str | dict[str, Any] |
+ * None` on the Python side (Groq's structured output is unreliable about
+ * which shape it sends), so the raw value reaching here can be any of those.
+ * Renders each shape into one readable line instead of leaking "[object
+ * Object]" or an unseparated run-on string.
+ */
+const formatValue = (value: unknown): string => {
+  if (value == null) return ''
+  if (Array.isArray(value)) return value.filter(Boolean).map(String).join(', ')
+  if (typeof value === 'object') {
+    return Object.values(value as Record<string, unknown>)
+      .filter((v) => v != null && v !== '')
+      .map(String)
+      .join(', ')
+  }
+  return String(value)
+}
+
 const DOWNLOADS: Array<{ key: keyof BoardArtifact['urls']; label: string }> = [
   { key: 'gerbersZip', label: 'Gerbers (.zip)' },
   { key: 'bomCsv', label: 'BOM (.csv)' },
@@ -141,11 +160,40 @@ function Section({
   )
 }
 
+/** Omitted when empty rather than shown as a "—" placeholder — a report with
+ * ten populated fields and two acknowledged gaps reads better than one with
+ * blank cards scattered between them. */
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
+  if (value === '' || value == null) return null
   return (
     <div className="rounded-xl border border-border bg-background/70 p-3">
       <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
-      <p className="mt-1.5 text-sm leading-6 text-foreground">{value || '—'}</p>
+      <p className="mt-1.5 text-sm leading-6 text-foreground">{value}</p>
+    </div>
+  )
+}
+
+/** Same omit-when-empty rule as Field, for HardwareRequirements fields that
+ * read better as a list than a joined line (functional requirements, I/O). */
+function BulletList({ label, items }: { label: string; items: unknown }) {
+  const list = Array.isArray(items)
+    ? items.filter((v) => v != null && String(v).trim() !== '').map(String)
+    : typeof items === 'string' && items.trim()
+      ? [items.trim()]
+      : items && typeof items === 'object'
+        ? Object.values(items as Record<string, unknown>)
+            .filter((v) => v != null && String(v).trim() !== '')
+            .map(String)
+        : []
+  if (list.length === 0) return null
+  return (
+    <div className="mt-3 rounded-xl border border-border bg-background/70 p-3">
+      <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">{label}</p>
+      <ul className="mt-2 space-y-1">
+        {list.map((item, i) => (
+          <li key={i} className="text-sm leading-6 text-muted-foreground">• {item}</li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -234,7 +282,7 @@ export function DocsView({ projectId: _projectId }: { projectId?: string } = {})
   }
 
   return (
-    <div className="h-full overflow-auto bg-background p-5 lg:p-7">
+    <div className="h-full overflow-auto scroll-smooth bg-background p-5 lg:p-7">
       <div className="mx-auto max-w-7xl space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -274,24 +322,19 @@ export function DocsView({ projectId: _projectId }: { projectId?: string } = {})
               <div className="grid gap-3 sm:grid-cols-2">
                 <Field label="Objective" value={requirements.objective} />
                 <Field label="Category" value={requirements.category} />
-                <Field label="Power" value={requirements.power_source ?? requirements.power} />
-                <Field
-                  label="Interfaces"
-                  value={(archModel.interfaces ?? []).join(', ')}
-                />
+                <Field label="Power" value={formatValue(requirements.power_requirements)} />
+                <Field label="Interfaces" value={(archModel.interfaces ?? []).join(', ')} />
+                <Field label="Target users" value={formatValue(requirements.target_users)} />
+                <Field label="Connectivity" value={formatValue(requirements.connectivity)} />
+                <Field label="Budget" value={formatValue(requirements.budget)} />
+                <Field label="Supported platforms" value={formatValue(requirements.supported_platforms)} />
               </div>
-              {Array.isArray(requirements.constraints) && requirements.constraints.length > 0 && (
-                <div className="mt-3 rounded-xl border border-border bg-background/70 p-3">
-                  <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted-foreground">
-                    Constraints
-                  </p>
-                  <ul className="mt-2 space-y-1">
-                    {requirements.constraints.map((c: string, i: number) => (
-                      <li key={i} className="text-sm leading-6 text-muted-foreground">• {c}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+              <BulletList label="Functional requirements" items={requirements.functional_requirements} />
+              <BulletList label="Hardware inputs" items={requirements.hardware_inputs} />
+              <BulletList label="Hardware outputs" items={requirements.hardware_outputs} />
+              <BulletList label="Performance requirements" items={requirements.performance_requirements} />
+              <BulletList label="Safety & compliance" items={requirements.safety_compliance} />
+              <BulletList label="Physical constraints" items={requirements.physical_constraints} />
             </Section>
 
             <Section
