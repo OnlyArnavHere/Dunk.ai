@@ -144,29 +144,16 @@
     font-family: var(--font-display);
   }
   
+  .font-serif {
+    font-family: var(--font-playfair), serif;
+  }
+  
   .text-stroke {
     -webkit-text-stroke: 1.5px currentColor;
     -webkit-text-fill-color: transparent;
   }
   
-  .marquee {
-    animation: marquee 34s linear infinite;
-    will-change: transform;
-  }
-  
-  .marquee-reverse {
-    animation: marquee-reverse 25s linear infinite;
-  }
 
-  @keyframes marquee {
-    0% { transform: translateX(0); }
-    100% { transform: translate3d(-33.333333%, 0, 0); }
-  }
-  
-  @keyframes marquee-reverse {
-    0% { transform: translateX(-50%); }
-    100% { transform: translateX(0); }
-  }
   
   .line-reveal {
     clip-path: inset(0 100% 0 0);

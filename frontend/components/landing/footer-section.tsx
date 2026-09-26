@@ -1,8 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
-import { AnimatedWave } from "./animated-wave";
 
 const footerLinks = {
   Product: [
@@ -38,56 +36,43 @@ const socialLinks = [
 
 export function FooterSection() {
   return (
-    <footer className="relative border-t border-foreground/10">
-      {/* Animated wave background */}
-      <div className="absolute inset-0 h-64 opacity-20 pointer-events-none overflow-hidden">
-        <AnimatedWave />
-      </div>
-      
-      <div className="relative z-10 max-w-[1400px] mx-auto px-6 lg:px-12">
-        {/* Main Footer */}
-        <div className="py-16 lg:py-24">
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-12 lg:gap-8">
-            {/* Brand Column */}
-            <div className="col-span-2">
-              <Link href="/" className="inline-flex items-center gap-2 mb-6">
-                <span className="text-2xl font-display">DunkAI</span>
-                <span className="text-xs text-muted-foreground font-mono">COPILOT</span>
-              </Link>
-
-              <p className="text-muted-foreground leading-relaxed mb-8 max-w-xs">
-                The AI-powered hardware engineering copilot. Describe your idea in natural language and get manufacturing-ready designs.
-              </p>
-
-              {/* Social Links */}
-              <div className="flex gap-6">
-                {socialLinks.map((link) => (
-                  <a
-                    key={link.name}
-                    href={link.href}
-                    className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1 group"
-                  >
-                    {link.name}
-                    <ArrowUpRight className="w-3 h-3 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                  </a>
-                ))}
-              </div>
+    <footer className="bg-[#0b0c0f] border-t border-white/10 pt-24 lg:pt-32 pb-12">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
+        <div className="grid grid-cols-2 md:grid-cols-12 gap-12 lg:gap-8 mb-24">
+          <div className="col-span-2 md:col-span-5 pr-8">
+            <Link href="/" className="inline-block mb-8">
+              <span className="text-4xl font-serif italic text-white tracking-tight">DunkAI</span>
+            </Link>
+            <p className="text-white/40 leading-relaxed font-light max-w-sm mb-10">
+              The AI-powered hardware engineering copilot. Describe your idea in natural language and get manufacturing-ready designs.
+            </p>
+            <div className="flex gap-6">
+              {socialLinks.map((link) => (
+                <a
+                  key={link.name}
+                  href={link.href}
+                  className="text-sm font-light text-white/40 hover:text-white transition-colors"
+                >
+                  {link.name}
+                </a>
+              ))}
             </div>
+          </div>
 
-            {/* Link Columns */}
+          <div className="col-span-2 md:col-span-7 grid grid-cols-2 md:grid-cols-4 gap-8">
             {Object.entries(footerLinks).map(([title, links]) => (
               <div key={title}>
-                <h3 className="text-sm font-medium mb-6">{title}</h3>
+                <h3 className="text-sm font-medium text-white mb-6 tracking-wide">{title}</h3>
                 <ul className="space-y-4">
                   {links.map((link) => (
                     <li key={link.name}>
                       <a
                         href={link.href}
-                        className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-2"
+                        className="text-sm font-light text-white/40 hover:text-white transition-colors inline-flex items-center gap-2"
                       >
                         {link.name}
                         {"badge" in link && link.badge && (
-                          <span className="text-xs px-2 py-0.5 bg-foreground text-background rounded-full">
+                          <span className="text-[10px] uppercase tracking-wider px-2 py-0.5 border border-white/20 text-white/60 rounded-full">
                             {link.badge}
                           </span>
                         )}
@@ -100,17 +85,14 @@ export function FooterSection() {
           </div>
         </div>
 
-        {/* Bottom Bar */}
-        <div className="py-8 border-t border-foreground/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">
-            2025 DunkAI. All rights reserved.
+        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-6">
+          <p className="text-sm font-light text-white/30">
+            © 2026 DunkAI. All rights reserved.
           </p>
 
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-accent" />
-              All systems operational
-            </span>
+          <div className="flex items-center gap-3 text-sm font-light text-white/40">
+            <span className="w-2 h-2 rounded-full bg-white/60" />
+            All systems operational
           </div>
         </div>
       </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { ArrowRight, Check } from "lucide-react";
 
 const plans = [
@@ -17,6 +17,7 @@ const plans = [
     ],
     cta: "Start free",
     popular: false,
+    colorScheme: "cyan",
   },
   {
     name: "Pro",
@@ -33,6 +34,7 @@ const plans = [
     ],
     cta: "Start trial",
     popular: true,
+    colorScheme: "emerald",
   },
   {
     name: "Enterprise",
@@ -50,138 +52,149 @@ const plans = [
     ],
     cta: "Contact sales",
     popular: false,
+    colorScheme: "violet",
   },
 ];
 
 export function PricingSection() {
   const [isAnnual, setIsAnnual] = useState(true);
+  const [isVisible, setIsVisible] = useState(false);
+  const sectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) setIsVisible(true);
+      },
+      { threshold: 0.1 }
+    );
+    if (sectionRef.current) observer.observe(sectionRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <section id="pricing" className="relative py-32 lg:py-40 border-t border-foreground/10">
-      <div className="max-w-7xl mx-auto px-6 lg:px-12">
-        {/* Header */}
-        <div className="max-w-3xl mb-20">
-          <span className="font-mono text-xs tracking-widest text-muted-foreground uppercase block mb-6">
-            Pricing
-          </span>
-          <h2 className="font-display text-5xl md:text-6xl lg:text-7xl tracking-tight text-foreground mb-6">
-            Simple, transparent
-            <br />
-            <span className="text-stroke">pricing</span>
-          </h2>
-          <p className="text-lg text-muted-foreground max-w-xl">
-            Start free and scale as you grow. No hidden fees, no surprises.
-          </p>
-        </div>
+    <section id="pricing" ref={sectionRef} className="relative py-32 lg:py-48 bg-[#050608]">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
+        <div className="flex flex-col lg:flex-row gap-16 lg:gap-24 mb-24 lg:mb-32">
+          <div className="flex-1 max-w-xl">
+            <h2 className={`text-5xl lg:text-7xl font-light tracking-[-0.02em] text-white transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+              Transparent
+              <br />
+              <span className="font-serif italic text-white/50">pricing.</span>
+            </h2>
+            <p className={`mt-8 text-xl text-white/50 font-light transition-all duration-1000 delay-200 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+              Start free and scale as you grow. No hidden fees, no surprises.
+            </p>
+          </div>
 
-        {/* Billing Toggle */}
-        <div className="flex items-center gap-4 mb-16">
-          <span
-            className={`text-sm transition-colors ${
-              !isAnnual ? "text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            Monthly
-          </span>
-          <button
-            type="button"
-            onClick={() => setIsAnnual(!isAnnual)}
-            aria-pressed={isAnnual}
-            aria-label={isAnnual ? 'Switch to monthly billing' : 'Switch to annual billing'}
-            className="relative w-14 h-7 bg-foreground/10 rounded-full p-1 transition-colors hover:bg-foreground/20"
-          >
-            <div
-              className={`w-5 h-5 bg-foreground rounded-full transition-transform duration-300 ${
-                isAnnual ? "translate-x-7" : "translate-x-0"
-              }`}
-            />
-          </button>
-          <span
-            className={`text-sm transition-colors ${
-              isAnnual ? "text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            Annual
-          </span>
-          {isAnnual && (
-            <span className="ml-2 px-2 py-1 bg-foreground text-primary-foreground text-xs font-mono">
-              Save 17%
-            </span>
-          )}
-        </div>
-
-        {/* Pricing Cards */}
-        <div className="grid md:grid-cols-3 gap-px bg-foreground/10">
-          {plans.map((plan, idx) => (
-            <div
-              key={plan.name}
-              className={`relative p-8 lg:p-12 bg-background ${
-                plan.popular ? "md:-my-4 md:py-12 lg:py-16 border-2 border-foreground" : ""
-              }`}
-            >
-              {plan.popular && (
-                <span className="absolute -top-3 left-8 px-3 py-1 bg-foreground text-primary-foreground text-xs font-mono uppercase tracking-widest">
-                  Most Popular
-                </span>
-              )}
-
-              {/* Plan Header */}
-              <div className="mb-8">
-                <span className="font-mono text-xs text-muted-foreground">
-                  {String(idx + 1).padStart(2, "0")}
-                </span>
-                <h3 className="font-display text-3xl text-foreground mt-2">{plan.name}</h3>
-                <p className="text-sm text-muted-foreground mt-2">{plan.description}</p>
-              </div>
-
-              {/* Price */}
-              <div className="mb-8 pb-8 border-b border-foreground/10">
-                {plan.price.monthly !== null ? (
-                  <div className="flex items-baseline gap-2">
-                    <span className="font-display text-5xl lg:text-6xl text-foreground">
-                      ${isAnnual ? plan.price.annual : plan.price.monthly}
-                    </span>
-                    <span className="text-muted-foreground">/month</span>
-                  </div>
-                ) : (
-                  <span className="font-display text-4xl text-foreground">Custom</span>
-                )}
-              </div>
-
-              {/* Features */}
-              <ul className="space-y-4 mb-10">
-                {plan.features.map((feature) => (
-                  <li key={feature} className="flex items-start gap-3">
-                    <Check className="w-4 h-4 text-foreground mt-0.5 shrink-0" />
-                    <span className="text-sm text-muted-foreground">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* CTA */}
+          <div className={`flex-1 flex items-end justify-start lg:justify-end transition-all duration-1000 delay-300 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
+            <div className="flex items-center gap-4 p-2 rounded-full border border-white/10 bg-white/[0.02] backdrop-blur-sm">
               <button
-                type="button"
-                className={`w-full py-4 flex items-center justify-center gap-2 text-sm font-medium transition-all group ${
-                  plan.popular
-                    ? "bg-foreground text-primary-foreground hover:bg-foreground/90"
-                    : "border border-foreground/20 text-foreground hover:border-foreground hover:bg-foreground/5"
+                onClick={() => setIsAnnual(false)}
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                  !isAnnual ? "bg-emerald-500/20 text-emerald-400" : "text-white/40 hover:text-white"
                 }`}
               >
-                {plan.cta}
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                Monthly
+              </button>
+              <button
+                onClick={() => setIsAnnual(true)}
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                  isAnnual ? "bg-emerald-500/20 text-emerald-400" : "text-white/40 hover:text-white"
+                }`}
+              >
+                Annual <span className={isAnnual ? "text-emerald-500/70" : "text-white/30"}>(-17%)</span>
               </button>
             </div>
-          ))}
+          </div>
         </div>
 
-        {/* Bottom Note */}
-        <p className="mt-12 text-center text-sm text-muted-foreground">
-          All plans include automatic updates, HTTPS, and DDoS protection.{" "}
-          <a href="#" className="underline underline-offset-4 hover:text-foreground transition-colors">
-            Compare all features
-          </a>
-        </p>
+        {/* Pricing Layout */}
+        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+          {/* Starter */}
+          <div className={`col-span-12 lg:col-span-4 transition-all duration-1000 delay-200 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
+            <PricingCard plan={plans[0]} isAnnual={isAnnual} />
+          </div>
+
+          {/* Pro (Emphasized) */}
+          <div className={`col-span-12 lg:col-span-4 lg:-my-8 relative z-10 transition-all duration-1000 delay-400 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
+            <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/20 to-transparent blur-3xl opacity-40" />
+            <PricingCard plan={plans[1]} isAnnual={isAnnual} emphasized />
+          </div>
+
+          {/* Enterprise */}
+          <div className={`col-span-12 lg:col-span-4 transition-all duration-1000 delay-600 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
+            <PricingCard plan={plans[2]} isAnnual={isAnnual} />
+          </div>
+        </div>
       </div>
     </section>
+  );
+}
+
+function PricingCard({ plan, isAnnual, emphasized = false }: { plan: any, isAnnual: boolean, emphasized?: boolean }) {
+  const getCardStyle = () => {
+    if (emphasized) return "bg-gradient-to-b from-[#091a13] to-[#040907] border-emerald-500/30 shadow-[0_0_40px_rgba(16,185,129,0.15)]";
+    if (plan.colorScheme === "cyan") return "bg-transparent border-cyan-500/10 hover:border-cyan-500/30 hover:bg-cyan-950/20";
+    return "bg-transparent border-violet-500/10 hover:border-violet-500/30 hover:bg-violet-950/20";
+  };
+
+  const getCheckColor = () => {
+    if (emphasized) return "text-emerald-400";
+    if (plan.colorScheme === "cyan") return "text-cyan-400";
+    return "text-violet-400";
+  };
+
+  const getButtonClass = () => {
+    if (emphasized) return "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white hover:from-emerald-400 hover:to-cyan-400 border-none shadow-[0_0_20px_rgba(16,185,129,0.2)]";
+    if (plan.colorScheme === "cyan") return "border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10";
+    return "border-violet-500/30 text-violet-400 hover:bg-violet-500/10";
+  };
+
+  return (
+    <div className={`relative p-10 lg:p-12 rounded-3xl flex flex-col h-full transition-colors ${getCardStyle()}`}>
+      {emphasized && (
+        <div className="absolute -top-4 left-10">
+          <span className="px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-xs font-mono uppercase tracking-widest rounded-full shadow-lg border border-emerald-400/50">
+            Most Popular
+          </span>
+        </div>
+      )}
+
+      <div className="mb-10">
+        <h3 className="text-3xl font-light tracking-tight text-white mb-3">{plan.name}</h3>
+        <p className="text-white/40 font-light text-sm">{plan.description}</p>
+      </div>
+
+      <div className="mb-12">
+        {plan.price.monthly !== null ? (
+          <div className="flex items-baseline gap-2">
+            <span className="text-6xl font-light text-white tracking-tighter">
+              ${isAnnual ? plan.price.annual : plan.price.monthly}
+            </span>
+            <span className="text-white/30 font-light">/mo</span>
+          </div>
+        ) : (
+          <span className="text-5xl font-light text-white tracking-tighter">Custom</span>
+        )}
+      </div>
+
+      <ul className="space-y-4 mb-16 flex-1">
+        {plan.features.map((feature: string) => (
+          <li key={feature} className="flex items-start gap-4">
+            <Check className={`w-5 h-5 shrink-0 mt-0.5 ${getCheckColor()}`} />
+            <span className="text-white/70 font-light text-sm">{feature}</span>
+          </li>
+        ))}
+      </ul>
+
+      <button
+        type="button"
+        className={`w-full py-4 px-6 flex items-center justify-center gap-2 text-sm font-medium transition-all rounded-full group border ${getButtonClass()}`}
+      >
+        {plan.cta}
+        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+      </button>
+    </div>
   );
 }

@@ -6,254 +6,152 @@ const features = [
   {
     number: "01",
     title: "Natural Language Design",
-    description: "Describe your hardware idea in plain English. DunkAI understands requirements and generates complete designs in minutes.",
-    visual: "deploy",
+    description: "Describe your hardware idea in plain English. DunkAI extracts engineering requirements, identifies constraints, and generates complete architectural specifications in minutes.",
+    visual: (
+      <div className="w-full h-full bg-[#030b14] border border-cyan-500/20 hover:border-cyan-500/40 transition-colors rounded-2xl p-6 lg:p-10 flex flex-col relative overflow-hidden shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-cyan-500/10 pb-4 mb-6">
+          <div className="w-2 h-2 rounded-full bg-cyan-500/50 shadow-[0_0_8px_rgba(6,182,212,0.5)]" />
+          <div className="text-xs font-mono uppercase tracking-widest text-cyan-500/70">Requirements Agent</div>
+        </div>
+        <div className="space-y-4">
+          <div className="p-4 bg-cyan-950/20 border border-cyan-500/10 rounded-lg text-sm text-cyan-100/70 font-light font-mono leading-relaxed">
+            <span className="text-cyan-500">{'>'}</span> Extracting parameters...
+            <br />
+            <span className="text-cyan-500">{'>'}</span> Found: Low-power (target: 5 yrs)
+            <br />
+            <span className="text-cyan-500">{'>'}</span> Found: WiFi connectivity
+            <br />
+            <span className="text-emerald-400">{'>'}</span> Constraints mapped.
+          </div>
+          <div className="h-24 w-full rounded-lg bg-gradient-to-r from-cyan-950/30 to-transparent border border-cyan-500/10 relative overflow-hidden">
+             <div className="absolute top-0 left-0 h-full w-[2px] bg-cyan-400 shadow-[0_0_10px_rgba(34,211,238,0.5)] animate-[pulse_2s_ease-in-out_infinite]" />
+             <div className="p-4 flex gap-4 items-center h-full">
+                <div className="w-12 h-12 rounded bg-cyan-950/50 border border-cyan-500/20 flex items-center justify-center font-serif italic text-cyan-400/80 text-xl">R</div>
+                <div className="flex-1 space-y-2">
+                  <div className="w-1/3 h-2 bg-cyan-500/20 rounded" />
+                  <div className="w-1/2 h-2 bg-cyan-500/10 rounded" />
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+    ),
   },
   {
     number: "02",
-    title: "6 Specialized AI Agents",
-    description: "Requirement analysis, architecture design, component selection, circuit design, validation, and documentation all working in parallel.",
-    visual: "ai",
+    title: "Multi-Agent Engineering",
+    description: "Six specialized AI agents handle distinct domains—from architecture and component selection to schematic layout and validation—working in parallel to ensure precision.",
+    visual: (
+      <div className="w-full h-full flex items-center justify-center p-8 relative">
+        <svg viewBox="0 0 200 200" className="w-full h-full max-w-[300px] drop-shadow-[0_0_30px_rgba(139,92,246,0.15)]">
+           <circle cx="100" cy="100" r="80" fill="none" stroke="rgba(139,92,246,0.15)" strokeWidth="1" strokeDasharray="2 4" />
+           <circle cx="100" cy="100" r="40" fill="none" stroke="rgba(139,92,246,0.2)" strokeWidth="1" />
+           
+           {/* Center Agent */}
+           <circle cx="100" cy="100" r="20" fill="#140b2e" stroke="rgba(167,139,250,0.5)" strokeWidth="1.5" />
+           <text x="100" y="104" textAnchor="middle" fill="rgba(196,181,253,0.8)" fontSize="8" fontFamily="monospace">SYNC</text>
+
+           {/* Orbiting Agents */}
+           {[0, 60, 120, 180, 240, 300].map((angle, i) => {
+             const rad = (angle * Math.PI) / 180;
+             const x = 100 + Math.cos(rad) * 80;
+             const y = 100 + Math.sin(rad) * 80;
+             const dotColors = ["#a78bfa", "#34d399", "#60a5fa", "#fbbf24", "#f472b6", "#2dd4bf"];
+             return (
+               <g key={i} className={`origin-[100px_100px] animate-[spin_20s_linear_infinite]`} style={{ animationDelay: `-${i}s` }}>
+                 <circle cx={x} cy={y} r="12" fill="#0b071a" stroke="rgba(167,139,250,0.3)" strokeWidth="1" />
+                 <path d={`M 100 100 L ${x} ${y}`} stroke="rgba(139,92,246,0.2)" strokeWidth="0.5" />
+                 <circle cx={x} cy={y} r="2" fill={dotColors[i]} className="drop-shadow-[0_0_4px_rgba(255,255,255,0.8)]" />
+               </g>
+             );
+           })}
+        </svg>
+      </div>
+    ),
   },
   {
     number: "03",
-    title: "Complete Engineering Package",
-    description: "Schematics, PCB layouts, BOMs, component recommendations, validation reports, and professional documentation included.",
-    visual: "collab",
+    title: "Component Intelligence",
+    description: "The AI automatically selects the optimal bill of materials (BOM), balancing cost, availability, footprint, and performance parameters against your exact requirements.",
+    visual: (
+      <div className="w-full h-full bg-[#05140c] border border-emerald-500/20 hover:border-emerald-500/40 transition-colors rounded-2xl p-6 shadow-2xl flex flex-col gap-3">
+         <div className="text-xs uppercase tracking-widest text-emerald-500/60 mb-2 font-mono">BOM Optimized</div>
+         {[
+           { name: "STM32L476RG", type: "MCU", status: "In Stock", color: "text-emerald-400" },
+           { name: "BME280", type: "Sensor", status: "Validated", color: "text-emerald-400" },
+           { name: "ESP32-C3", type: "WiFi", status: "In Stock", color: "text-emerald-400" },
+         ].map((comp, i) => (
+           <div key={i} className="flex items-center justify-between p-4 bg-[#0a2015] rounded-xl border border-emerald-500/10">
+             <div className="flex flex-col gap-1">
+               <span className="text-sm text-white/90 font-medium">{comp.name}</span>
+               <span className="text-[10px] text-white/40 uppercase tracking-wider">{comp.type}</span>
+             </div>
+             <span className={`text-[10px] bg-emerald-500/10 px-2 py-1 rounded font-mono ${comp.color}`}>
+               {comp.status}
+             </span>
+           </div>
+         ))}
+      </div>
+    ),
   },
   {
     number: "04",
-    title: "Manufacturing Ready",
-    description: "All designs validated against electrical rules, design rules, thermal analysis, and regulatory compliance standards.",
-    visual: "security",
+    title: "Design Validation",
+    description: "Every decision is continuously cross-checked. Electrical rules, thermal limits, and layout constraints are validated before you ever export a file to KiCad.",
+    visual: (
+      <div className="w-full h-full bg-gradient-to-b from-[#140b0b] to-[#0a0505] border border-red-500/20 hover:border-red-500/40 transition-colors rounded-2xl p-8 relative overflow-hidden flex flex-col justify-end shadow-2xl">
+         <div className="absolute top-8 right-8">
+           <div className="w-16 h-16 rounded-full border border-white/10 flex items-center justify-center relative">
+             <div className="w-12 h-12 rounded-full border-t-2 border-r-2 border-emerald-400 animate-spin absolute" />
+             <div className="font-serif italic text-emerald-400 text-sm">98%</div>
+           </div>
+         </div>
+         <div className="space-y-4 relative z-10">
+           <div className="flex items-center gap-3 text-sm text-emerald-100/80 font-light">
+             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+             ERC Check Passed
+           </div>
+           <div className="flex items-center gap-3 text-sm text-emerald-100/80 font-light">
+             <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+             Thermal Limits Verified
+           </div>
+           <div className="flex items-center gap-3 text-sm text-amber-500/80 font-light">
+             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)] animate-pulse" />
+             DRC Layout (Running...)
+           </div>
+         </div>
+      </div>
+    ),
   },
 ];
 
-function DeployVisual() {
+export function FeaturesSection() {
   return (
-    <svg viewBox="0 0 200 160" className="w-full h-full">
-      <defs>
-        <clipPath id="deployClip">
-          <rect x="30" y="20" width="140" height="120" rx="4" />
-        </clipPath>
-      </defs>
-      
-      {/* Container */}
-      <rect x="30" y="20" width="140" height="120" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
-      
-      {/* Animated bars */}
-      <g clipPath="url(#deployClip)">
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <rect
-            key={i}
-            x="40"
-            y={35 + i * 16}
-            width="120"
-            height="10"
-            rx="2"
-            fill="currentColor"
-            opacity="0.15"
-          >
-            <animate
-              attributeName="opacity"
-              values="0.15;0.8;0.15"
-              dur="2s"
-              begin={`${i * 0.15}s`}
-              repeatCount="indefinite"
-            />
-            <animate
-              attributeName="width"
-              values="20;120;20"
-              dur="2s"
-              begin={`${i * 0.15}s`}
-              repeatCount="indefinite"
-            />
-          </rect>
-        ))}
-      </g>
-      
-      {/* Progress indicator */}
-      <circle cx="100" cy="155" r="3" fill="currentColor" opacity="0.3">
-        <animate attributeName="opacity" values="0.3;1;0.3" dur="1s" repeatCount="indefinite" />
-      </circle>
-    </svg>
+    <section id="features" className="relative py-32 lg:py-48 bg-[#03060c]">
+      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
+        <div className="mb-32 lg:mb-48 max-w-3xl">
+          <h2 className="text-5xl lg:text-7xl font-light tracking-[-0.02em] text-white">
+            From concept to production.
+            <br />
+            <span className="font-serif italic text-white/50">In days, not months.</span>
+          </h2>
+        </div>
+
+        <div className="flex flex-col gap-32 lg:gap-48">
+          {features.map((feature, index) => (
+            <FeatureRow key={feature.number} feature={feature} index={index} />
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
-function AIVisual() {
-  return (
-    <svg viewBox="0 0 200 160" className="w-full h-full">
-      {/* Central node */}
-      <circle cx="100" cy="80" r="12" fill="currentColor">
-        <animate attributeName="r" values="12;14;12" dur="2s" repeatCount="indefinite" />
-      </circle>
-      
-      {/* Orbiting nodes */}
-      {[0, 1, 2, 3, 4, 5].map((i) => {
-        const angle = (i * 60) * (Math.PI / 180);
-        const radius = 50;
-        return (
-          <g key={i}>
-            {/* Connection line */}
-            <line
-              x1="100"
-              y1="80"
-              x2={100 + Math.cos(angle) * radius}
-              y2={80 + Math.sin(angle) * radius}
-              stroke="currentColor"
-              strokeWidth="1"
-              opacity="0.3"
-            >
-              <animate
-                attributeName="opacity"
-                values="0.3;0.8;0.3"
-                dur="2s"
-                begin={`${i * 0.3}s`}
-                repeatCount="indefinite"
-              />
-            </line>
-            
-            {/* Outer node */}
-            <circle
-              cx={100 + Math.cos(angle) * radius}
-              cy={80 + Math.sin(angle) * radius}
-              r="6"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-            >
-              <animate
-                attributeName="r"
-                values="6;8;6"
-                dur="2s"
-                begin={`${i * 0.3}s`}
-                repeatCount="indefinite"
-              />
-            </circle>
-          </g>
-        );
-      })}
-      
-      {/* Pulse rings */}
-      <circle cx="100" cy="80" r="30" fill="none" stroke="currentColor" strokeWidth="1" opacity="0">
-        <animate attributeName="r" values="20;60" dur="2s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0.5;0" dur="2s" repeatCount="indefinite" />
-      </circle>
-    </svg>
-  );
-}
-
-function CollabVisual() {
-  return (
-    <svg viewBox="0 0 200 160" className="w-full h-full">
-      {/* User A */}
-      <g>
-        <rect x="30" y="50" width="50" height="60" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
-        <text x="55" y="85" textAnchor="middle" fontSize="20" fontFamily="monospace" fill="currentColor">A</text>
-        <circle cx="55" cy="35" r="12" fill="none" stroke="currentColor" strokeWidth="2" />
-      </g>
-      
-      {/* User B */}
-      <g>
-        <rect x="120" y="50" width="50" height="60" rx="4" fill="none" stroke="currentColor" strokeWidth="2" />
-        <text x="145" y="85" textAnchor="middle" fontSize="20" fontFamily="monospace" fill="currentColor">B</text>
-        <circle cx="145" cy="35" r="12" fill="none" stroke="currentColor" strokeWidth="2" />
-      </g>
-      
-      {/* Connection */}
-      <line x1="80" y1="80" x2="120" y2="80" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4">
-        <animate attributeName="stroke-dashoffset" values="0;-8" dur="0.5s" repeatCount="indefinite" />
-      </line>
-      
-      {/* Data packet */}
-      <circle r="4" fill="currentColor">
-        <animateMotion dur="1.5s" repeatCount="indefinite">
-          <mpath href="#dataPath" />
-        </animateMotion>
-      </circle>
-      <path id="dataPath" d="M 80 80 L 120 80" fill="none" />
-      
-      {/* Sync indicator */}
-      <g transform="translate(100, 130)">
-        <circle r="6" fill="none" stroke="currentColor" strokeWidth="2">
-          <animate attributeName="r" values="6;10;6" dur="1s" repeatCount="indefinite" />
-          <animate attributeName="opacity" values="1;0.3;1" dur="1s" repeatCount="indefinite" />
-        </circle>
-      </g>
-    </svg>
-  );
-}
-
-function SecurityVisual() {
-  return (
-    <svg viewBox="0 0 200 160" className="w-full h-full">
-      {/* Shield */}
-      <path
-        d="M 100 20 L 150 40 L 150 90 Q 150 130 100 145 Q 50 130 50 90 L 50 40 Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-      />
-      
-      {/* Inner shield */}
-      <path
-        d="M 100 35 L 135 50 L 135 85 Q 135 115 100 128 Q 65 115 65 85 L 65 50 Z"
-        fill="currentColor"
-        opacity="0.1"
-      >
-        <animate attributeName="opacity" values="0.1;0.2;0.1" dur="2s" repeatCount="indefinite" />
-      </path>
-      
-      {/* Lock icon */}
-      <rect x="85" y="70" width="30" height="25" rx="3" fill="currentColor" />
-      <path
-        d="M 90 70 L 90 60 Q 90 50 100 50 Q 110 50 110 60 L 110 70"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
-      />
-      
-      {/* Keyhole */}
-      <circle cx="100" cy="80" r="4" fill="white" />
-      <rect x="98" y="82" width="4" height="8" fill="white" />
-      
-      {/* Scan lines */}
-      <line x1="60" y1="60" x2="140" y2="60" stroke="currentColor" strokeWidth="1" opacity="0">
-        <animate attributeName="y1" values="40;120;40" dur="3s" repeatCount="indefinite" />
-        <animate attributeName="y2" values="40;120;40" dur="3s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="0;0.5;0" dur="3s" repeatCount="indefinite" />
-      </line>
-    </svg>
-  );
-}
-
-function AnimatedVisual({ type }: { type: string }) {
-  switch (type) {
-    case "deploy":
-      return <DeployVisual />;
-    case "ai":
-      return <AIVisual />;
-    case "collab":
-      return <CollabVisual />;
-    case "security":
-      return <SecurityVisual />;
-    default:
-      return <DeployVisual />;
-  }
-}
-
-function StaticVisual({ type }: { type: string }) {
-  if (type === "deploy") return <svg viewBox="0 0 200 160" className="h-full w-full"><rect x="30" y="20" width="140" height="120" rx="4" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M42 40h45M42 56h60M42 72h78M42 88h96M42 104h108M42 120h114" stroke="currentColor" strokeWidth="10" strokeLinecap="round" opacity=".65"/><circle cx="100" cy="155" r="3" fill="currentColor" opacity=".45"/></svg>
-  if (type === "ai") return <svg viewBox="0 0 200 160" className="h-full w-full"><circle cx="100" cy="80" r="12" fill="currentColor"/>{[0,1,2,3,4,5].map((i) => { const angle = i * 60 * Math.PI / 180; /* Round to avoid server/client float serialization mismatches (hydration) */ const x = Math.round((100 + Math.cos(angle) * 50) * 100) / 100; const y = Math.round((80 + Math.sin(angle) * 50) * 100) / 100; return <g key={i}><line x1="100" y1="80" x2={x} y2={y} stroke="currentColor" strokeWidth="1" opacity=".45"/><circle cx={x} cy={y} r="6" fill="none" stroke="currentColor" strokeWidth="2"/></g>})}</svg>
-  if (type === "collab") return <svg viewBox="0 0 200 160" className="h-full w-full"><rect x="30" y="50" width="50" height="60" rx="4" fill="none" stroke="currentColor" strokeWidth="2"/><text x="55" y="85" textAnchor="middle" fontSize="20" fontFamily="monospace" fill="currentColor">A</text><circle cx="55" cy="35" r="12" fill="none" stroke="currentColor" strokeWidth="2"/><rect x="120" y="50" width="50" height="60" rx="4" fill="none" stroke="currentColor" strokeWidth="2"/><text x="145" y="85" textAnchor="middle" fontSize="20" fontFamily="monospace" fill="currentColor">B</text><circle cx="145" cy="35" r="12" fill="none" stroke="currentColor" strokeWidth="2"/><line x1="80" y1="80" x2="120" y2="80" stroke="currentColor" strokeWidth="2" strokeDasharray="4 4"/><circle cx="100" cy="130" r="6" fill="none" stroke="currentColor" strokeWidth="2"/></svg>
-  return <svg viewBox="0 0 200 160" className="h-full w-full"><path d="M100 20l50 20v50q0 40-50 55Q50 130 50 90V40z" fill="none" stroke="currentColor" strokeWidth="2"/><rect x="85" y="70" width="30" height="25" rx="3" fill="currentColor"/><path d="M90 70V60q0-10 10-10t10 10v10" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round"/></svg>
-}
-
-function FeatureCard({ feature, index }: { feature: typeof features[0]; index: number }) {
+function FeatureRow({ feature, index }: { feature: typeof features[0], index: number }) {
   const [isVisible, setIsVisible] = useState(false);
-  const [isHovered, setIsHovered] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const ref = useRef<HTMLDivElement>(null);
+  
+  const isEven = index % 2 === 0;
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -262,100 +160,41 @@ function FeatureCard({ feature, index }: { feature: typeof features[0]; index: n
       },
       { threshold: 0.2 }
     );
-
-    if (cardRef.current) observer.observe(cardRef.current);
+    if (ref.current) observer.observe(ref.current);
     return () => observer.disconnect();
   }, []);
 
   return (
-    <div
-      ref={cardRef}
-      tabIndex={0}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onFocus={() => setIsHovered(true)}
-      onBlur={() => setIsHovered(false)}
-      className={`group relative transition-all duration-700 ${
-        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"
+    <div 
+      ref={ref}
+      className={`flex flex-col ${isEven ? 'lg:flex-row' : 'lg:flex-row-reverse'} items-center gap-16 lg:gap-24 transition-all duration-1000 ease-out ${
+        isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-16"
       }`}
-      style={{ transitionDelay: `${index * 100}ms` }}
     >
-      <div className="flex flex-col lg:flex-row gap-8 lg:gap-16 py-12 lg:py-20 border-b border-foreground/10">
-        {/* Number */}
-        <div className="shrink-0">
-          <span className="font-mono text-sm text-muted-foreground">{feature.number}</span>
+      <div className="flex-1 w-full relative">
+        <div className="font-serif italic text-7xl lg:text-[140px] text-white/[0.02] absolute -top-10 -left-10 select-none pointer-events-none">
+          {feature.number}
         </div>
-        
-        {/* Content */}
-        <div className="flex-1 grid lg:grid-cols-2 gap-8 items-center">
-          <div>
-            <h3 className="text-3xl lg:text-4xl font-display mb-4 group-hover:translate-x-2 transition-transform duration-500">
-              {feature.title}
-            </h3>
-            <p className="text-lg text-muted-foreground leading-relaxed">
-              {feature.description}
-            </p>
+        <div className="relative z-10">
+          <div className="text-sm font-mono tracking-widest text-cyan-500/60 uppercase mb-6 flex items-center gap-4">
+            <span className="w-8 h-px bg-cyan-500/40" />
+            Phase {feature.number}
           </div>
-          
-          {/* Visual */}
-          <div className="flex justify-center lg:justify-end">
-            <div className="h-40 w-48 text-foreground transition-transform duration-300 group-hover:scale-105" aria-label={`${feature.title} visual`}>
-              {isHovered ? <AnimatedVisual type={feature.visual} /> : <StaticVisual type={feature.visual} />}
-            </div>
-          </div>
+          <h3 className="text-4xl lg:text-5xl font-light tracking-tight text-white mb-8 leading-tight">
+            {feature.title}
+          </h3>
+          <p className="text-lg lg:text-xl text-white/50 leading-relaxed font-light max-w-lg">
+            {feature.description}
+          </p>
+        </div>
+      </div>
+      
+      <div className="flex-1 w-full aspect-square max-h-[500px] relative group">
+        <div className="absolute inset-0 bg-white/[0.01] rounded-3xl transition-transform duration-700 group-hover:scale-[1.02]" />
+        <div className="absolute inset-4 lg:inset-8">
+          {feature.visual}
         </div>
       </div>
     </div>
-  );
-}
-
-export function FeaturesSection() {
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setIsVisible(true);
-      },
-      { threshold: 0.1 }
-    );
-
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <section
-      id="features"
-      ref={sectionRef}
-      className="relative py-24 lg:py-32"
-    >
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-        {/* Header */}
-        <div className="mb-16 lg:mb-24">
-          <span className="inline-flex items-center gap-3 text-sm font-mono text-muted-foreground mb-6">
-            <span className="w-8 h-px bg-foreground/30" />
-            Core Capabilities
-          </span>
-          <h2
-            className={`text-4xl lg:text-6xl font-display tracking-tight transition-all duration-700 ${
-              isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-            }`}
-          >
-            From concept to production.
-            <br />
-            <span className="text-muted-foreground">In days, not months.</span>
-          </h2>
-        </div>
-
-        {/* Features List */}
-        <div>
-          {features.map((feature, index) => (
-            <FeatureCard key={feature.number} feature={feature} index={index} />
-          ))}
-        </div>
-      </div>
-    </section>
   );
 }
