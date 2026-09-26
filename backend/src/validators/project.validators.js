@@ -19,7 +19,9 @@ export const updateProjectValidation = [
   body('eda_data').optional(),
   body('pcb_ir').optional(),
   body('validation').optional(),
+  body('handoff_validation').optional(),
   body('documentation').optional(),
+  body('board').optional(),
 ];
 
 export const shareProjectValidation = [

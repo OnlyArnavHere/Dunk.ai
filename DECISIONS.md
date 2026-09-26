@@ -208,3 +208,103 @@ exists to expose rather than hide — D-006 already shows and labels such a boar
 `gemini` is implemented and its transport verified, but no free-tier model could
 serve a real brief: every flash model answered 503 "high demand" and
 `gemini-3.1-pro-preview` reported `limit: 0` on the free tier.
+
+## D-009 — `test_fetch_retry.py` is dark: the HF cache branch broke its harness
+
+**Status:** Deferred, and the test is NOT currently protecting anything
+
+All 18 checks in `agents/component_agent/test_fetch_retry.py` fail, every one of
+them on the same proximate error:
+
+    FAIL  mid-stream break -> no exception escapes
+            got:  NameError("name '_cache_path' is not defined")
+            want: None
+    FAIL  mid-stream break -> retry actually fired (3 attempts)
+            got:  0     want: 3
+
+The retry policy itself is fine. The harness is what broke. That file
+deliberately avoids importing `config.py` — its module body fetches a ~754MB
+dataset — and instead AST-extracts only the `_fetch_bytes` FunctionDef and
+`exec`s it against injected stubs, precisely so the code under test stays the
+real function rather than a copy.
+
+D-nnn aside, this is the cost of that technique: the extracted function may
+reference module-level names the harness never injected. `1924cdb` ("HF dataset:
+opt-in local cache") added a cache-hit branch at the top of `_fetch_bytes` —
+
+    cached = _cache_path(filename)
+    if cached is not None and cached.is_file() ...
+
+— and `_cache_path` is not in the injected namespace. Every case now dies on
+line 1 of the function body with `attempts == 0`, before reaching the retry loop
+at all.
+
+**Why this is worth an entry rather than a quick patch.** The test exists to
+guard one specific regression: `_fetch_bytes` previously caught an enumerated
+`(Timeout, ConnectionError, HTTPError)` tuple, and a mid-body transfer break
+surfaces as `ChunkedEncodingError` — a *sibling* under `RequestException`, not a
+subclass — so it bypassed the retry and killed the Component Agent on a plainly
+transient failure. Its own docstring says "if someone narrows the except clause
+again, this test fails." It would not. It fails identically whether the except
+clause is right or wrong, so the regression it was written to catch could be
+reintroduced today with the suite looking exactly as it does now.
+
+Deferred rather than guessed at because the fix is a real choice, not a typo:
+inject a `_cache_path` stub (cheap, but the harness now has to be updated every
+time `_fetch_bytes` grows a dependency), or stop AST-extracting and make
+`config.py` importable without the 754MB module-body fetch (larger, and fixes
+the class of problem rather than this instance). The second is probably right
+and is not this branch's work.
+
+Found while verifying `fix-followup-message-handling`; unrelated to it. That
+branch touches three files, none under `component_agent/`, and
+`test_fetch_retry.py` has zero references to `requirement_agent`.
+
+## D-010 — What the rayyan merge repair kept, dropped and deferred
+
+**Status:** Accepted, and three of these are reversible judgment calls
+
+`8bcf279` did not build (see the repair commit). Rebuilding it as a real
+three-way merge forced choices that a conflict resolution would otherwise have
+made silently, so they are recorded here.
+
+**Dropped: invented BOM pricing.** The rayyan side defaulted an unpriced part to
+`$1.25`, an unknown stock field to `"In Stock"`, and an underivable total to
+`$12.86`. Those values flow into the CSV that Export writes — a file someone
+orders parts from. An unpriced row now renders `—` and is excluded from the
+total, so "free" and "unknown" stay distinguishable. The INR/USD toggle itself
+was kept; `USD_TO_INR` is a named constant with a comment saying it is
+indicative, because nothing in the pipeline fetches a rate.
+
+**Dropped: filler interview options.** A `mode="after"` validator topped every
+short option list up to three with generic strings — `"Standard Baseline"`,
+`"High Performance Mode"`, `"Ultra Low-Power Mode"`. They are not answers to the
+question asked, and clicking one returns it as the user's real answer into the
+requirements that drive the whole pipeline. It also made the existing
+option-backfill unreachable, since `run_interview` only backfilled when
+`options` was empty and this guaranteed it never was.
+
+The 3-6 atomic multi-select design is kept and is a genuine improvement; only
+the source of the options changed. `_get_option_chain` is restored and now fires
+when the model returns fewer than three, asking for real, project-specific
+choices. Measured live on "Design an environmental sensor node with WiFi":
+`['Temperature', 'Humidity', 'Air Quality', 'Light Level', 'Pressure', 'Sound
+Level']`. If that call fails the question is simply open-ended, which is honest.
+
+**Deferred: the validation-view restyle.** Rayyan's rewrite (610 lines vs 481)
+is the better-looking view, but it reads only `aiOutput.validation`. Schema 2.0
+writes `handoff_validation` and leaves `validation` null — see D-003's
+neighbours and `state.py` — so that version renders its empty state on every
+current run, re-breaking what `a0b2fe9` fixed. `validation-view.tsx` is
+therefore taken unchanged from `f1e1caa`. The restyle is worth porting onto the
+v1/v2 handling that already exists there; it was not worth shipping a blank tab
+to get it.
+
+**Merged rather than chosen: `normalize_options`.** Both sides defined a
+validator of that name, and Python keeps only the last one in a class body, so
+one was dead on arrival. They handled different shapes — a provider wrapper
+`{"options": [...]}` versus a grouped question keyed by sub-question — and the
+single merged implementation handles both. The grouped dict is flattened, not
+discarded, because the chips are multi-select: the user can pick one choice per
+facet, so collapsing the facets loses nothing they could not express.
+

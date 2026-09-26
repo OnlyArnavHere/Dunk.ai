@@ -4,10 +4,11 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowUp, Loader2, Mic, Paperclip, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useWorkspaceStore, type AiOutput } from '@/lib/store'
+import { useWorkspaceStore, type AiOutput, type BoardArtifact } from '@/lib/store'
 import { ModelSelector } from './model-selector'
 import { aiApi, chatApi, projectApi } from '@/lib/api'
 import { useUpdateProject } from '@/hooks/use-projects'
+import { useBoardGeneration } from '@/hooks/use-board-generation'
 
 // ---- Message types ----
 type MessageRole = 'user' | 'assistant'
@@ -95,9 +96,23 @@ const placeholderPrompts = [
   'Create a low-power wearable board...',
 ]
 
+// The three notices the chat posts around an automatic board run. Kept here so
+// the failure wording is identical whether the run died before it got a jobId
+// or after.
+const BOARD_STARTING = 'Generating PCB...'
+const BOARD_DONE = 'PCB generated — open the PCB tab for the layout, the 3D board and the manufacturing files.'
+const boardFailure = (error: string | null) => `⚠️ PCB generation failed: ${error ?? 'unknown error'}`
+
 export function ChatInterface({ projectId }: { projectId: string }) {
-  const { pendingPrompt, setPendingPrompt, setAiOutput, setActiveTab, setPipelineProgress, clearPipelineProgress, chatResetCounter, selectedModel, setSelectedModel } = useWorkspaceStore()
+  const { pendingPrompt, setPendingPrompt, setAiOutput, hydrateAiOutput, setActiveTab, setPipelineProgress, clearPipelineProgress, chatResetCounter, selectedModel, setSelectedModel } = useWorkspaceStore()
   const updateProject = useUpdateProject()
+  // Board generation runs itself off the back of the pipeline; this view owns
+  // the trigger because this is where the pipeline's completion lands.
+  const { generate: generateBoard } = useBoardGeneration(projectId)
+  const boardJob = useWorkspaceStore((s) => s.boardJob)
+  // The jobId of a board run this view started, so the outcome is announced
+  // once and only for a run the chat is actually narrating.
+  const announcedBoardJobRef = useRef<string | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -147,6 +162,29 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading, activeNode])
 
+  // Show an assistant line and persist it — the pattern every reply in this
+  // view already follows. The id carries a suffix because the board notices can
+  // land in the same millisecond as the pipeline's closing message.
+  const postAssistant = useCallback((content: string, chatId: string | null) => {
+    setMessages((prev) => [
+      ...prev,
+      { id: `${Date.now()}-${prev.length}-assistant`, role: 'assistant', content },
+    ])
+    if (chatId) chatApi.saveMessage(chatId, 'assistant', content).catch(() => {})
+  }, [])
+
+  // ---- Report how an automatic board run ended ----
+  // Only for a run this view announced: a board started by hand from the BOM
+  // tab narrates itself there and should not appear in the transcript twice.
+  useEffect(() => {
+    const announced = announcedBoardJobRef.current
+    if (!announced || boardJob.jobId !== announced) return
+    if (boardJob.status !== 'done' && boardJob.status !== 'error') return
+
+    announcedBoardJobRef.current = null
+    postAssistant(boardJob.status === 'done' ? BOARD_DONE : boardFailure(boardJob.error), activeChatId)
+  }, [boardJob.status, boardJob.jobId, boardJob.error, activeChatId, postAssistant])
+
   // ---- Load Chat History & Saved Artifacts from MongoDB ----
   useEffect(() => {
     let isMounted = true
@@ -159,26 +197,47 @@ export function ChatInterface({ projectId }: { projectId: string }) {
         // 1. Fetch saved project artifacts from MongoDB
         const projectData = (await projectApi.get(projectId)) as Record<string, unknown>
         if (projectData && isMounted) {
-          const isPopulated = (val: unknown) =>
-            val && typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length > 0
+          // Mongoose stores these as Mixed with `default: {}`, so an untouched
+          // field arrives as `{}` (or absent) rather than null. `{}` must not
+          // reach the store: it is indistinguishable from a real-but-empty
+          // artifact downstream, and it would replace nothing with nothing.
+          const saved = (key: string): Record<string, unknown> | null => {
+            const val = projectData[key]
+            return val && typeof val === 'object' && !Array.isArray(val) && Object.keys(val as object).length > 0
+              ? (val as Record<string, unknown>)
+              : null
+          }
 
-          setAiOutput({
-            requirements: (payload.requirements as Record<string, unknown>) ?? null,
-            architecture: (payload.architecture as Record<string, unknown>) ?? null,
-            bom: (payload.bom as Record<string, unknown>) ?? null,
-            eda_data: (payload.eda_data as Record<string, unknown>) ?? null,
-            pcb_ir: (payload.pcb_ir as Record<string, unknown>) ?? null,
-            validation: (payload.validation as Record<string, unknown>) ?? null,
+          const restored: AiOutput = {
+            requirements: saved('requirements'),
+            architecture: saved('architecture'),
+            bom: saved('bom'),
+            eda_data: saved('eda_data'),
+            pcb_ir: saved('pcb_ir'),
+            validation: saved('validation'),
             // Schema 2.0 designs report here and leave `validation` unset, so
             // forwarding only `validation` left the Validation tab empty on
-            // every current run.
-            handoff_validation: (payload.handoff_validation as Record<string, unknown>) ?? null,
-            documentation: (payload.documentation as Record<string, unknown>) ?? null,
-            // A fresh pipeline run invalidates any previously generated board:
-            // it belongs to the old BOM, and showing it beside new components
-            // would be a different design than the one on screen.
-            board: (payload.board as AiOutput['board']) ?? null,
-          } satisfies AiOutput)
+            // every current run. Not a column on Project yet, so this stays
+            // null until the run that produced it writes it somewhere.
+            handoff_validation: saved('handoff_validation'),
+            documentation: saved('documentation'),
+            // The board's files live under uploads/boards/ and outlive the
+            // session; `urls` points straight at them, so restoring the saved
+            // object is enough to bring the PCB, DRC and Docs figures back.
+            // Written by the backend when the run completes, not from here.
+            board: saved('board') as BoardArtifact | null,
+          }
+
+          // A project with nothing saved yet must not push a wall of nulls into
+          // a store that a run may already have filled.
+          //
+          // hydrateAiOutput, not setAiOutput: this is a replay of the saved
+          // design, not a run that produced a new BOM, and setAiOutput would
+          // read the restored bom/pcb_ir as new components and discard the
+          // board generated from them.
+          if (Object.values(restored).some((value) => value !== null)) {
+            hydrateAiOutput(restored)
+          }
         }
 
         // 2. Fetch conversation history from MongoDB
@@ -244,7 +303,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     return () => {
       isMounted = false
     }
-  }, [projectId, clearPipelineProgress, setAiOutput])
+  }, [projectId, clearPipelineProgress, hydrateAiOutput])
 
   // ---- Watch for "New Chat" reset signal from sidebar ----
   useEffect(() => {
@@ -354,7 +413,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           }
         }
 
-        const handleComplete = (socketData: Record<string, any>) => {
+        const handleComplete = async (socketData: Record<string, any>) => {
           cleanup()
           setLoading(false)
           setActiveNode('')
@@ -385,6 +444,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             return
           }
 
+          const errors = payload.errors as string[] | undefined
+
           // Case 2: Full workflow complete -> update state, persist to MongoDB, and update dynamic project title
           if (payload) {
             const artifactPayload = {
@@ -394,11 +455,23 @@ export function ChatInterface({ projectId }: { projectId: string }) {
               eda_data: (payload.eda_data as Record<string, unknown>) ?? null,
               pcb_ir: (payload.pcb_ir as Record<string, unknown>) ?? null,
               validation: (payload.validation as Record<string, unknown>) ?? null,
+              // Schema 2.0 designs report here and leave `validation` unset, so
+              // forwarding only `validation` leaves the Validation tab empty on
+              // every current run.
+              handoff_validation: (payload.handoff_validation as Record<string, unknown>) ?? null,
               documentation: (payload.documentation as Record<string, unknown>) ?? null,
               board: (payload.board as AiOutput['board']) ?? null,
             } satisfies AiOutput
 
-            setAiOutput(artifactPayload)
+            const anyPopulated = Object.values(artifactPayload).some((value) => value != null)
+
+            // A run that failed and produced nothing has nothing to contribute.
+            // Writing it would be a no-op under the merging `setAiOutput`, but
+            // skipping it keeps the failure purely a chat message and leaves
+            // the board job log of the design still on screen untouched.
+            if (anyPopulated || !errors?.length) {
+              setAiOutput(artifactPayload)
+            }
 
             // Persist all generated artifacts to MongoDB Project Document
             const updatePayload: Record<string, unknown> = {}
@@ -408,6 +481,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             if (artifactPayload.eda_data) updatePayload.eda_data = artifactPayload.eda_data
             if (artifactPayload.pcb_ir) updatePayload.pcb_ir = artifactPayload.pcb_ir
             if (artifactPayload.validation) updatePayload.validation = artifactPayload.validation
+            if (artifactPayload.handoff_validation) updatePayload.handoff_validation = artifactPayload.handoff_validation
             if (artifactPayload.documentation) updatePayload.documentation = artifactPayload.documentation
 
             if (payload.requirements && typeof payload.requirements === 'object') {
@@ -426,7 +500,6 @@ export function ChatInterface({ projectId }: { projectId: string }) {
 
           const aiMsgs = payload.messages as Array<{ content?: string }> | undefined
           const lastAiMsg = Array.isArray(aiMsgs) ? aiMsgs[aiMsgs.length - 1]?.content : undefined
-          const errors = payload.errors as string[] | undefined
 
           const finalMsg =
             (errors?.length ? `⚠️ Pipeline completed with issues: ${errors.join('; ')}` : undefined) ||
@@ -441,6 +514,27 @@ export function ChatInterface({ projectId }: { projectId: string }) {
 
           if (targetChatId) {
             chatApi.saveMessage(targetChatId, 'assistant', cleanReply).catch(() => {})
+          }
+
+          // The pipeline's last act is a PCB handoff, so the board run starts
+          // here instead of waiting for someone to find the button. Guarded on
+          // a handoff that actually carries components: a run that failed
+          // before pcb_ir, or a chat turn that only answered a question, has
+          // nothing to build and must not announce that it is building it.
+          const handoff = payload.pcb_ir as { components?: unknown[] } | null | undefined
+          const handoffComponents = Array.isArray(handoff?.components) ? handoff.components.length : 0
+          if (handoffComponents > 0 && useWorkspaceStore.getState().boardJob.status !== 'running') {
+            postAssistant(BOARD_STARTING, targetChatId)
+
+            await generateBoard()
+
+            // generate() either reached startBoardJob, which means there is a
+            // jobId for the watcher to match on, or it failed before getting
+            // one (the POST itself was refused). The second case never produces
+            // a state change the watcher can recognise, so it is reported here.
+            const started = useWorkspaceStore.getState().boardJob
+            if (started.jobId) announcedBoardJobRef.current = started.jobId
+            else if (started.status === 'error') postAssistant(boardFailure(started.error), targetChatId)
           }
         }
 
@@ -489,7 +583,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
         }
       }
     },
-    [projectId, activeChatId, messages, setAiOutput, setActiveTab, updateProject]
+    [projectId, activeChatId, messages, setAiOutput, setActiveTab, updateProject, generateBoard, postAssistant]
   )
 
   // Auto-run initial prompt passed from new project initial screen

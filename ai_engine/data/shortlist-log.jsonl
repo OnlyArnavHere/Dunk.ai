@@ -919,3 +919,856 @@
 {"lcsc": "C845535", "mfr_part": "CC2541", "package": "-", "design": "dunkai_design", "at": "2026-09-25T12:17:47.060080+00:00"}
 {"lcsc": "C94847", "mfr_part": "MCP9808-E/MS", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T12:17:47.060080+00:00"}
 {"lcsc": "C97546", "mfr_part": "MCP9700AT-E/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T12:17:47.060080+00:00"}
+{"lcsc": "C113632", "mfr_part": "HY2213-BB3A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C1350139", "mfr_part": "IS25LP256D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C1350237", "mfr_part": "IS25LP016D-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C14022", "mfr_part": "STC89C52RC-40I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C161942", "mfr_part": "HY2112-BB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168762", "mfr_part": "HY2111-KB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168767", "mfr_part": "HY2113-DB1A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168769", "mfr_part": "HY2113-GB3A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168770", "mfr_part": "HY2113-JB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168771", "mfr_part": "HY2113-KB5B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168773", "mfr_part": "HY2113-OB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168774", "mfr_part": "HY2116-DB6B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168776", "mfr_part": "HY2120-AB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C168777", "mfr_part": "HY2120-DB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C171626", "mfr_part": "SD5054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C18548267", "mfr_part": "SIM7600NA-TLKE", "package": "SMD,30x30mm", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C19578", "mfr_part": "STC10F08XE-35I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C19723499", "mfr_part": "HLK-B40-I", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C20033859", "mfr_part": "STM32MP135CAE3", "package": "-", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2061030", "mfr_part": "IS25LP080D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2064518", "mfr_part": "IS25LP512M-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2150720", "mfr_part": "DRV8880RHRR", "package": "WQFN-28-EP(3.6x5.6)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C22392413", "mfr_part": "ABX00053", "package": "-", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C23539", "mfr_part": "IAP15F2K61S2-28I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C250807", "mfr_part": "SD8017", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C26552204", "mfr_part": "ADSD3500BCBZRL7", "package": "WLCSP-81(3.5x3.5)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2833613", "mfr_part": "WH-GM5", "package": "-", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2909085", "mfr_part": "HLK-B40", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2917286", "mfr_part": "WL6601-TC", "package": "-", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2987962", "mfr_part": "STC8H8K64U-45I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C2995536", "mfr_part": "SIM7600E", "package": "SMD-87P", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C3013115", "mfr_part": "IAP15W413AS-35I-SOP16", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C329457", "mfr_part": "AD4054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C336180", "mfr_part": "IS25LP032D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C3606718", "mfr_part": "STM32WLE4JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C3681122", "mfr_part": "DRV8889AQPWPRQ1", "package": "HTSSOP-24", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C3681369", "mfr_part": "A3988SJPTR-1-T", "package": "LQFP-48-EP(7x7)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C3682812", "mfr_part": "MP2617AGL-Z", "package": "QFN-20(3x4)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C382136", "mfr_part": "TP4110", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C382139", "mfr_part": "TP4056", "package": "ESOP-8", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C394204", "mfr_part": "SC0163D-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C395461", "mfr_part": "AD4057", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C411810", "mfr_part": "IS25WP080D-JNLE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C411812", "mfr_part": "PM25LQ010B-SCE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C42240", "mfr_part": "STC15W204S-35I-SOP8", "package": "SOP-8", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C42420055", "mfr_part": "BW20-07S(IPEX)", "package": "SMD,17x16mm", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C49164659", "mfr_part": "ESPS3-32E-N4", "package": "SMD,19.2x18mm", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C49164662", "mfr_part": "AI-01", "package": "SMD,25.5x18mm", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C49173", "mfr_part": "TOP243YN", "package": "TO-220-7C", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C521286", "mfr_part": "IS25LP080D-JNLE-TR", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C521334", "mfr_part": "SD2054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C521413", "mfr_part": "SD8054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C52838", "mfr_part": "STC89C58RD+40I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C5464792", "mfr_part": "TP4552B", "package": "SOP8", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C5464797", "mfr_part": "TP4586", "package": "QFN3x3-16", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C5656631", "mfr_part": "IS25LP128F-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C566784", "mfr_part": "CAP200DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C5803540", "mfr_part": "IS29GL256-70SLET", "package": "TFSOP-56-18.4mm", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C605291", "mfr_part": "AR0522SRSC09SURA0-DP", "package": "PLCC-52(12x12)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C606075", "mfr_part": "AR0144CSSM20SUKA0-CPBR", "package": "ODCSP-69(5.6x5.6)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C606082", "mfr_part": "AR1335CSSC11SMKA0-CP", "package": "ODCSP-63(5.7x6.3)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C606295", "mfr_part": "AR0135CS2C00SUEA0-DPBR", "package": "IBGA-63", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C641040", "mfr_part": "PIC16LF18425-I/SL", "package": "SOIC-14", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C82747", "mfr_part": "HY2111-GB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C845535", "mfr_part": "CC2541", "package": "-", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C8705", "mfr_part": "STC11F04E-35I-SOP16", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C890206", "mfr_part": "AR0144CSSC20SUKA0-CPBR", "package": "ODCSP-69(5.6x5.6)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C894804", "mfr_part": "MT9M114EBLSTCZ-CR", "package": "ODCSP-55(3.8x4.6)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C897912", "mfr_part": "AR0134CSSC00SPCA0-DPBR", "package": "LCC-48(10x10)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C900569", "mfr_part": "AR0237CSSC12SPRA0-DR", "package": "PLCC-48(11.4x11.4)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C900571", "mfr_part": "AR0237IRSH12SPRA0-DR", "package": "PLCC-48(11.4x11.4)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C903295", "mfr_part": "AR0130CSSC00SPCA0-DPBR", "package": "LCC-48(10x10)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C903299", "mfr_part": "AR0134CSSM00SPCA0-DPBR", "package": "LCC-48(10x10)", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C914968", "mfr_part": "CSU32P10-MSOP10", "package": "MSOP-10", "design": "dunkai_design", "at": "2026-09-25T08:52:04.820674+00:00"}
+{"lcsc": "C127949", "mfr_part": "MCP9700AT-E/TT", "package": "SOT-23", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C133173", "mfr_part": "SC92F7322X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1337366", "mfr_part": "AT89C51CC03UA-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1350139", "mfr_part": "IS25LP256D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1350237", "mfr_part": "IS25LP016D-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1513068", "mfr_part": "MCP16501TA-E/RMB", "package": "VQFN-24-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C152175", "mfr_part": "MCP9801-M/MS", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1524029", "mfr_part": "DLPC3433CZVB", "package": "NFBGA-176", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1527155", "mfr_part": "KTY81/110,112", "package": "SOD-70-2", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1527379", "mfr_part": "AT89S8253-24JU", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C155208", "mfr_part": "CD4543BE", "package": "DIP-16", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C157655", "mfr_part": "MCP9800A0T-M/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C168777", "mfr_part": "HY2120-DB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C17395597", "mfr_part": "MCP9700BT-E/TT", "package": "SOT-23-3", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C181650", "mfr_part": "TPS65100PWPR", "package": "HTSSOP-24-EP", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1848087", "mfr_part": "SAM9X60D5MT-I/4FB", "package": "TFBGA-233", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C18548267", "mfr_part": "SIM7600NA-TLKE", "package": "SMD,30x30mm", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C1884678", "mfr_part": "PCT2075TP,147", "package": "HWSON-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C192517", "mfr_part": "PCT2075D,118", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C192518", "mfr_part": "PCT2075DP,118", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C194710", "mfr_part": "MCP9808T-E/MC", "package": "DFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C19723499", "mfr_part": "HLK-B40-I", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C19949062", "mfr_part": "ESP-F", "package": "SMD,24x16mm", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C20234292", "mfr_part": "P3T1755DPZ", "package": "TSSOP-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2061030", "mfr_part": "IS25LP080D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2064518", "mfr_part": "IS25LP512M-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C213558", "mfr_part": "TPS65132SYFFR", "package": "DSBGA-15", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C219078", "mfr_part": "MCP9509HT-E/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C219275", "mfr_part": "HV6810WG-G", "package": "SOIC-20-300mil", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C221425", "mfr_part": "SC92FW24X28U", "package": "TSSOP-28", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C22377637", "mfr_part": "NHC-1001", "package": "SMD-8P,5x5mm", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C22392413", "mfr_part": "ABX00053", "package": "-", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2655507", "mfr_part": "AT91SAM9G45C-CU-999", "package": "TFBGA-324", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2688881", "mfr_part": "KTY81/220,112", "package": "SOD-70-2", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2764336", "mfr_part": "SM9333-BCE-S-125-000", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2764337", "mfr_part": "SM3041-015-D-C-3-S", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C28326", "mfr_part": "CD4543BM96", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2833613", "mfr_part": "WH-GM5", "package": "-", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2834471", "mfr_part": "HT1621BRSZ", "package": "SSOP-48-300mil", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2843542", "mfr_part": "M401", "package": "QFN-16(3x3)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2887312", "mfr_part": "NST20H-DSCR", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2909085", "mfr_part": "HLK-B40", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2976734", "mfr_part": "IS25WP016D-JULE-TR", "package": "USON-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2981433", "mfr_part": "Y7025", "package": "SMD,17.6x15.7mm", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2987962", "mfr_part": "STC8H8K64U-45I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2995536", "mfr_part": "SIM7600E", "package": "SMD-87P", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C2995543", "mfr_part": "IS25WP064D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C3001859", "mfr_part": "IS25LP128-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C3025193", "mfr_part": "MY9706", "package": "SSOP-24", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C3033374", "mfr_part": "IS25LP016D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C33099", "mfr_part": "LM75BDP,118", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C34565", "mfr_part": "LM75BD,118", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C3606718", "mfr_part": "STM32WLE4JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C363195", "mfr_part": "SC92F8003X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C363204", "mfr_part": "SC92F7422X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C363209", "mfr_part": "SC92F7462BX20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C367191", "mfr_part": "SC92F8462BX20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C3682812", "mfr_part": "MP2617AGL-Z", "package": "QFN-20(3x4)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C394204", "mfr_part": "SC0163D-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C411810", "mfr_part": "IS25WP080D-JNLE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C411812", "mfr_part": "PM25LQ010B-SCE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C41366926", "mfr_part": "KNTC0402/10KF3950", "package": "0402", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C42288", "mfr_part": "MCP9700T-E/TT", "package": "SOT-23", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C42375075", "mfr_part": "KNTC0402/470KJ3950", "package": "0402", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C42420055", "mfr_part": "BW20-07S(IPEX)", "package": "SMD,17x16mm", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C42931404", "mfr_part": "MC1081S", "package": "QFN-16-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C46682306", "mfr_part": "MC1081L", "package": "DFN-8-EP(2x2)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C49055402", "mfr_part": "MTP20-B6CO2", "package": "TO-46", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C49055404", "mfr_part": "MTP20-A6CO2", "package": "TO-39", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C49173", "mfr_part": "TOP243YN", "package": "TO-220-7C", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C496501", "mfr_part": "ADN8833ACBZ-R7", "package": "WLCSP-25(2.5x2.5)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C507148", "mfr_part": "CD4543BM/TR", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C511278", "mfr_part": "MCP9700T-E/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C511320", "mfr_part": "MCP73833-FCI/MF", "package": "DFN-10-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C511337", "mfr_part": "MCP73833T-FCI/MF", "package": "DFN-10-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C516591", "mfr_part": "AP5727WG-7", "package": "SOT-25", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C5190812", "mfr_part": "LM75BTP,147", "package": "HWSON-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C521286", "mfr_part": "IS25LP080D-JNLE-TR", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C527450", "mfr_part": "CD4056BM96", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C555140", "mfr_part": "CD4054BM96", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C5656631", "mfr_part": "IS25LP128F-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C566784", "mfr_part": "CAP200DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C623921", "mfr_part": "MCP9801T-M/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C625616", "mfr_part": "MCP9501PT-115E/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C625626", "mfr_part": "MCP9700T-H/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C625632", "mfr_part": "MCP9902T-1E/RW", "package": "WDFN-8-EP(2x2)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C632053", "mfr_part": "MCP9700A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C636295", "mfr_part": "MCP6241-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C6595664", "mfr_part": "MP2667GG-0000-Z", "package": "QFN-10(2x2)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C6993001", "mfr_part": "MP2619EV-LF-Z", "package": "QFN-28(4x5)", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C73090", "mfr_part": "MCP9701A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C7363803", "mfr_part": "SIM7022", "package": "SMD-42P", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C94847", "mfr_part": "MCP9808-E/MS", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C97546", "mfr_part": "MCP9700AT-E/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T08:59:01.600380+00:00"}
+{"lcsc": "C113632", "mfr_part": "HY2213-BB3A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C132603", "mfr_part": "SI7021-A20-GM1R", "package": "DFN-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C133173", "mfr_part": "SC92F7322X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C1337366", "mfr_part": "AT89C51CC03UA-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C1350139", "mfr_part": "IS25LP256D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C1350237", "mfr_part": "IS25LP016D-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C141840", "mfr_part": "PT7C4302WEX", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C148052", "mfr_part": "MCP7940NT-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C153264", "mfr_part": "MCP7940N-I/P", "package": "DIP-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C157655", "mfr_part": "MCP9800A0T-M/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C161942", "mfr_part": "HY2112-BB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168762", "mfr_part": "HY2111-KB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168767", "mfr_part": "HY2113-DB1A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168769", "mfr_part": "HY2113-GB3A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168770", "mfr_part": "HY2113-JB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168771", "mfr_part": "HY2113-KB5B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168773", "mfr_part": "HY2113-OB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168774", "mfr_part": "HY2116-DB6B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168776", "mfr_part": "HY2120-AB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168777", "mfr_part": "HY2120-DB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C168778", "mfr_part": "HY2120-LB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C171626", "mfr_part": "SD5054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C194710", "mfr_part": "MCP9808T-E/MC", "package": "DFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C19723499", "mfr_part": "HLK-B40-I", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C20033859", "mfr_part": "STM32MP135CAE3", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2061030", "mfr_part": "IS25LP080D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2064518", "mfr_part": "IS25LP512M-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C221425", "mfr_part": "SC92FW24X28U", "package": "TSSOP-28", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C22377637", "mfr_part": "NHC-1001", "package": "SMD-8P,5x5mm", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C22396387", "mfr_part": "TMP709AIDBVR(UMW)", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C23539", "mfr_part": "IAP15F2K61S2-28I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C250807", "mfr_part": "SD8017", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C283292", "mfr_part": "STTS75M2F", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848015", "mfr_part": "WC-PD25C012J", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848018", "mfr_part": "WC-PD13C012T", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848023", "mfr_part": "WC-PD30B012G-1", "package": "\u63d2\u4ef6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848028", "mfr_part": "WC-PD30B050", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848030", "mfr_part": "WC-PD25C012T", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848081", "mfr_part": "WC-PD30B024", "package": "\u63d2\u4ef6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848082", "mfr_part": "WC-PD60B120A", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848085", "mfr_part": "WC-PD13C033I-1", "package": "\u63d2\u4ef6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2848089", "mfr_part": "WC-PD30A012A", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2908816", "mfr_part": "WC-PD13F050C", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2913568", "mfr_part": "GXHTC3C", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2959773", "mfr_part": "WC-PD13C012IA", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2969838", "mfr_part": "STTS22HTR", "package": "UDFN-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2970058", "mfr_part": "STTS751-1DP3F", "package": "UDFN-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2970313", "mfr_part": "LM235DT", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2976734", "mfr_part": "IS25WP016D-JULE-TR", "package": "USON-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2987962", "mfr_part": "STC8H8K64U-45I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C2995543", "mfr_part": "IS25WP064D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3001859", "mfr_part": "IS25LP128-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3013115", "mfr_part": "IAP15W413AS-35I-SOP16", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3033374", "mfr_part": "IS25LP016D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C329457", "mfr_part": "AD4054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3606718", "mfr_part": "STM32WLE4JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C363195", "mfr_part": "SC92F8003X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C363204", "mfr_part": "SC92F7422X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C363209", "mfr_part": "SC92F7462BX20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3663552", "mfr_part": "MAX6635MSA+", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3664321", "mfr_part": "SI7021-A20-IM1", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3664352", "mfr_part": "HPP845E031R5", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3664395", "mfr_part": "HPP845E131R4", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3664406", "mfr_part": "HPP845E034R5", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C3664441", "mfr_part": "SI7006-A20-IM1R", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C367191", "mfr_part": "SC92F8462BX20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C382136", "mfr_part": "TP4110", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C382139", "mfr_part": "TP4056", "package": "ESOP-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C394204", "mfr_part": "SC0163D-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C411810", "mfr_part": "IS25WP080D-JNLE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C411812", "mfr_part": "PM25LQ010B-SCE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C473376", "mfr_part": "HDC1010YPAR", "package": "BGA-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C477922", "mfr_part": "HDC2010YPAR", "package": "DSBGA-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C49173", "mfr_part": "TOP243YN", "package": "TO-220-7C", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C508248", "mfr_part": "PT7C4337UEX", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C521286", "mfr_part": "IS25LP080D-JNLE-TR", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C521334", "mfr_part": "SD2054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C521413", "mfr_part": "SD8054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C53062", "mfr_part": "IAP15W4K61S4-30I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C5656631", "mfr_part": "IS25LP128F-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C566784", "mfr_part": "CAP200DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C5773705", "mfr_part": "CW32F030K8U7", "package": "QFN-32", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C5795601", "mfr_part": "PCF8563", "package": "SOP-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C623880", "mfr_part": "MCP79400T-I/MNY", "package": "UDFN-8(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C623881", "mfr_part": "MCP79400T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C623888", "mfr_part": "MCP7940NT-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C623890", "mfr_part": "MCP79410T-I/MNY", "package": "TDFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C623891", "mfr_part": "MCP79410T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C623895", "mfr_part": "MCP79412T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C625616", "mfr_part": "MCP9501PT-115E/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C625626", "mfr_part": "MCP9700T-H/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C627703", "mfr_part": "MCP79410T-I/ST", "package": "TSSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C632053", "mfr_part": "MCP9700A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C636422", "mfr_part": "MCP79400-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C636424", "mfr_part": "MCP79401-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C636425", "mfr_part": "MCP79401-I/ST", "package": "TSSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C636427", "mfr_part": "MCP79402-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C636432", "mfr_part": "MCP7940N-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C636434", "mfr_part": "MCP79410-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C82227", "mfr_part": "HDC1080DMBR", "package": "WSON-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C82747", "mfr_part": "HY2111-GB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C83479", "mfr_part": "HTU21D", "package": "DFN-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C845535", "mfr_part": "CC2541", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C91142", "mfr_part": "HTS221TR", "package": "HLGA-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C918141", "mfr_part": "HDC2080DMBR", "package": "WSON-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:03:53.268283+00:00"}
+{"lcsc": "C113632", "mfr_part": "HY2213-BB3A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C132603", "mfr_part": "SI7021-A20-GM1R", "package": "DFN-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C1337366", "mfr_part": "AT89C51CC03UA-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C134462", "mfr_part": "WIZ850io", "package": "\u63d2\u4ef6,25x23mm", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C1350139", "mfr_part": "IS25LP256D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C148052", "mfr_part": "MCP7940NT-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C152184", "mfr_part": "MCP7940M-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C153264", "mfr_part": "MCP7940N-I/P", "package": "DIP-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C157655", "mfr_part": "MCP9800A0T-M/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C161942", "mfr_part": "HY2112-BB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168762", "mfr_part": "HY2111-KB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168767", "mfr_part": "HY2113-DB1A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168769", "mfr_part": "HY2113-GB3A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168770", "mfr_part": "HY2113-JB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168771", "mfr_part": "HY2113-KB5B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168773", "mfr_part": "HY2113-OB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168774", "mfr_part": "HY2116-DB6B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168776", "mfr_part": "HY2120-AB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C168777", "mfr_part": "HY2120-DB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C171626", "mfr_part": "SD5054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C18212990", "mfr_part": "STC8H8K64U-45I-SOP16", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C194710", "mfr_part": "MCP9808T-E/MC", "package": "DFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C19578", "mfr_part": "STC10F08XE-35I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C19723499", "mfr_part": "HLK-B40-I", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2064518", "mfr_part": "IS25LP512M-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C209920", "mfr_part": "HLK-7628N", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C221425", "mfr_part": "SC92FW24X28U", "package": "TSSOP-28", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C22377637", "mfr_part": "NHC-1001", "package": "SMD-8P,5x5mm", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C22392413", "mfr_part": "ABX00053", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C23539", "mfr_part": "IAP15F2K61S2-28I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C250807", "mfr_part": "SD8017", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C283292", "mfr_part": "STTS75M2F", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2843554", "mfr_part": "MHT04", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2848023", "mfr_part": "WC-PD30B012G-1", "package": "\u63d2\u4ef6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2848028", "mfr_part": "WC-PD30B050", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2848030", "mfr_part": "WC-PD25C012T", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2848081", "mfr_part": "WC-PD30B024", "package": "\u63d2\u4ef6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2848089", "mfr_part": "WC-PD30A012A", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2909085", "mfr_part": "HLK-B40", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2913568", "mfr_part": "GXHTC3C", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2935100", "mfr_part": "CDP-07C", "package": "\u63d2\u4ef6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2969838", "mfr_part": "STTS22HTR", "package": "UDFN-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2970058", "mfr_part": "STTS751-1DP3F", "package": "UDFN-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2970313", "mfr_part": "LM235DT", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C2987962", "mfr_part": "STC8H8K64U-45I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C3001859", "mfr_part": "IS25LP128-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C3013115", "mfr_part": "IAP15W413AS-35I-SOP16", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C3033374", "mfr_part": "IS25LP016D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C329457", "mfr_part": "AD4054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C3606718", "mfr_part": "STM32WLE4JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C363195", "mfr_part": "SC92F8003X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C363204", "mfr_part": "SC92F7422X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C363209", "mfr_part": "SC92F7462BX20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C3664321", "mfr_part": "SI7021-A20-IM1", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C3664441", "mfr_part": "SI7006-A20-IM1R", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C367191", "mfr_part": "SC92F8462BX20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C382136", "mfr_part": "TP4110", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C382139", "mfr_part": "TP4056", "package": "ESOP-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C393720", "mfr_part": "CHR02-2025-T", "package": "\u63d2\u4ef6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C394204", "mfr_part": "SC0163D-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C395461", "mfr_part": "AD4057", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C411812", "mfr_part": "PM25LQ010B-SCE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C473376", "mfr_part": "HDC1010YPAR", "package": "BGA-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C477922", "mfr_part": "HDC2010YPAR", "package": "DSBGA-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C51106", "mfr_part": "MCP7940N-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C511320", "mfr_part": "MCP73833-FCI/MF", "package": "DFN-10-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C511337", "mfr_part": "MCP73833T-FCI/MF", "package": "DFN-10-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C521334", "mfr_part": "SD2054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C521413", "mfr_part": "SD8054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C53062", "mfr_part": "IAP15W4K61S4-30I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C5656631", "mfr_part": "IS25LP128F-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C566784", "mfr_part": "CAP200DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C5680129", "mfr_part": "WTR08D050MD2AW", "package": "\u63d2\u4ef6,P=5mm", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C5773705", "mfr_part": "CW32F030K8U7", "package": "QFN-32", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C5795601", "mfr_part": "PCF8563", "package": "SOP-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C5803540", "mfr_part": "IS29GL256-70SLET", "package": "TFSOP-56-18.4mm", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C623880", "mfr_part": "MCP79400T-I/MNY", "package": "UDFN-8(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C623881", "mfr_part": "MCP79400T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C623888", "mfr_part": "MCP7940NT-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C623890", "mfr_part": "MCP79410T-I/MNY", "package": "TDFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C623891", "mfr_part": "MCP79410T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C623895", "mfr_part": "MCP79412T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C627703", "mfr_part": "MCP79410T-I/ST", "package": "TSSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C632053", "mfr_part": "MCP9700A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C636422", "mfr_part": "MCP79400-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C636424", "mfr_part": "MCP79401-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C636425", "mfr_part": "MCP79401-I/ST", "package": "TSSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C636427", "mfr_part": "MCP79402-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C636432", "mfr_part": "MCP7940N-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C636434", "mfr_part": "MCP79410-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C6515261", "mfr_part": "BM64SPKS1MC1-0003AA", "package": "SMD-43P", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C82227", "mfr_part": "HDC1080DMBR", "package": "WSON-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C82747", "mfr_part": "HY2111-GB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C83479", "mfr_part": "HTU21D", "package": "DFN-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C91142", "mfr_part": "HTS221TR", "package": "HLGA-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C918141", "mfr_part": "HDC2080DMBR", "package": "WSON-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:05:57.454873+00:00"}
+{"lcsc": "C113632", "mfr_part": "HY2213-BB3A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C132603", "mfr_part": "SI7021-A20-GM1R", "package": "DFN-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C1337366", "mfr_part": "AT89C51CC03UA-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C1350139", "mfr_part": "IS25LP256D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C1350237", "mfr_part": "IS25LP016D-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C141840", "mfr_part": "PT7C4302WEX", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C148052", "mfr_part": "MCP7940NT-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C153264", "mfr_part": "MCP7940N-I/P", "package": "DIP-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C157655", "mfr_part": "MCP9800A0T-M/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C161942", "mfr_part": "HY2112-BB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168762", "mfr_part": "HY2111-KB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168763", "mfr_part": "HY2112-AB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168767", "mfr_part": "HY2113-DB1A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168769", "mfr_part": "HY2113-GB3A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168770", "mfr_part": "HY2113-JB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168771", "mfr_part": "HY2113-KB5B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168773", "mfr_part": "HY2113-OB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168774", "mfr_part": "HY2116-DB6B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168776", "mfr_part": "HY2120-AB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168777", "mfr_part": "HY2120-DB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C168778", "mfr_part": "HY2120-LB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C171626", "mfr_part": "SD5054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C194710", "mfr_part": "MCP9808T-E/MC", "package": "DFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C19578", "mfr_part": "STC10F08XE-35I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C19723499", "mfr_part": "HLK-B40-I", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C19949056", "mfr_part": "ESP-M1", "package": "SMD,15x12.3mm", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C19949062", "mfr_part": "ESP-F", "package": "SMD,24x16mm", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C19949075", "mfr_part": "ESPC3-20E-N4", "package": "SMD,20x18mm", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2061030", "mfr_part": "IS25LP080D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2064518", "mfr_part": "IS25LP512M-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C221425", "mfr_part": "SC92FW24X28U", "package": "TSSOP-28", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C22377637", "mfr_part": "NHC-1001", "package": "SMD-8P,5x5mm", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C22392413", "mfr_part": "ABX00053", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C22396387", "mfr_part": "TMP709AIDBVR(UMW)", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C23539", "mfr_part": "IAP15F2K61S2-28I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C250807", "mfr_part": "SD8017", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C283292", "mfr_part": "STTS75M2F", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2833613", "mfr_part": "WH-GM5", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2909085", "mfr_part": "HLK-B40", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2913568", "mfr_part": "GXHTC3C", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2969838", "mfr_part": "STTS22HTR", "package": "UDFN-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2970058", "mfr_part": "STTS751-1DP3F", "package": "UDFN-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2970313", "mfr_part": "LM235DT", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2976734", "mfr_part": "IS25WP016D-JULE-TR", "package": "USON-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2981433", "mfr_part": "Y7025", "package": "SMD,17.6x15.7mm", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2987962", "mfr_part": "STC8H8K64U-45I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C2995543", "mfr_part": "IS25WP064D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3001859", "mfr_part": "IS25LP128-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3013115", "mfr_part": "IAP15W413AS-35I-SOP16", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3033374", "mfr_part": "IS25LP016D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3234898", "mfr_part": "ATTINY3226-SU", "package": "SOIC-20-300mil", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3606718", "mfr_part": "STM32WLE4JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3663552", "mfr_part": "MAX6635MSA+", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3664321", "mfr_part": "SI7021-A20-IM1", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3664352", "mfr_part": "HPP845E031R5", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3664395", "mfr_part": "HPP845E131R4", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3664406", "mfr_part": "HPP845E034R5", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C3664441", "mfr_part": "SI7006-A20-IM1R", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C382136", "mfr_part": "TP4110", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C382139", "mfr_part": "TP4056", "package": "ESOP-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C394204", "mfr_part": "SC0163D-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C411810", "mfr_part": "IS25WP080D-JNLE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C411812", "mfr_part": "PM25LQ010B-SCE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C42420055", "mfr_part": "BW20-07S(IPEX)", "package": "SMD,17x16mm", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C473376", "mfr_part": "HDC1010YPAR", "package": "BGA-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C477922", "mfr_part": "HDC2010YPAR", "package": "DSBGA-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C49173", "mfr_part": "TOP243YN", "package": "TO-220-7C", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C508248", "mfr_part": "PT7C4337UEX", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C521286", "mfr_part": "IS25LP080D-JNLE-TR", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C521334", "mfr_part": "SD2054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C521413", "mfr_part": "SD8054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C53062", "mfr_part": "IAP15W4K61S4-30I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C5656631", "mfr_part": "IS25LP128F-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C566784", "mfr_part": "CAP200DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C57308", "mfr_part": "STC15F2K60S2-28I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C5795601", "mfr_part": "PCF8563", "package": "SOP-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C623880", "mfr_part": "MCP79400T-I/MNY", "package": "UDFN-8(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C623881", "mfr_part": "MCP79400T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C623888", "mfr_part": "MCP7940NT-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C623890", "mfr_part": "MCP79410T-I/MNY", "package": "TDFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C623891", "mfr_part": "MCP79410T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C623895", "mfr_part": "MCP79412T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C625616", "mfr_part": "MCP9501PT-115E/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C625626", "mfr_part": "MCP9700T-H/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C627703", "mfr_part": "MCP79410T-I/ST", "package": "TSSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C632053", "mfr_part": "MCP9700A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C633940", "mfr_part": "SAM9X60-V/DWB", "package": "TFBGA-228(11x11)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C636295", "mfr_part": "MCP6241-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C636422", "mfr_part": "MCP79400-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C636424", "mfr_part": "MCP79401-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C636425", "mfr_part": "MCP79401-I/ST", "package": "TSSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C636427", "mfr_part": "MCP79402-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C636432", "mfr_part": "MCP7940N-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C636434", "mfr_part": "MCP79410-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C7363803", "mfr_part": "SIM7022", "package": "SMD-42P", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C82227", "mfr_part": "HDC1080DMBR", "package": "WSON-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C82747", "mfr_part": "HY2111-GB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C83479", "mfr_part": "HTU21D", "package": "DFN-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C91142", "mfr_part": "HTS221TR", "package": "HLGA-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C918141", "mfr_part": "HDC2080DMBR", "package": "WSON-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:17:00.122045+00:00"}
+{"lcsc": "C132603", "mfr_part": "SI7021-A20-GM1R", "package": "DFN-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C1337366", "mfr_part": "AT89C51CC03UA-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C1350139", "mfr_part": "IS25LP256D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C1350237", "mfr_part": "IS25LP016D-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C138723", "mfr_part": "TPS65023RSBR", "package": "WQFN-40-EP(5x5)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C14022", "mfr_part": "STC89C52RC-40I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C141840", "mfr_part": "PT7C4302WEX", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C14550", "mfr_part": "STC12C5A60S2-35I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C148052", "mfr_part": "MCP7940NT-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C1527379", "mfr_part": "AT89S8253-24JU", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C153264", "mfr_part": "MCP7940N-I/P", "package": "DIP-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C157655", "mfr_part": "MCP9800A0T-M/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C161942", "mfr_part": "HY2112-BB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168762", "mfr_part": "HY2111-KB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168763", "mfr_part": "HY2112-AB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168767", "mfr_part": "HY2113-DB1A", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168770", "mfr_part": "HY2113-JB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168771", "mfr_part": "HY2113-KB5B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168773", "mfr_part": "HY2113-OB1B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168774", "mfr_part": "HY2116-DB6B", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168776", "mfr_part": "HY2120-AB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168777", "mfr_part": "HY2120-DB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C168778", "mfr_part": "HY2120-LB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C19188741", "mfr_part": "CW32W031R8U6", "package": "QFN-64", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2061030", "mfr_part": "IS25LP080D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2064518", "mfr_part": "IS25LP512M-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C22377637", "mfr_part": "NHC-1001", "package": "SMD-8P,5x5mm", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C23539", "mfr_part": "IAP15F2K61S2-28I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C283292", "mfr_part": "STTS75M2F", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2860132", "mfr_part": "LM3658SD/NOPB", "package": "WSON-10(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2886434", "mfr_part": "IS25LP256D-JLLE-TR", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2913568", "mfr_part": "GXHTC3C", "package": "-", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2935100", "mfr_part": "CDP-07C", "package": "\u63d2\u4ef6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2969838", "mfr_part": "STTS22HTR", "package": "UDFN-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2970058", "mfr_part": "STTS751-1DP3F", "package": "UDFN-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2970313", "mfr_part": "LM235DT", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C2995543", "mfr_part": "IS25WP064D-JBLE-TR", "package": "SOP-8-208mil", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3001859", "mfr_part": "IS25LP128-JKLE", "package": "WSON-8-EP(5x6)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3019114", "mfr_part": "CW32F003F4P7", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3019115", "mfr_part": "CW32F003E4P7", "package": "TSSOP-24", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3033374", "mfr_part": "IS25LP016D-JLLE", "package": "WSON-8-EP(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C329457", "mfr_part": "AD4054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3663552", "mfr_part": "MAX6635MSA+", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3664321", "mfr_part": "SI7021-A20-IM1", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3664352", "mfr_part": "HPP845E031R5", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3664395", "mfr_part": "HPP845E131R4", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3664406", "mfr_part": "HPP845E034R5", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C3664441", "mfr_part": "SI7006-A20-IM1R", "package": "DFN-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C382128", "mfr_part": "TP4333", "package": "SOP-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C382138", "mfr_part": "TP4054", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C382139", "mfr_part": "TP4056", "package": "ESOP-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C394204", "mfr_part": "SC0163D-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C395461", "mfr_part": "AD4057", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C411810", "mfr_part": "IS25WP080D-JNLE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C411812", "mfr_part": "PM25LQ010B-SCE", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C41368434", "mfr_part": "CW32L010F8U6", "package": "QFN-20-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C41425332", "mfr_part": "CW32L010F8P6", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C440390", "mfr_part": "TP4057", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C468236", "mfr_part": "BQ25601RTWR", "package": "QFN-24-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C473376", "mfr_part": "HDC1010YPAR", "package": "BGA-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C477922", "mfr_part": "HDC2010YPAR", "package": "DSBGA-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C500772", "mfr_part": "PT7C433833UEX", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C508248", "mfr_part": "PT7C4337UEX", "package": "MSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C5122785", "mfr_part": "CW32F030F6P6", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C521286", "mfr_part": "IS25LP080D-JNLE-TR", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C53062", "mfr_part": "IAP15W4K61S4-30I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C5464792", "mfr_part": "TP4552B", "package": "SOP8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C5656631", "mfr_part": "IS25LP128F-RHLE-TR", "package": "TFBGA-24(6x8)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C5680137", "mfr_part": "WTR15D080MG3CW", "package": "\u63d2\u4ef6,P=7.5mm", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C5773705", "mfr_part": "CW32F030K8U7", "package": "QFN-32", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C5773706", "mfr_part": "CW32L031K8U6", "package": "QFN-32", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C5795601", "mfr_part": "PCF8563", "package": "SOP-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C623880", "mfr_part": "MCP79400T-I/MNY", "package": "UDFN-8(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C623881", "mfr_part": "MCP79400T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C623888", "mfr_part": "MCP7940NT-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C623890", "mfr_part": "MCP79410T-I/MNY", "package": "TDFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C623891", "mfr_part": "MCP79410T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C623895", "mfr_part": "MCP79412T-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C625616", "mfr_part": "MCP9501PT-115E/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C636422", "mfr_part": "MCP79400-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C636424", "mfr_part": "MCP79401-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C636425", "mfr_part": "MCP79401-I/ST", "package": "TSSOP-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C636427", "mfr_part": "MCP79402-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C636432", "mfr_part": "MCP7940N-E/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C636434", "mfr_part": "MCP79410-I/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C6595664", "mfr_part": "MP2667GG-0000-Z", "package": "QFN-10(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C664118", "mfr_part": "LT1510IS#PBF", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C66940", "mfr_part": "STC12C5A32S2-35I-PDIP40", "package": "DIP-40", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C687285", "mfr_part": "LTC4085EDE-4#PBF", "package": "DFN-14-EP(3x4)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C82227", "mfr_part": "HDC1080DMBR", "package": "WSON-6(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C82747", "mfr_part": "HY2111-GB", "package": "SOT-23-6", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C83479", "mfr_part": "HTU21D", "package": "DFN-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C83702", "mfr_part": "STC15W408AS-35I-DIP16", "package": "DIP-16", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C91142", "mfr_part": "HTS221TR", "package": "HLGA-6(2x2)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C918141", "mfr_part": "HDC2080DMBR", "package": "WSON-6-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T10:27:36.536302+00:00"}
+{"lcsc": "C110098", "mfr_part": "MBI5043GP-A", "package": "SSOP-24", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C127949", "mfr_part": "MCP9700AT-E/TT", "package": "SOT-23", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C132174", "mfr_part": "AL5812FF-7", "package": "DFN-6-EP(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C132603", "mfr_part": "SI7021-A20-GM1R", "package": "DFN-6-EP(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C1337366", "mfr_part": "AT89C51CC03UA-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C138394", "mfr_part": "TPS92691PWPR", "package": "HTSSOP-16-EP", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C14022", "mfr_part": "STC89C52RC-40I-PDIP40", "package": "DIP-40", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C141840", "mfr_part": "PT7C4302WEX", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C148052", "mfr_part": "MCP7940NT-I/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C152175", "mfr_part": "MCP9801-M/MS", "package": "MSOP-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C153264", "mfr_part": "MCP7940N-I/P", "package": "DIP-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C156300", "mfr_part": "AL1791AFE-13", "package": "UDFN-14-EP(4x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C157655", "mfr_part": "MCP9800A0T-M/OT", "package": "SOT-23-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C17395597", "mfr_part": "MCP9700BT-E/TT", "package": "SOT-23-3", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C17671592", "mfr_part": "MA800GQ-Z", "package": "QFN-16(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C194710", "mfr_part": "MCP9808T-E/MC", "package": "DFN-8-EP(2x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C19578", "mfr_part": "STC10F08XE-35I-PDIP40", "package": "DIP-40", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C19723499", "mfr_part": "HLK-B40-I", "package": "SMD,14x9.5mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C20033859", "mfr_part": "STM32MP135CAE3", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C20625359", "mfr_part": "GXT310T0", "package": "MCLGA-4(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C219078", "mfr_part": "MCP9509HT-E/OT", "package": "SOT-23-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C22377637", "mfr_part": "NHC-1001", "package": "SMD-8P,5x5mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C22386787", "mfr_part": "5.8 WSGT-3P CC", "package": "\u5f2f\u63d2-3P,5.8x5.8mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C22392413", "mfr_part": "ABX00053", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C23539", "mfr_part": "IAP15F2K61S2-28I-PDIP40", "package": "DIP-40", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C256866", "mfr_part": "MBI5124GP-B", "package": "SSOP-24", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C261130", "mfr_part": "MBI5035GP-B", "package": "SSOP-24-150mil", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2655204", "mfr_part": "G-MRCO-050", "package": "TDLMP-12(6x2)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2659312", "mfr_part": "TPS65632RTER", "package": "WQFN-16-EP(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2678548", "mfr_part": "AL5816W5-7", "package": "SOT-23-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2678663", "mfr_part": "AL5817MP-13", "package": "MSOP-8-EP", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2678881", "mfr_part": "AL1792AFE-13", "package": "UDFN-14-EP(4x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2829513", "mfr_part": "MBI6656GSB-B", "package": "SOT-89-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C283292", "mfr_part": "STTS75M2F", "package": "SO-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2833613", "mfr_part": "WH-GM5", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2848960", "mfr_part": "PB-22E86-3.3", "package": "\u63d2\u4ef6,8.5x8.5mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2909085", "mfr_part": "HLK-B40", "package": "SMD,14x9.5mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2913568", "mfr_part": "GXHTC3C", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2917286", "mfr_part": "WL6601-TC", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2969838", "mfr_part": "STTS22HTR", "package": "UDFN-6(2x2)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2969982", "mfr_part": "STM32WL55JCI6", "package": "UFBGA-73", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2970058", "mfr_part": "STTS751-1DP3F", "package": "UDFN-6(2x2)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2970313", "mfr_part": "LM235DT", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2970390", "mfr_part": "NUCLEO-G031K8", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2987962", "mfr_part": "STC8H8K64U-45I-PDIP40", "package": "PDIP-40", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C2995536", "mfr_part": "SIM7600E", "package": "SMD-87P", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3013115", "mfr_part": "IAP15W413AS-35I-SOP16", "package": "SOP-16", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3215573", "mfr_part": "STM32WB55VCQ6", "package": "UFBGA-129", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3215576", "mfr_part": "STM32WB55VEQ6", "package": "UFBGA-129", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3606718", "mfr_part": "STM32WLE4JCI6", "package": "UFBGA-73", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C36141", "mfr_part": "TOP227YN", "package": "TO-220", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3663552", "mfr_part": "MAX6635MSA+", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3664321", "mfr_part": "SI7021-A20-IM1", "package": "DFN-6(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3664352", "mfr_part": "HPP845E031R5", "package": "DFN-6(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3664395", "mfr_part": "HPP845E131R4", "package": "DFN-6(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3664406", "mfr_part": "HPP845E034R5", "package": "DFN-6(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C3664441", "mfr_part": "SI7006-A20-IM1R", "package": "DFN-6(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C382136", "mfr_part": "TP4110", "package": "SOP-16", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C394204", "mfr_part": "SC0163D-TL", "package": "SO-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C42288", "mfr_part": "MCP9700T-E/TT", "package": "SOT-23", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C42420055", "mfr_part": "BW20-07S(IPEX)", "package": "SMD,17x16mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C445014", "mfr_part": "DLD101-7", "package": "DFN-8-EP(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C461934", "mfr_part": "SI3404-A-GMR", "package": "QFN-20-EP(4x4)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C472472", "mfr_part": "GX1820", "package": "TO-92", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C473376", "mfr_part": "HDC1010YPAR", "package": "BGA-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C477922", "mfr_part": "HDC2010YPAR", "package": "DSBGA-6", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C49164662", "mfr_part": "AI-01", "package": "SMD,25.5x18mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C49173", "mfr_part": "TOP243YN", "package": "TO-220-7C", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C496501", "mfr_part": "ADN8833ACBZ-R7", "package": "WLCSP-25(2.5x2.5)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C508248", "mfr_part": "PT7C4337UEX", "package": "MSOP-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C511278", "mfr_part": "MCP9700T-E/LT", "package": "SC-70-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155569", "mfr_part": "PS-5850SVB-6PN", "package": "SMD,5.8x5.8mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155572", "mfr_part": "PS-5850SVA-6PNW", "package": "SMD,5.8x5.8mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155573", "mfr_part": "PS-5850SVB-6PNW", "package": "SMD,5.8x5.8mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155577", "mfr_part": "PS-5824SVB-6PN", "package": "SMD,5.8x5.8mm", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155579", "mfr_part": "PS-5824SSB-2PL", "package": "SMD", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155580", "mfr_part": "PS-5824SSA-2PN", "package": "SMD", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155581", "mfr_part": "PS-5824SSB-2PN", "package": "SMD", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155595", "mfr_part": "PS-5850SVA-3PN", "package": "SMD", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155600", "mfr_part": "PS-5850DDA-2PL", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155602", "mfr_part": "PS-5850DDA-2PN", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5155603", "mfr_part": "PS-5850DDB-2PN", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C51999", "mfr_part": "MBI6655GSB-B", "package": "SOT-89-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C53062", "mfr_part": "IAP15W4K61S4-30I-PDIP40", "package": "DIP-40", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5362619", "mfr_part": "PS-5824WVB-2PN", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C566758", "mfr_part": "CAP005DG-TL", "package": "SO-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C566784", "mfr_part": "CAP200DG-TL", "package": "SO-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5795601", "mfr_part": "PCF8563", "package": "SOP-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5800326", "mfr_part": "MP3205DJ-LF-Z", "package": "TSOT-23-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C5800439", "mfr_part": "MP86956GMJT-Z", "package": "TLGA-41(5x6)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C6228106", "mfr_part": "MP5515GU-Z", "package": "QFN-30(5x5)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C623880", "mfr_part": "MCP79400T-I/MNY", "package": "UDFN-8(2x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C623881", "mfr_part": "MCP79400T-I/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C623888", "mfr_part": "MCP7940NT-E/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C623890", "mfr_part": "MCP79410T-I/MNY", "package": "TDFN-8-EP(2x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C623891", "mfr_part": "MCP79410T-I/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C623895", "mfr_part": "MCP79412T-I/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C623921", "mfr_part": "MCP9801T-M/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C625616", "mfr_part": "MCP9501PT-115E/OT", "package": "SOT-23-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C625626", "mfr_part": "MCP9700T-H/LT", "package": "SC-70-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C627703", "mfr_part": "MCP79410T-I/ST", "package": "TSSOP-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C632053", "mfr_part": "MCP9700A-E/TO", "package": "TO-92", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C636295", "mfr_part": "MCP6241-E/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C636422", "mfr_part": "MCP79400-I/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C636424", "mfr_part": "MCP79401-I/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C636425", "mfr_part": "MCP79401-I/ST", "package": "TSSOP-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C636427", "mfr_part": "MCP79402-I/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C636432", "mfr_part": "MCP7940N-E/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C636434", "mfr_part": "MCP79410-I/SN", "package": "SOIC-8", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C6595536", "mfr_part": "MP2483DS-LF-Z", "package": "SOIC-14", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C66940", "mfr_part": "STC12C5A32S2-35I-PDIP40", "package": "DIP-40", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C67354", "mfr_part": "AL1793AFE-13", "package": "UDFN-14-EP(4x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C73090", "mfr_part": "MCP9701A-E/TO", "package": "TO-92", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C780873", "mfr_part": "PAM2841GR", "package": "UDFN-8-EP(2x2)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C82227", "mfr_part": "HDC1080DMBR", "package": "WSON-6(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C83479", "mfr_part": "HTU21D", "package": "DFN-6-EP(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C845535", "mfr_part": "CC2541", "package": "-", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C91142", "mfr_part": "HTS221TR", "package": "HLGA-6(2x2)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C91304", "mfr_part": "TPS61042DRBR", "package": "DFN-8-EP(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C918141", "mfr_part": "HDC2080DMBR", "package": "WSON-6-EP(3x3)", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C97546", "mfr_part": "MCP9700AT-E/LT", "package": "SC-70-5", "design": "Environmental Sensor Node", "at": "2026-09-25T11:06:33.594998+00:00"}
+{"lcsc": "C127949", "mfr_part": "MCP9700AT-E/TT", "package": "SOT-23", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C1513068", "mfr_part": "MCP16501TA-E/RMB", "package": "VQFN-24-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C1524029", "mfr_part": "DLPC3433CZVB", "package": "NFBGA-176", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C155208", "mfr_part": "CD4543BE", "package": "DIP-16", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C157655", "mfr_part": "MCP9800A0T-M/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C17395597", "mfr_part": "MCP9700BT-E/TT", "package": "SOT-23-3", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C181650", "mfr_part": "TPS65100PWPR", "package": "HTSSOP-24-EP", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C1848087", "mfr_part": "SAM9X60D5MT-I/4FB", "package": "TFBGA-233", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C194710", "mfr_part": "MCP9808T-E/MC", "package": "DFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C19723499", "mfr_part": "HLK-B40-I", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C20191705", "mfr_part": "KP464XTMA1", "package": "DFN-8(5.1x4.5)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C213558", "mfr_part": "TPS65132SYFFR", "package": "DSBGA-15", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2155989", "mfr_part": "MAX749CSA+T", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C219078", "mfr_part": "MCP9509HT-E/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C219275", "mfr_part": "HV6810WG-G", "package": "SOIC-20-300mil", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C221425", "mfr_part": "SC92FW24X28U", "package": "TSSOP-28", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C221441", "mfr_part": "SC93F8432X20U", "package": "TSSOP-20L", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C22377637", "mfr_part": "NHC-1001", "package": "SMD-8P,5x5mm", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C22388663", "mfr_part": "WF282A", "package": "LGA-8(2x2.5)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C22392413", "mfr_part": "ABX00053", "package": "-", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2655507", "mfr_part": "AT91SAM9G45C-CU-999", "package": "TFBGA-324", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2659312", "mfr_part": "TPS65632RTER", "package": "WQFN-16-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2688881", "mfr_part": "KTY81/220,112", "package": "SOD-70-2", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2764336", "mfr_part": "SM9333-BCE-S-125-000", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2764337", "mfr_part": "SM3041-015-D-C-3-S", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C28326", "mfr_part": "CD4543BM96", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2833613", "mfr_part": "WH-GM5", "package": "-", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2834471", "mfr_part": "HT1621BRSZ", "package": "SSOP-48-300mil", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2909085", "mfr_part": "HLK-B40", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2914366", "mfr_part": "SC95F8522X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2969982", "mfr_part": "STM32WL55JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C2987962", "mfr_part": "STC8H8K64U-45I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C3187748", "mfr_part": "MP28160GC-Z", "package": "CSP-12(1.4x1.8)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C3606718", "mfr_part": "STM32WLE4JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C363195", "mfr_part": "SC92F8003X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C367191", "mfr_part": "SC92F8462BX20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C42288", "mfr_part": "MCP9700T-E/TT", "package": "SOT-23", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C49055402", "mfr_part": "MTP20-B6CO2", "package": "TO-46", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C49055404", "mfr_part": "MTP20-A6CO2", "package": "TO-39", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C49164655", "mfr_part": "ESPS3-32-N4", "package": "SMD,25.5x18mm", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C49164659", "mfr_part": "ESPS3-32E-N4", "package": "SMD,19.2x18mm", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C49164660", "mfr_part": "ESPS3-32E-N16R2", "package": "SMD,19.2x18mm", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C49164662", "mfr_part": "AI-01", "package": "SMD,25.5x18mm", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C49173", "mfr_part": "TOP243YN", "package": "TO-220-7C", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C507148", "mfr_part": "CD4543BM/TR", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C511278", "mfr_part": "MCP9700T-E/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C5118892", "mfr_part": "SC95F8523X28U", "package": "TSSOP-28", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C5125957", "mfr_part": "WF200DPZ 0.05BG S16 DT", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C516591", "mfr_part": "AP5727WG-7", "package": "SOT-25", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C5181790", "mfr_part": "SC92F8378S10U", "package": "MSOP-10", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C524015", "mfr_part": "BUF16821AIPWPR", "package": "HTSSOP-28", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C527450", "mfr_part": "CD4056BM96", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C5444287", "mfr_part": "SSP55080AFV", "package": "TSSOP-48", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C555140", "mfr_part": "CD4054BM96", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C566758", "mfr_part": "CAP005DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C566784", "mfr_part": "CAP200DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C568060", "mfr_part": "TNY280PG", "package": "DIP-8", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C5773705", "mfr_part": "CW32F030K8U7", "package": "QFN-32", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C6228106", "mfr_part": "MP5515GU-Z", "package": "QFN-30(5x5)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C623073", "mfr_part": "MCP1725T-1802E/MC", "package": "DFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C623093", "mfr_part": "MCP1726T-3302E/MF", "package": "WDFN-8-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C623921", "mfr_part": "MCP9801T-M/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C625626", "mfr_part": "MCP9700T-H/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C632053", "mfr_part": "MCP9700A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C73090", "mfr_part": "MCP9701A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C97546", "mfr_part": "MCP9700AT-E/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T16:15:41.096847+00:00"}
+{"lcsc": "C127949", "mfr_part": "MCP9700AT-E/TT", "package": "SOT-23", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C1513068", "mfr_part": "MCP16501TA-E/RMB", "package": "VQFN-24-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C1524029", "mfr_part": "DLPC3433CZVB", "package": "NFBGA-176", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C155208", "mfr_part": "CD4543BE", "package": "DIP-16", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C157655", "mfr_part": "MCP9800A0T-M/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C17395597", "mfr_part": "MCP9700BT-E/TT", "package": "SOT-23-3", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C181650", "mfr_part": "TPS65100PWPR", "package": "HTSSOP-24-EP", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C1848087", "mfr_part": "SAM9X60D5MT-I/4FB", "package": "TFBGA-233", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C194710", "mfr_part": "MCP9808T-E/MC", "package": "DFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C19723499", "mfr_part": "HLK-B40-I", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C20191705", "mfr_part": "KP464XTMA1", "package": "DFN-8(5.1x4.5)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2053728", "mfr_part": "AT89C51RD2-SLRUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C213558", "mfr_part": "TPS65132SYFFR", "package": "DSBGA-15", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2155989", "mfr_part": "MAX749CSA+T", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C219078", "mfr_part": "MCP9509HT-E/OT", "package": "SOT-23-5", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C219275", "mfr_part": "HV6810WG-G", "package": "SOIC-20-300mil", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C221425", "mfr_part": "SC92FW24X28U", "package": "TSSOP-28", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C221441", "mfr_part": "SC93F8432X20U", "package": "TSSOP-20L", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C22377637", "mfr_part": "NHC-1001", "package": "SMD-8P,5x5mm", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C22388663", "mfr_part": "WF282A", "package": "LGA-8(2x2.5)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C22392413", "mfr_part": "ABX00053", "package": "-", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2655507", "mfr_part": "AT91SAM9G45C-CU-999", "package": "TFBGA-324", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2659312", "mfr_part": "TPS65632RTER", "package": "WQFN-16-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2667027", "mfr_part": "LDC1314RGHR", "package": "QFN-16-EP(4x4)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2688881", "mfr_part": "KTY81/220,112", "package": "SOD-70-2", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2764336", "mfr_part": "SM9333-BCE-S-125-000", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2764337", "mfr_part": "SM3041-015-D-C-3-S", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C28326", "mfr_part": "CD4543BM96", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2833613", "mfr_part": "WH-GM5", "package": "-", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2834471", "mfr_part": "HT1621BRSZ", "package": "SSOP-48-300mil", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2901859", "mfr_part": "STC11F60XE-35I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2909085", "mfr_part": "HLK-B40", "package": "SMD,14x9.5mm", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2914366", "mfr_part": "SC95F8522X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2969982", "mfr_part": "STM32WL55JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C2987962", "mfr_part": "STC8H8K64U-45I-PDIP40", "package": "PDIP-40", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C3187748", "mfr_part": "MP28160GC-Z", "package": "CSP-12(1.4x1.8)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C3606718", "mfr_part": "STM32WLE4JCI6", "package": "UFBGA-73", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C363195", "mfr_part": "SC92F8003X20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C367191", "mfr_part": "SC92F8462BX20U", "package": "TSSOP-20", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C42288", "mfr_part": "MCP9700T-E/TT", "package": "SOT-23", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C478082", "mfr_part": "AT89C51RD2-SLSUM", "package": "PLCC-44(16.6x16.6)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C49055402", "mfr_part": "MTP20-B6CO2", "package": "TO-46", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C49055404", "mfr_part": "MTP20-A6CO2", "package": "TO-39", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C49164655", "mfr_part": "ESPS3-32-N4", "package": "SMD,25.5x18mm", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C49164659", "mfr_part": "ESPS3-32E-N4", "package": "SMD,19.2x18mm", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C49164660", "mfr_part": "ESPS3-32E-N16R2", "package": "SMD,19.2x18mm", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C49164662", "mfr_part": "AI-01", "package": "SMD,25.5x18mm", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C49173", "mfr_part": "TOP243YN", "package": "TO-220-7C", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C507148", "mfr_part": "CD4543BM/TR", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C511278", "mfr_part": "MCP9700T-E/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C5118892", "mfr_part": "SC95F8523X28U", "package": "TSSOP-28", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C5125957", "mfr_part": "WF200DPZ 0.05BG S16 DT", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C516591", "mfr_part": "AP5727WG-7", "package": "SOT-25", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C5181790", "mfr_part": "SC92F8378S10U", "package": "MSOP-10", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C524015", "mfr_part": "BUF16821AIPWPR", "package": "HTSSOP-28", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C527450", "mfr_part": "CD4056BM96", "package": "SOIC-16", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C5444287", "mfr_part": "SSP55080AFV", "package": "TSSOP-48", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C555140", "mfr_part": "CD4054BM96", "package": "SOP-16", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C566758", "mfr_part": "CAP005DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C566784", "mfr_part": "CAP200DG-TL", "package": "SO-8", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C568060", "mfr_part": "TNY280PG", "package": "DIP-8", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C5773705", "mfr_part": "CW32F030K8U7", "package": "QFN-32", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C6228106", "mfr_part": "MP5515GU-Z", "package": "QFN-30(5x5)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C623073", "mfr_part": "MCP1725T-1802E/MC", "package": "DFN-8-EP(2x3)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C623093", "mfr_part": "MCP1726T-3302E/MF", "package": "WDFN-8-EP(3x3)", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C623921", "mfr_part": "MCP9801T-M/SN", "package": "SOIC-8", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C625626", "mfr_part": "MCP9700T-H/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C632053", "mfr_part": "MCP9700A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C73090", "mfr_part": "MCP9701A-E/TO", "package": "TO-92", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}
+{"lcsc": "C97546", "mfr_part": "MCP9700AT-E/LT", "package": "SC-70-5", "design": "dunkai_design", "at": "2026-09-25T18:12:41.730053+00:00"}

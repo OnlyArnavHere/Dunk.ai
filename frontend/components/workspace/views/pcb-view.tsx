@@ -6,7 +6,6 @@ import {
   Box,
   CircuitBoard,
   Download,
-  FileCode2,
   Layers2,
   Loader2,
   Maximize2,
@@ -30,7 +29,6 @@ import { ArtifactSvg } from './pcb/artifact-svg'
 import { BoardGltf } from './pcb/board-gltf'
 import { useWorkspaceStore } from '@/lib/store'
 import { useBoardGeneration } from '@/hooks/use-board-generation'
-import { ProviderPicker } from '@/components/workspace/provider-picker'
 
 type Pane = 'schematic' | 'pcb' | '3d'
 
@@ -62,9 +60,10 @@ const DOWNLOADS: Array<{ key: string; label: string }> = [
 export function PcbView({ projectId }: { projectId?: string } = {}) {
   const activeProjectId = useWorkspaceStore((s) => s.activeProjectId)
   const setActiveTab = useWorkspaceStore((s) => s.setActiveTab)
-  const { board, job, generate, canGenerate, componentCount, provider, setProvider } = useBoardGeneration(
-    projectId ?? activeProjectId
-  )
+  // Display only. The board is generated automatically when the chat pipeline
+  // hands off (see chat-interface.tsx); the manual re-run lives on the BOM tab,
+  // next to the components it is built from.
+  const { board, job, componentCount } = useBoardGeneration(projectId ?? activeProjectId)
 
   const [pane, setPane] = useState<Pane>('pcb')
   const [showSample, setShowSample] = useState(false)
@@ -181,25 +180,29 @@ export function PcbView({ projectId }: { projectId?: string } = {}) {
           <>
             <p className="max-w-md text-sm text-foreground">Board generation failed.</p>
             <p className="max-w-lg font-mono text-[10px] leading-relaxed">{job.error}</p>
-            <Button size="sm" className="mt-2 rounded-lg text-xs" onClick={generate} disabled={!canGenerate}>
-              Try again
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-2 rounded-lg text-xs"
+              onClick={() => setActiveTab('bom')}
+            >
+              Retry from BOM
             </Button>
           </>
         ) : componentCount > 0 ? (
           <>
             <p className="max-w-md text-sm">
-              {componentCount} component{componentCount === 1 ? '' : 's'} are ready. Generate the board to see
-              the schematic, layout and 3D view.
+              {componentCount} component{componentCount === 1 ? '' : 's'} are ready, but no board has been
+              generated from them yet.
             </p>
-            <div className="mt-1 flex items-center gap-2">
-              {/* No `disabled` here: this branch only renders when a run is not
-                  in flight, so the picker is always live. */}
-              <ProviderPicker value={provider} onChange={setProvider} />
-              <Button size="sm" className="rounded-lg text-xs" onClick={generate} disabled={!canGenerate}>
-                <CircuitBoard className="mr-1.5 h-3.5 w-3.5" />
-                Generate PCB
-              </Button>
-            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-1 rounded-lg text-xs"
+              onClick={() => setActiveTab('bom')}
+            >
+              Generate from BOM
+            </Button>
           </>
         ) : (
           <>
@@ -303,18 +306,6 @@ export function PcbView({ projectId }: { projectId?: string } = {}) {
                   directories, so that answered 301 and then 404. */}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 rounded-lg bg-background/90 text-xs backdrop-blur"
-            onClick={generate}
-            disabled={!canGenerate}
-            title="Regenerate the board from the current BOM"
-          >
-            <FileCode2 className="mr-1.5 h-3.5 w-3.5" />
-            Regenerate
-          </Button>
 
           <Button
             variant="outline"

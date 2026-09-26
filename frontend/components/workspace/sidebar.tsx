@@ -155,7 +155,13 @@ export function Sidebar() {
           eda_data: {},
           pcb_ir: {},
           validation: {},
+          // Both of these were missing, so "New Chat" cleared the store but
+          // left the saved copies behind and the next project load restored
+          // them: a cleared project came back with its old validation result
+          // and its old board still attached.
+          handoff_validation: {},
           documentation: {},
+          board: {},
         } as Record<string, unknown>,
       })
       // Clear local store state
