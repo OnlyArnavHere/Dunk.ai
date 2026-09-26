@@ -314,7 +314,7 @@ def _get_option_chain(model: str | None = None):
         ("system", _OPTION_SYSTEM_PROMPT),
         ("human", "Question: {question}"),
     ])
-    return option_prompt | _get_llm(model).with_structured_output(QuestionOptions)
+    return option_prompt | _get_llm(model).with_structured_output(QuestionOptions, method="json_schema")
 
 
 @lru_cache(maxsize=8)
@@ -324,7 +324,7 @@ def _get_interview_chain(model: str | None = None):
         MessagesPlaceholder("history"),
         ("human", "{input}"),
     ])
-    return prompt | _get_llm(model).with_structured_output(InterviewResponse)
+    return prompt | _get_llm(model).with_structured_output(InterviewResponse, method="json_schema")
 
 
 # ---------------------------------------------------------------------------
