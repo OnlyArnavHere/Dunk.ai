@@ -186,6 +186,12 @@ export const aiApi = {
       body: JSON.stringify({ projectId, message, agentType }),
     }),
 
+  codeChat: (projectId: string, files: any[], messages: any[]) =>
+    request<{ reply: string; updated_files?: any[] }>('/ai/code-chat', {
+      method: 'POST',
+      body: JSON.stringify({ projectId, files, messages }),
+    }),
+
   run: (data: { projectId?: string; agentType?: string; action?: string }) =>
     request('/ai/run', {
       method: 'POST',

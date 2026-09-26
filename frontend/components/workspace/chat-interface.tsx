@@ -460,6 +460,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
               // every current run.
               handoff_validation: (payload.handoff_validation as Record<string, unknown>) ?? null,
               documentation: (payload.documentation as Record<string, unknown>) ?? null,
+              code_generation: (payload.code_generation as Record<string, unknown>) ?? null,
               board: (payload.board as AiOutput['board']) ?? null,
             } satisfies AiOutput
 
@@ -483,6 +484,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             if (artifactPayload.validation) updatePayload.validation = artifactPayload.validation
             if (artifactPayload.handoff_validation) updatePayload.handoff_validation = artifactPayload.handoff_validation
             if (artifactPayload.documentation) updatePayload.documentation = artifactPayload.documentation
+            if (artifactPayload.code_generation) updatePayload.code_generation = artifactPayload.code_generation
 
             if (payload.requirements && typeof payload.requirements === 'object') {
               const reqs = payload.requirements as Record<string, unknown>

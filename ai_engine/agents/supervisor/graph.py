@@ -11,6 +11,7 @@ from langgraph.graph import END, START, StateGraph
 try:
     from .nodes import (
         architecture_node,
+        code_generation_node,
         component_node,
         documentation_node,
         eda_enrichment_node,
@@ -23,6 +24,7 @@ try:
 except ImportError:
     from nodes import (
         architecture_node,
+        code_generation_node,
         component_node,
         documentation_node,
         eda_enrichment_node,
@@ -56,6 +58,7 @@ def build_graph() -> StateGraph:
     graph.add_node("pcb", pcb_node)
     graph.add_node("validation", validation_node)
     graph.add_node("documentation", documentation_node)
+    graph.add_node("code_generation", code_generation_node)
 
     graph.add_edge(START, "supervisor")
     graph.add_edge("supervisor", "requirements")
@@ -65,7 +68,8 @@ def build_graph() -> StateGraph:
     graph.add_edge("eda_enrichment", "pcb")
     graph.add_edge("pcb", "validation")
     graph.add_edge("validation", "documentation")
-    graph.add_edge("documentation", END)
+    graph.add_edge("documentation", "code_generation")
+    graph.add_edge("code_generation", END)
 
     return graph
 

@@ -7,7 +7,7 @@ const artifactSchema = new mongoose.Schema(
     message: { type: mongoose.Schema.Types.ObjectId, ref: 'Message' },
     type: {
       type: String,
-      enum: ['requirements', 'architecture', 'components', 'pcb_design', 'validation', 'documentation', 'other'],
+      enum: ['requirements', 'architecture', 'components', 'pcb_design', 'validation', 'documentation', 'code', 'other'],
       required: true,
     },
     title: { type: String, default: '' },
