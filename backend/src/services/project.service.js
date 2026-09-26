@@ -91,7 +91,7 @@ export const updateProject = async (id, data, user, req = null) => {
   Object.assign(project, data);
 
   // Mongoose Mixed-type fields need explicit markModified() for change detection
-  const mixedFields = ['requirements', 'architecture', 'bom', 'eda_data', 'pcb_ir', 'validation', 'handoff_validation', 'documentation'];
+  const mixedFields = ['requirements', 'architecture', 'bom', 'eda_data', 'pcb_ir', 'validation', 'handoff_validation', 'documentation', 'board'];
   for (const field of mixedFields) {
     if (field in data) {
       project.markModified(field);

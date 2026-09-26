@@ -80,6 +80,32 @@ export const PROVIDER_STORAGE_KEY = 'dunkai-board-provider'
 export const isBoardProviderId = (value: unknown): value is BoardProviderId =>
   typeof value === 'string' && BOARD_PROVIDERS.some((p) => p.id === value)
 
+/**
+ * The stored default, read defensively: localStorage throws in a private
+ * window and can hold an option id from an older build that no longer exists.
+ *
+ * Read at the moment a run starts rather than cached in component state. The
+ * choice is configured in Settings now, on a different route from the workspace
+ * that consumes it, so a cached copy would be one navigation out of date.
+ */
+export const readStoredBoardProvider = (): BoardProviderId => {
+  if (typeof window === 'undefined') return DEFAULT_BOARD_PROVIDER
+  try {
+    const saved = window.localStorage.getItem(PROVIDER_STORAGE_KEY)
+    return isBoardProviderId(saved) ? saved : DEFAULT_BOARD_PROVIDER
+  } catch {
+    return DEFAULT_BOARD_PROVIDER
+  }
+}
+
+export const writeStoredBoardProvider = (id: BoardProviderId): void => {
+  try {
+    window.localStorage.setItem(PROVIDER_STORAGE_KEY, id)
+  } catch {
+    // A remembered preference is a convenience; losing it must not break a run.
+  }
+}
+
 /** The {provider, model} pair to send for an option id. */
 export const boardProviderRequest = (
   id: BoardProviderId

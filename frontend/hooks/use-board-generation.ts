@@ -1,16 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { aiApi } from '@/lib/api'
 import { useWorkspaceStore, type BoardArtifact } from '@/lib/store'
-import {
-  BOARD_PROVIDERS,
-  DEFAULT_BOARD_PROVIDER,
-  PROVIDER_STORAGE_KEY,
-  boardProviderRequest,
-  isBoardProviderId,
-  type BoardProviderId,
-} from '@/lib/providers'
+import { boardProviderRequest, readStoredBoardProvider } from '@/lib/providers'
 
 /**
  * Board generation ("Generate PCB").
@@ -22,12 +15,19 @@ import {
  * in the workspace rather than two.
  *
  * Job state lives in the workspace store, not in component state, because the
- * trigger (BOM tab) and the result (PCB tab) are different views and the run
- * has to survive switching between them.
+ * trigger (the end of the chat pipeline, or the BOM tab) and the result (PCB
+ * tab) are different views and the run has to survive switching between them.
  *
- * The chosen provider is remembered in localStorage rather than the store: it is
- * a per-user preference that should outlive the tab, not part of the design, and
- * both the BOM and PCB views need to read the same answer.
+ * Neither the provider nor the handoff is held in component state. Both are
+ * read at the moment `generate` is called:
+ *
+ * - the provider, because it is configured in Settings, on another route, so a
+ *   copy captured when the workspace mounted could be stale;
+ * - the pcb_ir, because the main caller is the ai:complete handler in
+ *   chat-interface.tsx, which runs inside a closure created before the run it
+ *   is reacting to existed. Its captured pcb_ir is null on the very run that
+ *   should be generating a board. zustand's set is synchronous, so by the time
+ *   generate is called the store already holds the fresh handoff.
  */
 export function useBoardGeneration(projectId: string | null) {
   const aiOutput = useWorkspaceStore((s) => s.aiOutput)
@@ -40,27 +40,6 @@ export function useBoardGeneration(projectId: string | null) {
   // Holds the teardown for the listeners of the job currently in flight.
   const cleanupRef = useRef<(() => void) | null>(null)
 
-  // Read lazily and defensively: localStorage throws in a private window and
-  // can hold a provider name from an older build that no longer exists.
-  const [provider, setProviderState] = useState<BoardProviderId>(() => {
-    if (typeof window === 'undefined') return DEFAULT_BOARD_PROVIDER
-    try {
-      const saved = window.localStorage.getItem(PROVIDER_STORAGE_KEY)
-      return isBoardProviderId(saved) ? saved : DEFAULT_BOARD_PROVIDER
-    } catch {
-      return DEFAULT_BOARD_PROVIDER
-    }
-  })
-
-  const setProvider = useCallback((next: BoardProviderId) => {
-    setProviderState(next)
-    try {
-      window.localStorage.setItem(PROVIDER_STORAGE_KEY, next)
-    } catch {
-      // A remembered preference is a convenience; losing it must not break the run.
-    }
-  }, [])
-
   useEffect(() => () => cleanupRef.current?.(), [])
 
   const pcbIr = (aiOutput?.pcb_ir ?? null) as Record<string, unknown> | null
@@ -71,15 +50,20 @@ export function useBoardGeneration(projectId: string | null) {
   const canGenerate = Boolean(projectId) && componentCount > 0 && boardJob.status !== 'running'
 
   const generate = useCallback(async () => {
-    if (!projectId || !pcbIr) return
+    if (!projectId) return
+
+    // Read through to the store rather than the captured `pcbIr` — see the
+    // note on closures in this hook's doc comment.
+    const liveIr = (useWorkspaceStore.getState().aiOutput?.pcb_ir ?? null) as Record<string, unknown> | null
+    if (!liveIr) return
 
     cleanupRef.current?.()
 
     try {
-      // `provider` is an OPTION id, which is not always the provider name: the
-      // two Anthropic entries differ only by model. boardProviderRequest is what
+      // The stored id is an OPTION id, which is not always the provider name:
+      // two entries can differ only by model. boardProviderRequest is what
       // splits one back into the {provider, model} pair the backend expects.
-      const res = await aiApi.generateBoard(projectId, pcbIr, boardProviderRequest(provider))
+      const res = await aiApi.generateBoard(projectId, liveIr, boardProviderRequest(readStoredBoardProvider()))
       const jobId = res?.jobId
       if (!jobId) {
         failBoardJob('The server did not return a job id.')
@@ -136,7 +120,7 @@ export function useBoardGeneration(projectId: string | null) {
     } catch (err: unknown) {
       failBoardJob(err instanceof Error ? err.message : 'Could not reach Dunk AI.')
     }
-  }, [projectId, pcbIr, provider, startBoardJob, pushBoardProgress, completeBoardJob, failBoardJob])
+  }, [projectId, startBoardJob, pushBoardProgress, completeBoardJob, failBoardJob])
 
   return {
     generate,
@@ -144,8 +128,5 @@ export function useBoardGeneration(projectId: string | null) {
     componentCount,
     job: boardJob,
     board: aiOutput?.board ?? null,
-    provider,
-    setProvider,
-    providers: BOARD_PROVIDERS,
   }
 }

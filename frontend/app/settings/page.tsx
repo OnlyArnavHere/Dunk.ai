@@ -3,13 +3,21 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, Eye, EyeOff, KeyRound, Moon, Palette, Save, Sun, Trash2, User as UserIcon } from 'lucide-react'
+import { ArrowLeft, CircuitBoard, Eye, EyeOff, KeyRound, Moon, Palette, Save, Sun, Trash2, User as UserIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ProtectedRoute } from '@/components/layouts/protected-route'
+import { ProviderPicker } from '@/components/workspace/provider-picker'
+import {
+  BOARD_PROVIDERS,
+  DEFAULT_BOARD_PROVIDER,
+  readStoredBoardProvider,
+  writeStoredBoardProvider,
+  type BoardProviderId,
+} from '@/lib/providers'
 import { toast } from 'sonner'
 
 // BYOK providers — static for now, keys are kept locally until backend support lands
@@ -28,6 +36,18 @@ function maskKey(key: string): string {
 
 function SettingsContent() {
   const router = useRouter()
+
+  // Hydrated in an effect rather than a lazy initialiser: the stored value only
+  // exists on the client, and reading it during render would make the first
+  // paint disagree with the server's.
+  const [boardProvider, setBoardProvider] = useState<BoardProviderId>(DEFAULT_BOARD_PROVIDER)
+  useEffect(() => setBoardProvider(readStoredBoardProvider()), [])
+
+  const changeBoardProvider = (next: BoardProviderId) => {
+    setBoardProvider(next)
+    writeStoredBoardProvider(next)
+    toast.success('Default model for PCB generation updated')
+  }
   const { resolvedTheme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
@@ -168,6 +188,35 @@ function SettingsContent() {
                 </div>
               )
             })}
+          </CardContent>
+        </Card>
+
+        {/* PCB generation */}
+        <Card className="bg-secondary/30 border-foreground/10">
+          <CardHeader>
+            <CardTitle className="text-sm flex items-center gap-2">
+              <CircuitBoard className="w-4 h-4" />
+              Default agent/model for PCB generation
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Board generation starts on its own once the chat pipeline hands off a design. This is the
+              model it uses.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-xs font-medium">Default agent/model for PCB generation</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {BOARD_PROVIDERS.find((p) => p.id === boardProvider)?.hint ?? 'Applies to the next run.'}
+                </p>
+              </div>
+              <ProviderPicker
+                value={boardProvider}
+                onChange={changeBoardProvider}
+                className="w-[190px] border-foreground/10 text-xs"
+              />
+            </div>
           </CardContent>
         </Card>
 

@@ -147,6 +147,19 @@ interface WorkspaceState {
    * produced. Only real content replaces real content.
    */
   setAiOutput: (output: Partial<AiOutput>) => void
+  /**
+   * Fill the store from what the server has saved for this project.
+   *
+   * Same non-null merge as `setAiOutput`, minus the board-invalidation rule.
+   * A restore replays the BOM that is already on record rather than delivering
+   * a new one, so treating it as "components replaced" would throw away the
+   * board that was generated from exactly that BOM — which is what made the
+   * PCB, DRC and Docs figures vanish on every project switch. The saved board
+   * is already kept consistent with the saved BOM server-side (see
+   * persistBoardState in backend/src/services/supervisor.service.js), so it can
+   * be taken at face value here.
+   */
+  hydrateAiOutput: (output: Partial<AiOutput>) => void
   /** Replace the whole design wholesale — for a genuinely new design only. */
   replaceAiOutput: (output: AiOutput) => void
   clearAiOutput: () => void
@@ -212,6 +225,29 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       }
     }),
 
+  hydrateAiOutput: (output) =>
+    set((state) => {
+      const merged: AiOutput = { ...(state.aiOutput ?? emptyAiOutput) }
+
+      for (const key of DESIGN_KEYS) {
+        const incoming = output[key]
+        if (incoming === null || incoming === undefined) continue
+        merged[key] = incoming
+      }
+      if (output.board) merged.board = output.board
+
+      return {
+        aiOutput: merged,
+        // A restore must not interrupt a generation that is in flight: PcbView
+        // renders the progress log off this status, and hydrating a previously
+        // saved board mid-run would swap that log for a stale board.
+        boardJob:
+          state.boardJob.status === 'running' || merged.board === state.aiOutput?.board
+            ? state.boardJob
+            : idleBoardJob,
+      }
+    }),
+
   replaceAiOutput: (output) => set({ aiOutput: output, boardJob: idleBoardJob }),
   clearAiOutput: () => set({ aiOutput: null, boardJob: idleBoardJob }),
 
@@ -239,10 +275,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       }
     }),
 
+  // `aiOutput` is seeded from emptyAiOutput when it is still null rather than
+  // left alone. Generating a board is reachable with an empty store — a reload
+  // mid-session, a project whose pcb_ir came back before anything else — and
+  // the old guard silently threw the finished board away in exactly that case.
   completeBoardJob: (board) =>
     set((state) => ({
       boardJob: { ...state.boardJob, status: 'done', detail: null, error: null },
-      aiOutput: state.aiOutput ? { ...state.aiOutput, board } : state.aiOutput,
+      aiOutput: { ...(state.aiOutput ?? emptyAiOutput), board },
     })),
 
   failBoardJob: (error) =>
