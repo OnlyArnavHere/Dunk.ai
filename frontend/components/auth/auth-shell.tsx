@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { useEffect, useState } from 'react'
-import { CircuitBoard, Moon, Sun, Monitor } from 'lucide-react'
+import { Moon, Sun, Monitor } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
@@ -22,7 +23,7 @@ export function AuthShell({ children, title, description }: { children: React.Re
         {/* Header - Top Left */}
         <header className="flex items-center justify-between w-full">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <CircuitBoard className="h-6 w-6 text-[#E16744]" />
+            <Image src="/logo.png" alt="DunkAI" width={35} height={28} className="h-7 w-auto" />
             <span className="font-serif text-2xl tracking-tight font-medium">DunkAI</span>
           </Link>
           <div className="flex gap-2">

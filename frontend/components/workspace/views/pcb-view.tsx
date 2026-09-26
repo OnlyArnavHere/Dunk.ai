@@ -7,7 +7,6 @@ import {
   CircuitBoard,
   Download,
   Layers2,
-  Loader2,
   Maximize2,
   Minimize2,
   Waypoints,
@@ -104,7 +103,14 @@ export function PcbView({ projectId }: { projectId?: string } = {}) {
       <div className="force-dark dark flex h-full w-full flex-col items-center justify-center bg-[#131318] px-6 text-foreground">
         <div className="w-full max-w-md">
           <div className="mb-6 flex items-center gap-3">
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            <video
+              src="/kevin.mp4"
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="h-8 w-8 shrink-0 rounded-lg object-cover"
+            />
             <div className="min-w-0">
               <p className="truncate text-sm">{job.label ?? 'Generating board…'}</p>
               {job.detail && (

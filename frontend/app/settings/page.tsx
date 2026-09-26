@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, CircuitBoard, Eye, EyeOff, KeyRound, Moon, Palette, Save, Sun, Trash2, User as UserIcon } from 'lucide-react'
 import { useTheme } from 'next-themes'
@@ -96,6 +97,7 @@ function SettingsContent() {
       {/* Header */}
       <header className="flex items-center justify-between px-6 py-5 sm:px-10 border-b border-foreground/10">
         <Link href="/" className="flex items-center gap-2">
+          <Image src="/logo.png" alt="DunkAI" width={30} height={24} className="h-6 w-auto" />
           <span className="font-display text-xl tracking-tight">DunkAI</span>
           <span className="font-mono text-[9px] tracking-wide text-muted-foreground">COPILOT</span>
         </Link>

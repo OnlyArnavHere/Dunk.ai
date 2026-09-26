@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
@@ -46,6 +47,7 @@ export function TopBar() {
       {/* Left: Logo + Project Name */}
       <div className="flex items-center gap-3 min-w-0">
         <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+          <Image src="/logo.png" alt="DunkAI" width={30} height={24} className="h-6 w-auto" />
           <span className="font-display text-lg tracking-tight">DunkAI</span>
           <span className="font-mono text-[9px] tracking-wide text-muted-foreground mt-0.5">COPILOT</span>
         </Link>

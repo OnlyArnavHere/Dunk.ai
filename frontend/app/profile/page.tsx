@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Loader2, Lock, Save, User as UserIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -112,8 +113,9 @@ function ProfileContent() {
             <h1 className="text-xl font-semibold">Account settings</h1>
             <p className="text-xs text-muted-foreground mt-0.5">Manage your profile and security preferences</p>
           </div>
-          <Link href="/" className="ml-auto font-display text-lg tracking-tight hover:opacity-80 transition-opacity">
-            DunkAI
+          <Link href="/" className="ml-auto flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Image src="/logo.png" alt="DunkAI" width={27} height={22} className="h-[22px] w-auto" />
+            <span className="font-display text-lg tracking-tight">DunkAI</span>
           </Link>
         </div>
 

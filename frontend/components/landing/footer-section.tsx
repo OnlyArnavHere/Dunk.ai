@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 
 const footerLinks = {
   Product: [
@@ -40,7 +41,8 @@ export function FooterSection() {
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         <div className="grid grid-cols-2 md:grid-cols-12 gap-12 lg:gap-8 mb-24">
           <div className="col-span-2 md:col-span-5 pr-8">
-            <Link href="/" className="inline-block mb-8">
+            <Link href="/" className="mb-8 inline-flex items-center gap-2.5">
+              <Image src="/logo.png" alt="DunkAI" width={45} height={36} className="h-9 w-auto" />
               <span className="text-4xl font-serif italic text-foreground tracking-tight">DunkAI</span>
             </Link>
             <p className="text-muted-foreground leading-relaxed font-light max-w-sm mb-10">

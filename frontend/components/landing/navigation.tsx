@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Menu, X, ArrowUpRight } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -45,6 +46,7 @@ export function Navigation() {
         >
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group z-50">
+            <Image src="/logo.png" alt="DunkAI" width={40} height={32} className="h-8 w-auto" priority />
             <span className="font-serif italic tracking-tight text-foreground text-2xl lg:text-3xl">
               DunkAI
             </span>

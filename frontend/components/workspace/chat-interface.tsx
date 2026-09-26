@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowUp, Loader2, Mic, Paperclip, Sparkles } from 'lucide-react'
+import { ArrowUp, Loader2, Mic, Paperclip } from 'lucide-react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWorkspaceStore, type AiOutput, type BoardArtifact } from '@/lib/store'
@@ -659,8 +660,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
       <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-4 pb-20">
         <div className="pointer-events-none absolute left-1/2 top-1/2 h-[200px] w-[900px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/[0.07] blur-[90px]" />
         <div className="relative z-10 mb-8 flex max-w-[720px] flex-col items-center text-center">
-          <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-secondary/90">
-            <Sparkles className="h-4 w-4 text-muted-foreground" />
+          <div className="mb-5 flex h-16 w-16 items-center justify-center">
+            <Image src="/logo.png" alt="DunkAI" width={50} height={40} className="h-10 w-auto" />
           </div>
           <h1 className="font-display text-4xl tracking-tight sm:text-5xl">What are you building?</h1>
           <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">
@@ -689,10 +690,10 @@ export function ChatInterface({ projectId }: { projectId: string }) {
       <div className="flex-1 overflow-auto">
         <div className="mx-auto flex w-full max-w-[820px] flex-col gap-8 px-5 py-10">
           {messages.map((message) => (
-            <div key={message.id} className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div key={message.id} className={`flex items-start gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               {message.role === 'assistant' && (
-                <div className="mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary">
-                  <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
+                <div className="flex h-7 w-10 shrink-0 items-center justify-center">
+                  <Image src="/logo.png" alt="DunkAI" width={35} height={28} className="h-7 w-auto" />
                 </div>
               )}
               <div className="flex flex-col gap-2 max-w-[680px]">
@@ -734,11 +735,16 @@ export function ChatInterface({ projectId }: { projectId: string }) {
 
           {/* Clean, compact loader with unhinged message */}
           {loading && (
-            <div className="flex items-center gap-3 text-sm text-muted-foreground rounded-2xl border border-border/80 bg-card/60 px-4 py-3.5 shadow-md backdrop-blur-md max-w-[680px]">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-border bg-secondary shrink-0">
-                <Sparkles className="h-3.5 w-3.5 text-sky-400 animate-spin" />
-              </div>
-              <span className="font-medium text-foreground/90 animate-pulse">{unhingedMsg}</span>
+            <div className="flex items-center gap-3 text-sm text-muted-foreground rounded-2xl border border-border bg-card px-4 py-3 max-w-[680px]">
+              <video
+                src="/kevin.mp4"
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="h-8 w-8 shrink-0 rounded-lg object-cover"
+              />
+              <span className="font-medium text-foreground/90">{unhingedMsg}</span>
             </div>
           )}
           <div ref={bottomRef} />

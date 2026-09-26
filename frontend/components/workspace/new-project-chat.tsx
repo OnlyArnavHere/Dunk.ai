@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { ArrowUp, Loader2, Mic, Paperclip, Sparkles } from 'lucide-react'
+import { ArrowUp, Loader2, Mic, Paperclip } from 'lucide-react'
+import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useWorkspaceStore } from '@/lib/store'
@@ -77,8 +78,8 @@ export function NewProjectChat() {
     <div className="relative flex h-full flex-col items-center justify-center overflow-hidden px-4 pb-20">
       <div className="pointer-events-none absolute left-1/2 top-1/2 h-[300px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-foreground/[0.07] blur-[90px]" />
       <div className="relative z-10 mb-8 flex max-w-[720px] flex-col items-center text-center">
-        <div className="mb-5 flex h-10 w-10 items-center justify-center rounded-2xl border border-border bg-secondary/90">
-          <Sparkles className="h-4 w-4 text-muted-foreground" />
+        <div className="mb-5 flex h-16 w-16 items-center justify-center">
+          <Image src="/logo.png" alt="DunkAI" width={50} height={40} className="h-10 w-auto" />
         </div>
         <h1 className="font-display text-4xl tracking-tight sm:text-5xl">What are you building?</h1>
         <p className="mt-4 max-w-lg text-sm leading-6 text-muted-foreground">
