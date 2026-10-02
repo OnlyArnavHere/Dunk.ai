@@ -1,8 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import { useWorkspaceStore, type BoardJob, type PipelineRunStatus } from '@/lib/store'
 import { ArcadeWindow, WINDOW_EXIT_MS, type ArcadeNotice } from './arcade-window'
+import { DEFAULT_DOCK, SHIP_SIZE, clampDock, dockStyle, loadDock, saveDock, type Dock } from './dock'
+
+/** Pointer travel before a press on the ship counts as a drag rather than a click. */
+const DRAG_THRESHOLD = 4
+/** A double-click this soon after a drag ends is the tail of the drag, not a launch. */
+const DRAG_SETTLE_MS = 400
 
 /**
  * Dunk Arcade — a mini game that is always on hand in the workspace.
@@ -113,6 +119,18 @@ export function Arcade() {
   const [arcade, setArcade] = useState<ArcadeState>({ phase: 'ship', minimized: false, outcome: null, game: 0 })
   const [showHint, setShowHint] = useState(false)
 
+  // Starts at the default on both server and client so hydration matches; the saved spot loads after mount.
+  const [dock, setDock] = useState<Dock>(DEFAULT_DOCK)
+  const drag = useRef<{ x: number; y: number; origin: Dock; last: Dock | null } | null>(null)
+  const dragEndedAt = useRef(0)
+
+  useEffect(() => {
+    setDock(loadDock())
+    const onResize = () => setDock((d) => clampDock(d))
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
   // Whether the current job has touched board generation, and the board job
   // object as it stood when the job began. The second catches a board that
   // failed before it ever reached `running` (its POST was refused) — a state
@@ -203,14 +221,67 @@ export function Arcade() {
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
         launch()
+        return
+      }
+      const step = event.shiftKey ? 64 : 16
+      const move: Record<string, [number, number]> = {
+        ArrowLeft: [step, 0],
+        ArrowRight: [-step, 0],
+        ArrowUp: [0, step],
+        ArrowDown: [0, -step],
+      }
+      const delta = move[event.key]
+      if (!delta) return
+      event.preventDefault()
+      const next = clampDock({ right: dock.right + delta[0], bottom: dock.bottom + delta[1] })
+      setDock(next)
+      saveDock(next)
+    }
+
+    const onPointerDown = (event: PointerEvent<HTMLButtonElement>) => {
+      if (event.button !== 0) return
+      drag.current = { x: event.clientX, y: event.clientY, origin: dock, last: null }
+      event.currentTarget.setPointerCapture(event.pointerId)
+    }
+
+    const onPointerMove = (event: PointerEvent<HTMLButtonElement>) => {
+      const d = drag.current
+      if (!d) return
+      const dx = event.clientX - d.x
+      const dy = event.clientY - d.y
+      if (!d.last && Math.hypot(dx, dy) < DRAG_THRESHOLD) return
+      if (!d.last) setShowHint(false)
+      d.last = clampDock({ right: d.origin.right - dx, bottom: d.origin.bottom - dy })
+      setDock(d.last)
+    }
+
+    const endDrag = (event: PointerEvent<HTMLButtonElement>) => {
+      const d = drag.current
+      drag.current = null
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId)
+      }
+      if (d?.last) {
+        saveDock(d.last)
+        dragEndedAt.current = Date.now()
       }
     }
+
+    const onDoubleClick = () => {
+      if (Date.now() - dragEndedAt.current > DRAG_SETTLE_MS) launch()
+    }
+
     const hint = busy ? 'Double-click to play while Dunk AI works' : 'Double-click to play'
+    // Keep the hint label on the open side of the ship so it never runs off-screen.
+    const shipOnLeft = typeof window !== 'undefined' && dock.right + SHIP_SIZE / 2 > window.innerWidth / 2
 
     return (
       // The container spans the hint label too, which is invisible most of the
       // time, so only the ship itself may take clicks.
-      <div className="pointer-events-none fixed bottom-[132px] right-6 z-40 flex items-center gap-3">
+      <div
+        style={dockStyle(dock)}
+        className={`pointer-events-none fixed z-40 flex items-center gap-3 ${shipOnLeft ? 'flex-row-reverse' : ''}`}
+      >
         <span
           aria-hidden
           className={`pointer-events-none whitespace-nowrap rounded-full border border-border bg-card/90 px-3 py-1.5 text-[11px] text-muted-foreground shadow-md backdrop-blur-md transition-opacity duration-300 ${
@@ -221,13 +292,17 @@ export function Arcade() {
         </span>
         <button
           type="button"
-          onDoubleClick={launch}
+          onDoubleClick={onDoubleClick}
           onKeyDown={onKeyDown}
-          onMouseEnter={() => setShowHint(true)}
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={endDrag}
+          onPointerCancel={endDrag}
+          onMouseEnter={() => !drag.current && setShowHint(true)}
           onMouseLeave={() => setShowHint(false)}
-          title={hint}
-          aria-label={`Dunk Arcade. ${hint.replace('Double-click', 'Double-click, or press Enter,')}.`}
-          className={`${BUBBLE} pointer-events-auto transition-[transform,border-color] duration-200 hover:scale-105 hover:border-foreground/30 active:scale-95 animate-in fade-in-0 zoom-in-90`}
+          title={`${hint} · drag to move`}
+          aria-label={`Dunk Arcade. ${hint.replace('Double-click', 'Double-click, or press Enter,')}. Drag or use the arrow keys to move it.`}
+          className={`${BUBBLE} pointer-events-auto cursor-grab touch-none transition-[transform,border-color] duration-200 hover:scale-105 hover:border-foreground/30 active:scale-95 active:cursor-grabbing animate-in fade-in-0 zoom-in-90`}
         >
           <img
             src={IDLE_SHIP_SRC}
@@ -249,6 +324,7 @@ export function Arcade() {
       <ShipAnimation
         src={`${LAUNCH_SRC}?run=${arcade.game}`}
         durationMs={LAUNCH_MS}
+        dock={dock}
         onDone={() => advance('launching', 'open')}
       />
     )
@@ -259,6 +335,7 @@ export function Arcade() {
       <ShipAnimation
         src={`${LAND_SRC}?run=${arcade.game}`}
         durationMs={LAND_MS}
+        dock={dock}
         onDone={() => advance('landing', 'ship')}
       />
     )
@@ -274,6 +351,7 @@ export function Arcade() {
   return (
     <ArcadeWindow
       key={arcade.game}
+      dock={dock}
       minimized={arcade.minimized}
       closing={phase === 'closing'}
       notice={notice}
@@ -289,7 +367,17 @@ export function Arcade() {
 }
 
 /** Plays a play-once GIF inside the launcher bubble, then reports it is done. */
-function ShipAnimation({ src, durationMs, onDone }: { src: string; durationMs: number; onDone: () => void }) {
+function ShipAnimation({
+  src,
+  durationMs,
+  dock,
+  onDone,
+}: {
+  src: string
+  durationMs: number
+  dock: Dock
+  onDone: () => void
+}) {
   const doneRef = useRef(onDone)
   doneRef.current = onDone
   const [loaded, setLoaded] = useState(false)
@@ -302,7 +390,7 @@ function ShipAnimation({ src, durationMs, onDone }: { src: string; durationMs: n
   }, [loaded, durationMs])
 
   return (
-    <div aria-hidden className={`pointer-events-none fixed bottom-[132px] right-6 z-40 ${BUBBLE}`}>
+    <div aria-hidden style={dockStyle(dock)} className={`pointer-events-none fixed z-40 ${BUBBLE}`}>
       <img
         src={src}
         alt=""

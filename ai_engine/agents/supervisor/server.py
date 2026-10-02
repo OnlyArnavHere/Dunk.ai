@@ -653,6 +653,16 @@ def supervisor_stream_endpoint(payload: SupervisorRequest):
 class CodeChatRequest(BaseModel):
     files: list[dict]
     messages: list[dict]
+    model: str | None = None
+
+
+# Mirrors AVAILABLE_MODELS in frontend/components/workspace/model-selector.tsx.
+CODE_CHAT_MODELS = {
+    "openai/gpt-oss-120b",
+    "openai/gpt-oss-20b",
+    "qwen/qwen3.8-27b",
+}
+DEFAULT_CODE_CHAT_MODEL = "openai/gpt-oss-120b"
 
 class CodeFileUpdate(BaseModel):
     filename: str = Field(description="Name of the file to create or update")
@@ -685,13 +695,14 @@ def code_chat_endpoint(req: CodeChatRequest):
         return CodeChatResponse(reply=verdict.message or "This request can't be processed.",
                                 updated_files=None, safety_audit=verdict.audit())
 
-    llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.1, api_key=os.getenv("GROQ_API_KEY"))
-    # method="json_schema": gpt-oss-120b's Harmony tool-call format breaks
-    # with_structured_output's default "function_calling" method (the model
-    # tries to call a tool literally named "json" and LangChain rejects it as
-    # tool_use_failed) -- same failure already fixed this way in
-    # requirement_agent.py. Without it this endpoint throws on every call.
-    structured_llm = llm.with_structured_output(CodeChatResponse, method="json_schema")
+    model = req.model if req.model in CODE_CHAT_MODELS else DEFAULT_CODE_CHAT_MODEL
+    llm = ChatGroq(model=model, temperature=0.1, api_key=os.getenv("GROQ_API_KEY"))
+    # gpt-oss needs method="json_schema": its Harmony tool-call format breaks the
+    # "function_calling" method (it calls a tool literally named "json" and
+    # LangChain rejects it as tool_use_failed) -- same fix as requirement_agent.py.
+    # Groq only offers json_schema on gpt-oss, so the other models use tool calling.
+    method = "json_schema" if model.startswith("openai/gpt-oss") else "function_calling"
+    structured_llm = llm.with_structured_output(CodeChatResponse, method=method)
 
     # Format the current files as context
     context = "CURRENT FILES:\n"

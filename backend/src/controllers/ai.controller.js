@@ -43,7 +43,8 @@ export const codeChat = asyncHandler(async (req, res) => {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       files: req.body.files || [],
-      messages: req.body.messages || []
+      messages: req.body.messages || [],
+      model: typeof req.body.model === 'string' ? req.body.model : undefined,
     })
   });
 

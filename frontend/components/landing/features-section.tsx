@@ -54,8 +54,9 @@ const features = [
            {/* Orbiting Agents */}
            {[0, 60, 120, 180, 240, 300].map((angle, i) => {
              const rad = (angle * Math.PI) / 180;
-             const x = 100 + Math.cos(rad) * 80;
-             const y = 100 + Math.sin(rad) * 80;
+             // Rounded so server and browser render identical attributes (trig differs in the last bits).
+             const x = Math.round((100 + Math.cos(rad) * 80) * 100) / 100;
+             const y = Math.round((100 + Math.sin(rad) * 80) * 100) / 100;
              const dotColors = ["#8b5cf6", "#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#14b8a6"];
              return (
                <g key={i} className={`origin-[100px_100px] animate-[spin_20s_linear_infinite]`} style={{ animationDelay: `-${i}s` }}>

@@ -1,4 +1,5 @@
 import type { ApiResponse } from './types'
+import type { FirmwareBoardsResponse, FirmwareBuild } from './firmware/types'
 
 const API_BASE = '/api/v1'
 
@@ -95,6 +96,22 @@ export const authApi = {
 
   googleAuthUrl: () =>
     `${API_BASE}/auth/google`,
+}
+
+// ---- Firmware API ----
+export const firmwareApi = {
+  boards: (processingUnit?: string) =>
+    request<FirmwareBoardsResponse>(
+      `/firmware/boards${processingUnit ? `?${new URLSearchParams({ processingUnit })}` : ''}`
+    ),
+
+  compile: (projectId: string, boardId: string, files: { filename: string; code: string }[]) =>
+    request<FirmwareBuild>('/firmware/compile', {
+      method: 'POST',
+      body: JSON.stringify({ projectId, boardId, files }),
+    }),
+
+  downloadUrl: (buildId: string) => `${API_BASE}/firmware/builds/${buildId}/download`,
 }
 
 // ---- Projects API ----
@@ -198,10 +215,10 @@ export const aiApi = {
       body: JSON.stringify({ projectId, message, agentType }),
     }),
 
-  codeChat: (projectId: string, files: any[], messages: any[]) =>
+  codeChat: (projectId: string, files: any[], messages: any[], model?: string) =>
     request<{ reply: string; updated_files?: any[] }>('/ai/code-chat', {
       method: 'POST',
-      body: JSON.stringify({ projectId, files, messages }),
+      body: JSON.stringify({ projectId, files, messages, model }),
     }),
 
   run: (data: { projectId?: string; agentType?: string; action?: string }) =>
