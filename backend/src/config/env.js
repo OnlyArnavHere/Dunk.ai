@@ -54,6 +54,11 @@ export const env = Object.freeze({
   uploadDir: required('UPLOAD_DIR', 'uploads'),
   maxFileSize: asNumber(required('MAX_FILE_SIZE_MB', '25')) * 1024 * 1024,
 
+  // Firmware compiler
+  arduinoCliPath: process.env.ARDUINO_CLI_PATH || 'arduino-cli',
+  firmwareWorkDir: process.env.FIRMWARE_WORK_DIR || '',
+  firmwareCompileTimeoutMs: asNumber(process.env.FIRMWARE_COMPILE_TIMEOUT_MS || '300000'),
+
   // Email (placeholder for production SMTP)
   emailFrom: process.env.EMAIL_FROM || 'noreply@dunkai.io',
   emailHost: process.env.EMAIL_HOST || '',

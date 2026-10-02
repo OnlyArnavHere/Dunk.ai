@@ -21,6 +21,7 @@ import { aiRoutes } from './routes/ai.routes.js';
 import { fileRoutes } from './routes/file.routes.js';
 import { documentRoutes } from './routes/document.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
+import { firmwareRoutes } from './routes/firmware.routes.js';
 import { openapi } from './docs/openapi.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +70,7 @@ app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/files', fileRoutes);
 app.use('/api/v1/documents', documentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/firmware', firmwareRoutes);
 
 // ---- Error handling ----
 app.use(notFound);
