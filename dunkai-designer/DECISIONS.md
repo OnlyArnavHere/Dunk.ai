@@ -301,3 +301,67 @@ Verified on the real Gerber output by reading the archive back with Python's
 | `testzip()` CRC validation | no corrupt entries |
 | byte-identical round trip | 14 / 14 files |
 | compression | 234,206 B -> 47,659 B (20.3%), method 8 |
+
+## D-015 — Chat models choose pins; code writes the board and places the parts
+
+**Status:** Accepted
+
+Only `claude-code` produced routable boards. The chat-API models (Groq, Gemini,
+Ollama, Anthropic one-shot) were asked to do two jobs at once — work out which
+pin is which, and write tscircuit freehand — and failed at the second long
+before the first: a `<>` fragment, an invented `<component>`, a duplicated `);`,
+the skeleton's example part copied verbatim, undeclared nets. They were also
+given less to work with: the brief rendered nets as `U1:DATA` roles but not the
+parts' pin tables, which `claude-code` reads from `./imports/` itself.
+
+`--strategy structured` (the default for every provider except `claude-code`):
+
+1. **lib/pinmap.mjs** maps pins in code. Net members are a closed
+   `(interface, role)` vocabulary and imports carry real pin labels and
+   `requiresPower` / `requiresGround` / `doNotConnect` attributes, so most pins
+   are not a judgement call. Schema 1.0's claimed pin names are verified against
+   the labels, never trusted.
+2. What code cannot decide becomes a **multiple-choice question** over that
+   part's free pins (dedicated pins — RST, XTAL, ALE… — never offered). The
+   model only picks; every answer is validated (a listed pin, unused on that
+   part), with one retry. `NONE` is respected: an open connection beats a wrong
+   one that could short a rail.
+3. **lib/emit-board.mjs** writes board.tsx from the table. Every net is
+   declared, every key is a real pin, and a net left with one pin is not emitted.
+4. **lib/placement.mjs** places the parts. This turned out to matter as much as
+   the pins: measured on fresh-v2, the claude-code board routes 37 traces with
+   its hand placement and **zero** under `layoutMode="grid"` — grid rotates the
+   TP4110, whose DFN-16 then fails pad clearance against itself, and placement
+   DRC is board-wide, so the autorouter is skipped for the whole board. The
+   freeform prompt REQUIRES grid, so this hit every chat model. Parts are now
+   packed at 0° by courtyard size, in connectivity order, from a first
+   "measuring" build.
+5. Freehand repair is skipped for structured boards; its prompt asks for grid
+   layout, which undid step 4 on the first end-to-end run.
+
+Measured with `scripts/eval.mjs` (same resolved parts per fixture, Groq
+`openai/gpt-oss-120b`; "agree" = pins matching the claude-code board):
+
+| fixture | strategy | errors | traces | nets joined | agree |
+|---|---|---|---|---|---|
+| fresh-v2 (9 parts, schema 2.0) | freeform | 43 | 0 | — | 17% |
+| | deterministic (no model) | 0 | 18 | 4/12 | 43% |
+| | **structured** | **0** | **25** | **7/12** | **55%** |
+| fixture-v1 (12 parts, schema 1.0) | freeform | 64 | 0 | — | 75% |
+| | deterministic (no model) | 0 | 18 | 4/4 | 75% |
+| | **structured** | **0** | **24** | **4/4** | **75%** |
+
+End to end through the CLI (live catalogue resolution, Groq): 0 errors, 20
+traces, where the same run before the courtyard fix and the repair skip ended
+at 51 errors and 0 traces.
+
+Not claimed: "agree" measures similarity to claude-code's choices, not
+electrical correctness, and fresh-v2's 7/12 is partly the design itself — it
+puts a 7-segment display on SPI and a 1-Wire sensor on UART, which the model
+correctly answers NONE to. claude-code also adds decoupling capacitors; the
+structured path does not yet (that is the next step, and it belongs in code).
+
+Also fixed here, for every provider: when a repair pass made the board worse,
+the loop logged "keeping it and stopping" and kept the WORSE board, because the
+repaired files had already overwritten the good ones. It now restores the
+previous board.tsx and rebuilds.

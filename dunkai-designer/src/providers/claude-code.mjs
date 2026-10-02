@@ -52,6 +52,7 @@ import {
   PLACEMENT_RULES,
   REPAIR_RULES,
   REPAIR_PREAMBLE,
+  pinQuestionPrompt,
 } from "./prompts.mjs"
 
 const DEFAULT_MODEL = "claude-opus-5"
@@ -392,6 +393,22 @@ export function createClaudeCodeProvider(options = {}) {
         if (/^[a-z]+\d+_/.test(bare)) return { footprint: bare, rationale: "unparsed reply" }
         return { footprint: null, rationale: `unparseable reply: ${text.slice(0, 200)}` }
       }
+    },
+
+    /** Stage D, structured strategy: a question, so no tools and no project access. */
+    async answerPinQuestions(questions, context = {}) {
+      const { result } = await runClaude(
+        ["-p", pinQuestionPrompt(questions, context), "--model", model, "--permission-mode", "dontAsk", "--allowedTools", ""],
+        {
+          cwd: process.cwd(),
+          timeoutMs: Math.min(timeoutMs, 5 * 60 * 1000),
+          stageId: "D",
+          label: `${questions.length} pin question(s)`,
+        }
+      )
+      const parsed = JSON.parse(unfence(result))
+      if (!parsed?.answers || typeof parsed.answers !== "object") throw new Error("claude-code did not return {answers:{...}}")
+      return parsed.answers
     },
 
     /**

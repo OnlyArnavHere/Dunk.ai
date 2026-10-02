@@ -93,6 +93,33 @@ export function PcbView({ projectId }: { projectId?: string } = {}) {
   const stats = board?.stats
   const drcErrors = stats?.errors ?? 0
 
+  // Open connections, one line per part: "U7 HDSP-521G: asked for SPI · supports GPIO".
+  const mismatches = stats?.mismatches ?? []
+  const openParts = useMemo(() => {
+    const byRef = new Map<string, { ref: string; part: string; asked: string[]; supports: string }>()
+    for (const m of mismatches) {
+      const entry = byRef.get(m.ref_id) ?? { ref: m.ref_id, part: m.part_number, asked: [], supports: m.supports.join(', ') }
+      if (!entry.asked.includes(m.interface)) entry.asked.push(m.interface)
+      byRef.set(m.ref_id, entry)
+    }
+    return [...byRef.values()]
+  }, [mismatches])
+
+  const setPendingPrompt = useWorkspaceStore((s) => s.setPendingPrompt)
+  const setPendingAction = useWorkspaceStore((s) => s.setPendingAction)
+  const pipelineRun = useWorkspaceStore((s) => s.pipelineRun)
+  // Re-runs architecture -> components -> PCB handoff with these constraints
+  // (supervisor action revise_interfaces), then rebuilds the board.
+  const fixConnections = useCallback(() => {
+    setPendingAction('revise_interfaces')
+    setPendingPrompt(
+      `Fix the ${openParts.length === 1 ? 'connection' : 'connections'} the board could not build: ` +
+        openParts.map((p) => `${p.ref} (${p.part}) asked for ${p.asked.join('/')}`).join('; ') +
+        ' — use interfaces the parts actually support.'
+    )
+    setActiveTab('chat')
+  }, [openParts, setPendingAction, setPendingPrompt, setActiveTab])
+
   const available = useMemo(
     () => DOWNLOADS.filter((d) => board?.urls?.[d.key as keyof typeof board.urls]),
     [board]
@@ -336,6 +363,41 @@ export function PcbView({ projectId }: { projectId?: string } = {}) {
                   {stats.errorTypes.slice(0, 3).join(', ')}
                 </p>
               ) : null}
+            </div>
+          </div>
+        )}
+
+        {/* Connections the architecture asked for that the chosen parts cannot do
+            (a display on SPI). Left open on purpose — a guessed pin could short a
+            rail — and offered back to the agents to redesign around. */}
+        {mismatches.length > 0 && (
+          <div className="w-full max-w-md rounded-lg border border-amber-500/30 bg-background/95 px-3 py-2.5 backdrop-blur">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+              <div className="min-w-0 flex-1 text-[11px] leading-relaxed">
+                <p className="text-foreground">
+                  {mismatches.length} connection{mismatches.length === 1 ? '' : 's'} left open — the part
+                  {openParts.length === 1 ? ' does' : 's do'} not have that interface
+                </p>
+                <ul className="mt-1 space-y-0.5 text-muted-foreground">
+                  {openParts.slice(0, 4).map((p) => (
+                    <li key={p.ref}>
+                      <span className="font-mono text-foreground/80">{p.ref}</span> {p.part}: asked for{' '}
+                      {p.asked.join(', ')} · supports {p.supports}
+                    </li>
+                  ))}
+                  {openParts.length > 4 && <li>…and {openParts.length - 4} more</li>}
+                </ul>
+                <Button
+                  size="sm"
+                  onClick={fixConnections}
+                  // A board job never reaches here (the view shows its log instead).
+                  disabled={pipelineRun === 'running'}
+                  className="mt-2 h-7 rounded-full px-3 text-[11px]"
+                >
+                  Fix connections
+                </Button>
+              </div>
             </div>
           </div>
         )}

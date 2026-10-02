@@ -5,7 +5,7 @@ import { ArrowUp, Loader2, Mic, Paperclip, X } from 'lucide-react'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { useWorkspaceStore, type AiOutput, type BoardArtifact } from '@/lib/store'
+import { useWorkspaceStore, type PendingAction, type AiOutput, type BoardArtifact } from '@/lib/store'
 import { ModelSelector } from './model-selector'
 import { aiApi, chatApi, fileApi } from '@/lib/api'
 import { useUpdateProject } from '@/hooks/use-projects'
@@ -24,25 +24,30 @@ interface Message {
   options?: string[]
 }
 
-const UNHINGED_LOADERS = [
-  '🔥 Cooking up your hardware requirements...',
-  '💣 Wrecking outdated architectural assumptions...',
-  '🍭 Mixing the secret engineering sauce...',
-  '🚀 Launching the hardware idea cannon...',
-  '⚡ Zapping PCB traces into existence...',
-  '🧪 Brewing high-voltage circuit magic...',
-  '🔧 Tightening microcontrollers and sensor loops...',
-  '🎸 Shredding through component datasheets...',
-  '🌪️ Spinning up the hardware topology matrix...',
-  '🏗️ Assembling something legendary...',
-  '🧠 Downloading AI brain cells for your design...',
-  '🎯 Locking onto your engineering vision...',
-  '💀 Destroying generic circuit blueprints...',
-  '🔮 Consulting the silicon oracle...',
-  '🍳 Frying up fresh BOM line items...',
-  '🏎️ Revving the component selection engine...',
-  '🌶️ Adding extra spice to your circuit architecture...',
-]
+/**
+ * One word for the loader, Claude-style. The word names the stage that is
+ * actually running (from ai:progress); before the first progress event, or
+ * for a node without a word, it cycles through the idle set.
+ */
+const STAGE_WORDS: Record<string, string> = {
+  supervisor: 'Planning',
+  safety: 'Checking',
+  requirements: 'Scoping',
+  architecture: 'Architecting',
+  component: 'Sourcing',
+  eda_enrichment: 'Footprinting',
+  pcb: 'Routing',
+  validation: 'Validating',
+  documentation: 'Documenting',
+  code_generation: 'Coding',
+  board: 'Fabricating',
+}
+const IDLE_WORDS = ['Thinking', 'Tinkering', 'Sketching', 'Wiring', 'Probing', 'Calibrating']
+
+/** Shown instead of a success message when a turn came back with nothing. */
+const NO_OUTPUT =
+  'That run finished without producing anything to show. Try rephrasing the request, or run it again.'
+
 
 function humanText(value: unknown, fallback: string): string {
   if (typeof value !== 'string') return fallback
@@ -149,7 +154,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
   
   const [completedNodes, setCompletedNodes] = useState<string[]>([])
   const [activeNode, setActiveNode] = useState<string>('')
-  const [unhingedMsg, setUnhingedMsg] = useState<string>(UNHINGED_LOADERS[0])
+  const [idleWord, setIdleWord] = useState(0)
 
   const [attachments, setAttachments] = useState<Array<{ id: string; name: string }>>([])
   const [uploadingFile, setUploadingFile] = useState(false)
@@ -163,14 +168,13 @@ export function ChatInterface({ projectId }: { projectId: string }) {
     setPipelineProgress({ activeNode, completedNodes })
   }, [activeNode, completedNodes, setPipelineProgress])
 
-  // ---- Unhinged loader rotation ----
+  // ---- Loader word: the running stage, else a slow idle cycle ----
   useEffect(() => {
     if (!loading) return
-    const interval = setInterval(() => {
-      setUnhingedMsg(UNHINGED_LOADERS[Math.floor(Math.random() * UNHINGED_LOADERS.length)])
-    }, 2400)
+    const interval = setInterval(() => setIdleWord((i) => (i + 1) % IDLE_WORDS.length), 2400)
     return () => clearInterval(interval)
   }, [loading])
+  const loaderWord = STAGE_WORDS[activeNode] ?? IDLE_WORDS[idleWord]
 
   // ---- Animated placeholder ----
   useEffect(() => {
@@ -384,7 +388,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
 
   // ---- Core agent runner ----
   const runAgent = useCallback(
-    async (request: string) => {
+    async (request: string, runAction: PendingAction = 'run_workflow') => {
       const userMessageId = `${Date.now()}-user`
       setMessages((prev) => {
         if (prev.some((m) => m.content === request)) return prev
@@ -427,7 +431,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
         const res = await aiApi.runStream({
           projectId,
           chatId: targetChatId ?? undefined,
-          action: 'run_workflow',
+          action: runAction,
           model: selectedModel,
           messages: [
             ...messages.map((m) => ({ role: m.role, content: m.content })),
@@ -438,7 +442,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
 
         if (!jobId) {
           const chatRes = (await aiApi.chat(projectId, request)) as { reply?: string }
-          const replyText = chatRes?.reply || 'Completed.'
+          const hasReply = Boolean(chatRes?.reply?.trim())
+          const replyText = hasReply ? (chatRes.reply as string) : NO_OUTPUT
           setMessages((prev) => [
             ...prev,
             { id: `${Date.now()}-assistant`, role: 'assistant', content: replyText },
@@ -447,7 +452,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             chatApi.saveMessage(targetChatId, 'assistant', replyText).catch(() => {})
           }
           setLoading(false)
-          setPipelineRun('done')
+          // No reply is not a success: nothing for the arcade to celebrate.
+          setPipelineRun(hasReply ? 'done' : 'error')
           setActiveNode('')
           return
         }
@@ -531,6 +537,9 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           // reading it after would always see null, defeating the check that
           // uses this to tell "a board already existed" from "this is fresh".
           const boardExistedBeforeThisRun = Boolean(useWorkspaceStore.getState().aiOutput?.board)
+          // Whether this run produced any artifact at all; a run that did not
+          // must not be announced as complete.
+          let anyPopulated = false
 
           if (payload) {
             const artifactPayload = {
@@ -549,7 +558,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
               board: (payload.board as AiOutput['board']) ?? null,
             } satisfies AiOutput
 
-            const anyPopulated = Object.values(artifactPayload).some((value) => value != null)
+            anyPopulated = Object.values(artifactPayload).some((value) => value != null)
 
             // A run that failed and produced nothing has nothing to contribute.
             // Writing it would be a no-op under the merging `setAiOutput`, but
@@ -603,10 +612,12 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           const aiMsgs = payload.messages as Array<{ content?: string }> | undefined
           const lastAiMsg = Array.isArray(aiMsgs) ? aiMsgs[aiMsgs.length - 1]?.content : undefined
 
+          const producedNothing = !anyPopulated && !lastAiMsg?.trim()
           const finalMsg =
             (errors?.length ? `⚠️ Pipeline completed with issues: ${errors.join('; ')}` : undefined) ||
             lastAiMsg ||
-            'AI pipeline complete. Switch to any tab to review the generated results.'
+            // "Complete, go look at the tabs" only when there is something in them.
+            (producedNothing ? NO_OUTPUT : 'AI pipeline complete. Switch to any tab to review the generated results.')
 
           const cleanReply = humanText(finalMsg, 'Requirements are ready to review.')
           setMessages((prev) => [
@@ -631,7 +642,10 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           const handoff = payload.pcb_ir as { components?: unknown[] } | null | undefined
           const handoffComponents = Array.isArray(handoff?.components) ? handoff.components.length : 0
           const isPcbTargetedRevision = runCompletedNodes.length === 1 && runCompletedNodes[0] === 'pcb'
-          const shouldAutoBuildBoard = !boardExistedBeforeThisRun || isPcbTargetedRevision
+          // An interface revision exists to get a board that can be built, so
+          // it always rebuilds — the old board was made from the old wiring.
+          const shouldAutoBuildBoard =
+            !boardExistedBeforeThisRun || isPcbTargetedRevision || runAction === 'revise_interfaces'
           if (
             handoffComponents > 0 &&
             runCompletedNodes.includes('pcb') &&
@@ -653,7 +667,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
 
           // Settled only now, after the board job (if any) is already running,
           // so the two overlap and the turn never looks idle in between.
-          setPipelineRun(errors?.length ? 'error' : 'done')
+          setPipelineRun(errors?.length || producedNothing ? 'error' : 'done')
         }
 
         const handleError = (socketData: Record<string, any>) => {
@@ -682,7 +696,8 @@ export function ChatInterface({ projectId }: { projectId: string }) {
       } catch {
         try {
           const chatRes = (await aiApi.chat(projectId, request)) as { reply?: string }
-          const reply = chatRes?.reply || 'Completed.'
+          const hasReply = Boolean(chatRes?.reply?.trim())
+          const reply = hasReply ? (chatRes.reply as string) : NO_OUTPUT
           setMessages((prev) => [
             ...prev,
             { id: `${Date.now()}-assistant`, role: 'assistant', content: reply },
@@ -690,7 +705,7 @@ export function ChatInterface({ projectId }: { projectId: string }) {
           if (activeChatId) {
             chatApi.saveMessage(activeChatId, 'assistant', reply).catch(() => {})
           }
-          setPipelineRun('done')
+          setPipelineRun(hasReply ? 'done' : 'error')
         } catch (fallbackErr: unknown) {
           const msg = fallbackErr instanceof Error ? fallbackErr.message : 'Failed to connect to Dunk AI'
           setMessages((prev) => [
@@ -721,8 +736,10 @@ export function ChatInterface({ projectId }: { projectId: string }) {
   useEffect(() => {
     if (pendingPrompt && activeChatId) {
       const p = pendingPrompt
+      const action = useWorkspaceStore.getState().pendingAction ?? 'run_workflow'
       setPendingPrompt(null)
-      runAgent(p)
+      useWorkspaceStore.getState().setPendingAction(null)
+      runAgent(p, action)
     }
   }, [pendingPrompt, activeChatId, setPendingPrompt, runAgent])
 
@@ -937,11 +954,14 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             </div>
           ))}
 
-          {/* Clean, compact loader with unhinged message */}
+          {/* Loader: no container, Kevin and one shimmering word for the
+              stage that is running, the way Claude shows "Thinking…". */}
           {loading && (
-            <div className="flex items-center gap-3 text-sm text-muted-foreground rounded-2xl border border-border bg-card px-4 py-3 max-w-[680px]">
-              <img src="/kevin.webp" alt="" className="h-12 w-auto shrink-0" />
-              <span className="font-medium text-foreground/90">{unhingedMsg}</span>
+            <div role="status" aria-live="polite" className="flex items-center gap-2.5 py-1 pl-1">
+              <img src="/kevin.webp" alt="" className="h-7 w-auto shrink-0 [image-rendering:pixelated]" />
+              <span key={loaderWord} className="text-shimmer text-[15px] font-medium animate-in fade-in duration-300">
+                {loaderWord}…
+              </span>
             </div>
           )}
           <div ref={bottomRef} />

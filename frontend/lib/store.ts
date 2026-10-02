@@ -31,9 +31,28 @@ export interface BoardArtifact {
     placeholderPinComponents?: number
     substitutedComponents?: number
     gltf?: { glbBytes?: number; rawBytes?: number; cadComponents?: number; meshes?: number } | null
+    /** Decoupling caps and pull-ups the designer added (dunkai-designer D-015). */
+    supportParts?: number
+    /** Connections left open because the part lacks the interface asked for. */
+    mismatches?: BoardMismatch[]
   }
   generated_at: string
 }
+
+export interface BoardMismatch {
+  ref_id: string
+  part_number: string
+  part_class: string | null
+  net: string
+  interface: string
+  role: string
+  /** What the part's real pins show it can do instead. */
+  supports: string[]
+  reason: string
+}
+
+/** Supervisor actions a pending prompt can run instead of the default workflow. */
+export type PendingAction = 'run_workflow' | 'revise_interfaces'
 
 /** Live progress for a board-generation job, mirrored from ai:progress. */
 export interface BoardJob {
@@ -138,6 +157,8 @@ interface WorkspaceState {
   activeTab: string
   sidebarCollapsed: boolean
   pendingPrompt: string | null
+  /** Which supervisor action the pending prompt runs (default: the workflow). */
+  pendingAction: PendingAction | null
 
   // Live AI pipeline output — populated when the supervisor stream completes
   aiOutput: AiOutput | null
@@ -157,6 +178,7 @@ interface WorkspaceState {
   toggleSidebar: () => void
   setSidebarCollapsed: (collapsed: boolean) => void
   setPendingPrompt: (prompt: string | null) => void
+  setPendingAction: (action: PendingAction | null) => void
   /**
    * Merge a pipeline result into the stored design.
    *
@@ -198,6 +220,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   activeTab: 'chat',
   sidebarCollapsed: true,
   pendingPrompt: null,
+  pendingAction: null,
   aiOutput: null,
   boardJob: idleBoardJob,
   pipelineProgress: { activeNode: '', completedNodes: [] },
@@ -215,6 +238,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
   toggleSidebar: () => set((state) => ({ sidebarCollapsed: !state.sidebarCollapsed })),
   setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
   setPendingPrompt: (prompt) => set({ pendingPrompt: prompt }),
+  setPendingAction: (action) => set({ pendingAction: action }),
   setAiOutput: (output) =>
     set((state) => {
       const merged: AiOutput = { ...(state.aiOutput ?? emptyAiOutput) }

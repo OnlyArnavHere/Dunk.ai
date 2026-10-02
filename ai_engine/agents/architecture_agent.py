@@ -63,7 +63,14 @@ ALLOWED_CATEGORIES = {
 ALLOWED_INTERFACES = {
     "GPIO", "UART", "SPI", "I2C", "USB", "CAN", "Ethernet", "PCIe",
     "SDIO", "Power", "BLE", "WiFi", "RF", "Audio", "Analog", "ADC", "PWM", "I2S",
+    # Single-wire sensors (DS18B20 and kin) talk 1-Wire. Without it in the
+    # vocabulary the model filed them under UART, and the board stage found no
+    # TX/RX pins on the part (dunkai-designer D-015).
+    "OneWire",
 }
+
+# Spellings of an interface the model uses that are not the canonical form.
+_INTERFACE_SYNONYMS = {"1-wire": "OneWire", "1wire": "OneWire", "one-wire": "OneWire", "one wire": "OneWire"}
 
 # The model names subsystems in its own words, and a screen is the standard
 # example: it reports "Display" where this taxonomy files it under "Output".
@@ -116,6 +123,8 @@ def _canon_interface(interface: Any) -> str:
     "GPIO", "I2C") and ``"wifi".title()`` would not round-trip.
     """
     text = str(interface or "").strip()
+    if text.lower() in _INTERFACE_SYNONYMS:
+        return _INTERFACE_SYNONYMS[text.lower()]
     for allowed in ALLOWED_INTERFACES:
         if text.lower() == allowed.lower():
             return allowed
@@ -319,6 +328,13 @@ Analog
 ADC
 PWM
 I2S
+OneWire
+--------------------------------------------------
+Interface choice
+Use the interface the PART actually has, not a convenient bus:
+a 1-Wire temperature sensor (DS18B20 type) uses OneWire, not UART;
+a bare 7-segment or LED display is driven by GPIO (or through a driver IC
+on SPI/I2C), not SPI directly.
 --------------------------------------------------
 Rules
 Every processing unit must connect to

@@ -565,9 +565,97 @@ def _stream_generator(payload: SupervisorRequest):
         yield from _stream_events(payload)
 
 
+def _interface_revision_instruction(state: CircuitState) -> str | None:
+    """A revision instruction built from the board stage's open connections.
+
+    dunkai-designer checks every part against its real pinout and reports the
+    connections it had to leave open, with what each part supports instead
+    (board.stats.mismatches). The architecture agent already edits an existing
+    graph from an instruction; this gives it a precise one, naming each part by
+    its subsystem so the agent can find the right node.
+    """
+    board = state.get("board") or {}
+    mismatches = (board.get("stats") or {}).get("mismatches") or []
+    if not mismatches:
+        return None
+
+    subsystem_of = {}
+    for row in (state.get("bom") or {}).get("rows") or []:
+        part = row.get("mfr_part")
+        if part and row.get("subsystem"):
+            subsystem_of[str(part).upper()] = row["subsystem"]
+
+    by_part: dict[str, dict[str, Any]] = {}
+    for m in mismatches:
+        key = m.get("ref_id") or "?"
+        entry = by_part.setdefault(key, {"m": m, "interfaces": set()})
+        entry["interfaces"].add(m.get("interface"))
+
+    lines = [
+        "The board stage checked every selected part against its real pinout. These",
+        "connections cannot be built as designed, because the part does not have that interface:",
+    ]
+    for ref, entry in by_part.items():
+        m = entry["m"]
+        name = subsystem_of.get(str(m.get("part_number", "")).upper())
+        who = f"{name} ({ref}, {m.get('part_number')})" if name else f"{ref} ({m.get('part_number')})"
+        asked = ", ".join(sorted(i for i in entry["interfaces"] if i))
+        lines.append(f"- {who}: connected via {asked}, but the part supports: {', '.join(m.get('supports') or ['unknown'])}.")
+    lines += [
+        "",
+        "Revise the architecture so every connection to these subsystems uses an interface",
+        "the part supports (for a segment display: GPIO, or add a driver IC; for a 1-Wire",
+        "sensor: OneWire). Where the part has no usable signal interface, drop that",
+        "connection. Keep every other subsystem and connection exactly as it is.",
+    ]
+    return "\n".join(lines)
+
+
+#: The stages downstream of the architecture, re-run after an interface revision.
+_REVISION_CHAIN = [
+    ("architecture", architecture_node),
+    ("component", component_node),
+    ("eda_enrichment", eda_enrichment_node),
+    ("pcb", pcb_node),
+    ("validation", validation_node),
+]
+
+
+def _stream_interface_revision(initial_state: CircuitState, job_id: str):
+    instruction = _interface_revision_instruction(initial_state)
+    if not instruction:
+        yield _sse_event({"jobId": job_id, "error": "No open connections to revise — the board reported none.", "node": "architecture"}, event="error")
+        return
+
+    state: CircuitState = dict(initial_state)
+    state["user_input"] = instruction
+    yield _sse_event({"jobId": job_id, "node": "__start__", "label": "Revising interfaces"}, event="progress")
+    for node_name, node_fn in _REVISION_CHAIN:
+        yield _sse_event(
+            {"jobId": job_id, "node": node_name, "label": _NODE_LABELS.get(node_name, node_name), "status": "running", "errors": []},
+            event="progress",
+        )
+        try:
+            state = _run_single_node_fn(node_fn, state)
+        except Exception as exc:
+            logger.exception("Interface revision failed at %s", node_name)
+            yield _sse_event({"jobId": job_id, "error": str(exc), "node": node_name}, event="error")
+            return
+        if state.get("errors"):
+            break
+    # The old board was built from the old wiring; it no longer describes this
+    # design, and the workspace builds a new one from the fresh handoff.
+    state["board"] = None
+    yield _sse_event({"jobId": job_id, "data": _serialize_state(state), "status": "completed"}, event="complete")
+
+
 def _stream_events(payload: SupervisorRequest):
     job_id = payload.jobId or str(uuid.uuid4())
     initial_state = _build_initial_state(payload)
+
+    if (payload.action or "") == "revise_interfaces":
+        yield from _stream_interface_revision(initial_state, job_id)
+        return
 
     # Board generation is its own streaming shape: dunkai-designer reports six
     # named stages plus per-component resolution detail, none of which maps onto

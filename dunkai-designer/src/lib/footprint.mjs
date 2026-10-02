@@ -131,6 +131,21 @@ export function parseImportedChip(source) {
 
   const pinCount = Object.keys(pinLabels).length
 
+  // `pinAttributes` says which pads need power or ground and which must stay
+  // unconnected — vendor ground truth that lib/pinmap.mjs maps power from
+  // without having to recognise a label.
+  const pinAttributes = {}
+  const attrBlock = text.match(/const\s+pinAttributes\s*=\s*\{([\s\S]*?)\n\}\s*as const/)
+  if (attrBlock) {
+    const attrRe = /["']?(pin\d+)["']?\s*:\s*\{([^}]*)\}/g
+    let a
+    while ((a = attrRe.exec(attrBlock[1])) !== null) {
+      const flags = {}
+      for (const [, name, value] of a[2].matchAll(/(\w+)\s*:\s*(true|false)/g)) flags[name] = value === "true"
+      pinAttributes[a[1]] = flags
+    }
+  }
+
   const footprintMatch = text.match(/footprint\s*=\s*["']([^"']+)["']/)
   const mpnMatch = text.match(/manufacturerPartNumber\s*=\s*["']([^"']+)["']/)
   const lcscMatch = text.match(/["']jlcpcb["']\s*:\s*\[\s*["']([^"']+)["']/)
@@ -138,6 +153,7 @@ export function parseImportedChip(source) {
 
   return {
     pinLabels,
+    pinAttributes,
     pinCount,
     placeholderPins,
     placeholderRatio: pinCount ? placeholderPins.length / pinCount : 1,
