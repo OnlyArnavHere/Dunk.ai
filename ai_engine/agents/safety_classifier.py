@@ -208,9 +208,14 @@ def _call_model(model: str, transcript: str) -> str:
     from langchain_core.messages import HumanMessage, SystemMessage
     from langchain_groq import ChatGroq
 
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        raise RuntimeError("GROQ_API_KEY is not set")
+    try:
+        from credentials import groq_api_key
+    except ImportError:
+        from .credentials import groq_api_key
+    try:
+        api_key = groq_api_key()
+    except EnvironmentError as exc:
+        raise RuntimeError(str(exc)) from exc
     llm = ChatGroq(
         model=model,
         groq_api_key=api_key,

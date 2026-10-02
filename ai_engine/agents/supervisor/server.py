@@ -6,24 +6,26 @@ internal and are invoked through graph nodes or direct node wrappers.
 
 from __future__ import annotations
 
+import hmac
 import json
 import logging
 import os
+import shutil
 import threading
 import uuid
 from queue import Empty, Queue
 from typing import Any
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from langchain_groq import ChatGroq
 from langchain_core.messages import HumanMessage, SystemMessage, AIMessage
 
 try:
-    from .board import board_node, stream_board
+    from ..credentials import api_key, groq_api_key, use_credentials
+    from .board import _output_root, board_node, stream_board
     from .graph import compile_graph, run_workflow, stream_workflow
     from .nodes import (
         architecture_node,
@@ -38,7 +40,8 @@ try:
     )
     from .state import CircuitState, _merge_errors
 except ImportError:
-    from board import board_node, stream_board
+    from credentials import api_key, groq_api_key, use_credentials
+    from board import _output_root, board_node, stream_board
     from graph import compile_graph, run_workflow, stream_workflow
     from nodes import (
         architecture_node,
@@ -60,17 +63,34 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="dunkai Supervisor Agent", version="1.0.0")
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# No CORS middleware: the only caller is the Node backend, server-to-server.
+# A browser has no business reaching this service, and the old wildcard policy
+# (allow_origins=["*"] with credentials) invited exactly that.
+
+_SUPERVISOR_TOKEN = os.getenv("SUPERVISOR_AGENT_TOKEN", "")
+
+
+def require_backend(authorization: str | None = Header(default=None)) -> None:
+    """Reject callers that are not the Node backend.
+
+    The backend has always sent ``Authorization: Bearer $SUPERVISOR_AGENT_TOKEN``,
+    but nothing here checked it, so anyone who could reach this port could run
+    the pipeline on the operator's Groq key -- and, with BYOK, these requests
+    now carry users' keys too. When the token is unset (local development) the
+    check is skipped, and a warning at startup says so.
+    """
+    if not _SUPERVISOR_TOKEN:
+        return
+    presented = (authorization or "").removeprefix("Bearer ").strip()
+    if not hmac.compare_digest(presented.encode(), _SUPERVISOR_TOKEN.encode()):
+        raise HTTPException(status_code=401, detail="Invalid supervisor token")
 
 
 @app.on_event("startup")
 def startup_event():
+    if not _SUPERVISOR_TOKEN:
+        logger.warning("SUPERVISOR_AGENT_TOKEN is not set: the supervisor accepts unauthenticated requests. "
+                       "Set it (and the same value on the backend) before exposing this service.")
     logger.info("Warming up Supervisor pipeline and compiling graph...")
     compile_graph()
     logger.info("Supervisor pipeline ready.")
@@ -104,6 +124,10 @@ class SupervisorRequest(BaseModel):
     # registry's own "available: ..." message rather than being ignored.
     provider: str | None = None
     model: str | None = None
+    # BYOK: the user's own provider keys, {"groq": "...", "gemini": "..."}.
+    # Never copied into the graph state (which is serialised back to the
+    # browser) -- only activated for the request via use_credentials.
+    credentials: dict[str, str] | None = Field(default=None, repr=False)
 
 
 def _latest_user_message(messages: list[dict[str, Any]]) -> str:
@@ -370,8 +394,56 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/api/v1/supervisor")
+#: Board providers that bill an API key, and the credential each one needs.
+_KEYED_BOARD_PROVIDERS = ("groq", "gemini", "anthropic", "ollama")
+
+
+@app.get("/api/v1/supervisor/capabilities", dependencies=[Depends(require_backend)])
+def capabilities() -> dict[str, Any]:
+    """What this deployment can run on the operator's own setup.
+
+    The backend combines this with each user's BYOK keys to decide which board
+    providers to offer. ``claude-code`` needs the ``claude`` CLI on this host,
+    which a typical container does not have; the keyed providers need a key
+    here unless the user brings their own. Ollama can also run keyless against
+    a daemon, so a configured base URL counts.
+    """
+    board = {"claude-code": bool(os.getenv("CLAUDE_CLI") or shutil.which("claude"))}
+    for provider in _KEYED_BOARD_PROVIDERS:
+        board[provider] = bool(api_key(provider))
+    if os.getenv("OLLAMA_BASE_URL"):
+        board["ollama"] = True
+    return {
+        "data": {
+            "platform_keys": {name: bool(api_key(name)) for name in _KEYED_BOARD_PROVIDERS},
+            "board_providers": board,
+            "default_board_provider": os.getenv("DESIGNER_PROVIDER") or "claude-code",
+        }
+    }
+
+
+@app.get("/api/v1/supervisor/artifacts/{artifact_path:path}", dependencies=[Depends(require_backend)])
+def board_artifact(artifact_path: str):
+    """Serve a generated board file when the backend cannot see this disk.
+
+    Co-located deployments write boards straight into the backend's upload
+    directory and never call this. When the AI engine runs on its own host,
+    the backend proxies ``/uploads/boards/*`` here instead.
+    """
+    root = _output_root()
+    target = (root / artifact_path).resolve()
+    if root not in target.parents or not target.is_file():
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    return FileResponse(target)
+
+
+@app.post("/api/v1/supervisor", dependencies=[Depends(require_backend)])
 def supervisor_endpoint(payload: SupervisorRequest) -> dict[str, Any]:
+    with use_credentials(payload.credentials):
+        return _supervisor_dispatch(payload)
+
+
+def _supervisor_dispatch(payload: SupervisorRequest) -> dict[str, Any]:
     action = payload.action or "run_workflow"
     job_id = payload.jobId or str(uuid.uuid4())
 
@@ -484,7 +556,16 @@ def _stream_generator(payload: SupervisorRequest):
     If an agent raises, we yield ``event: error`` so the consumer knows
     the stream failed *after* the HTTP 200 was already sent.
     On success the final chunk is ``event: complete`` with the full state.
+
+    The user's keys are active for the whole generator. It is drained on the
+    keepalive pump thread, which calls ``next()`` from one context throughout,
+    so the value set here is the one every node of this run sees.
     """
+    with use_credentials(payload.credentials):
+        yield from _stream_events(payload)
+
+
+def _stream_events(payload: SupervisorRequest):
     job_id = payload.jobId or str(uuid.uuid4())
     initial_state = _build_initial_state(payload)
 
@@ -633,7 +714,7 @@ def _with_keepalive(source, interval: float = _KEEPALIVE_SECONDS):
         yield item
 
 
-@app.post("/api/v1/supervisor/stream")
+@app.post("/api/v1/supervisor/stream", dependencies=[Depends(require_backend)])
 def supervisor_stream_endpoint(payload: SupervisorRequest):
     """SSE streaming variant of the supervisor endpoint.
 
@@ -653,6 +734,7 @@ def supervisor_stream_endpoint(payload: SupervisorRequest):
 class CodeChatRequest(BaseModel):
     files: list[dict]
     messages: list[dict]
+    credentials: dict[str, str] | None = Field(default=None, repr=False)
 
 class CodeFileUpdate(BaseModel):
     filename: str = Field(description="Name of the file to create or update")
@@ -668,9 +750,14 @@ class CodeChatResponse(BaseModel):
     # strips it before the response reaches the browser, and stores it.
     safety_audit: dict[str, Any] | None = None
 
-@app.post("/api/v1/supervisor/code-chat", response_model=CodeChatResponse)
+@app.post("/api/v1/supervisor/code-chat", response_model=CodeChatResponse, dependencies=[Depends(require_backend)])
 def code_chat_endpoint(req: CodeChatRequest):
     """Specific endpoint for iterative code editing using Groq."""
+    with use_credentials(req.credentials):
+        return _code_chat(req)
+
+
+def _code_chat(req: CodeChatRequest) -> CodeChatResponse:
     # The same safety gate as the design chat: this is a chat turn too, and it
     # writes firmware. Classified against the whole code-chat conversation.
     from safety_classifier import classify
@@ -685,7 +772,7 @@ def code_chat_endpoint(req: CodeChatRequest):
         return CodeChatResponse(reply=verdict.message or "This request can't be processed.",
                                 updated_files=None, safety_audit=verdict.audit())
 
-    llm = ChatGroq(model="openai/gpt-oss-120b", temperature=0.1, api_key=os.getenv("GROQ_API_KEY"))
+    llm = ChatGroq(model=os.getenv("GROQ_MODEL", "openai/gpt-oss-120b"), temperature=0.1, api_key=groq_api_key())
     # method="json_schema": gpt-oss-120b's Harmony tool-call format breaks
     # with_structured_output's default "function_calling" method (the model
     # tries to call a tool literally named "json" and LangChain rejects it as
@@ -734,8 +821,11 @@ def main() -> None:
     if str(ai_engine_dir) not in sys.path:
         sys.path.insert(0, str(ai_engine_dir))
 
+    # PORT is what most hosts (Render, Railway, Cloud Run, Fly) inject; the
+    # SUPERVISOR_* names stay for local setups that already use them. Set
+    # SUPERVISOR_HOST=0.0.0.0 inside a container.
     host = os.getenv("SUPERVISOR_HOST", "127.0.0.1")
-    port = int(os.getenv("SUPERVISOR_PORT", "8000"))
+    port = int(os.getenv("PORT") or os.getenv("SUPERVISOR_PORT", "8000"))
     uvicorn.run(app, host=host, port=port, reload=False)
 
 

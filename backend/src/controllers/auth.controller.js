@@ -1,13 +1,13 @@
 import { asyncHandler } from '../utils/asyncHandler.js';
 import { send } from '../utils/response.js';
 import * as service from '../services/auth.service.js';
-import { setAuthCookies, clearAuthCookies, extractTokensFromCookies } from '../utils/tokens.js';
+import { setAuthCookies, clearAuthCookies, extractTokensFromCookies, signSocketToken } from '../utils/tokens.js';
 import { env } from '../config/env.js';
 
 // Helper: set cookies if the request came from a browser (Origin header matches frontend)
 const shouldSetCookies = (req) => {
   const origin = req.headers.origin;
-  return Boolean(origin && (origin === env.clientOrigin || origin === env.clientOriginFallback));
+  return Boolean(origin && env.corsOrigins.includes(origin));
 };
 
 const respondWithTokens = (res, data, message, status = 200, setCookies = true) => {
@@ -46,6 +46,12 @@ export const logout = asyncHandler(async (req, res) => {
 
 export const me = asyncHandler(async (req, res) => {
   send(res, { data: service.getCurrentUser(req.user) });
+});
+
+// GET /api/v1/auth/socket-token — see signSocketToken for why this exists.
+export const socketToken = asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  send(res, { data: { token: signSocketToken(req.user) } });
 });
 
 export const updateProfile = asyncHandler(async (req, res) => {

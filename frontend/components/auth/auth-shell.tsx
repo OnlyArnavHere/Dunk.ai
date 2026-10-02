@@ -17,12 +17,16 @@ export function AuthShell({ children, title, description }: { children: React.Re
   const light = mounted && resolvedTheme === 'light'
   
   return (
-    <main className="min-h-screen bg-background text-foreground flex font-sans">
+    <main className="relative min-h-screen text-foreground flex font-sans">
+      <div className="page-wash pointer-events-none fixed inset-0 -z-10" aria-hidden />
       {/* Left Panel */}
       <section className="relative flex flex-col w-full lg:w-1/2 min-h-screen z-10 px-6 sm:px-12 py-8">
         
         {/* Header - Top Left */}
-        <header className="flex items-center justify-between w-full">
+        {/* relative z-10: the content column below pulls itself up with a
+            negative margin, and without this it covered (and swallowed clicks on)
+            the logo link. */}
+        <header className="relative z-10 flex items-center justify-between w-full">
           <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Image src="/logo.png" alt="DunkAI" width={35} height={28} className="h-7 w-auto" />
             <span className="font-serif text-2xl tracking-tight font-medium">DunkAI</span>

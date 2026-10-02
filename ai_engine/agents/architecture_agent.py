@@ -392,8 +392,8 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
                max_tokens: int = 8000) -> str:
     """Call Groq via langchain_groq and return the reply text.
 
-    Requires ``GROQ_API_KEY`` in the environment. Raises ``RuntimeError`` on
-    transport or API errors.
+    Uses the request's own Groq key when the user brought one (BYOK), else
+    ``GROQ_API_KEY``. Raises ``RuntimeError`` on transport or API errors.
 
     Output budget
     -------------

@@ -7,27 +7,86 @@ import {
   callSupervisorStream,
   getSupervisorStatus,
   cancelSupervisorJob,
+  callCodeChat,
+  getCapabilities,
   takeSafetyAudit,
   persistSafetyAudit,
 } from '../services/supervisor.service.js';
+import { configuredProviders, resolveCredentials } from '../services/apiKey.service.js';
+import { authorizeBoardProvider, boardProviderStatus, consume } from '../services/billing.service.js';
 import { Document } from '../models/Document.js';
 import { Artifact } from '../models/Artifact.js';
 import { logActivity } from '../helpers/activity.js';
 import { notify } from '../helpers/notification.js';
 import { v4 as uuidv4 } from 'uuid';
 
+/**
+ * Who pays for this request, counted before it starts.
+ *
+ * Resolves the user's own keys (BYOK) and meters the request against their
+ * plan: a board against hosted boards unless their key for that provider pays,
+ * anything else against hosted messages unless their Groq key pays — Groq runs
+ * every agent in the pipeline. Throws 402 when a hosted quota is spent and 400
+ * when the chosen board provider cannot run here.
+ *
+ * @returns {{ credentials: object, refund: () => Promise<void> }} refund is for
+ *   work that never started (the supervisor was unreachable).
+ */
+const prepareAiRequest = async (req, { action = 'run_workflow', provider = null } = {}) => {
+  const credentials = await resolveCredentials(req.user._id);
+  const have = new Set(Object.keys(credentials));
+
+  if (action === 'generate_board') {
+    const providerId = provider || (await getCapabilities())?.default_board_provider || 'claude-code';
+    const { byok } = await authorizeBoardProvider(req.user, providerId, have);
+    const { refund } = await consume(req.user, 'Boards', { byok });
+    return { credentials, refund };
+  }
+
+  const { refund } = await consume(req.user, 'Messages', { byok: have.has('groq') });
+  return { credentials, refund };
+};
+
+/** Run `work`; give the quota unit back if it fails before producing anything. */
+const withRefund = async (refund, work) => {
+  try {
+    return await work();
+  } catch (error) {
+    await refund();
+    throw error;
+  }
+};
+
+// GET /api/v1/ai/providers — board generators as this user can use them.
+export const providers = asyncHandler(async (req, res) => {
+  const have = await configuredProviders(req.user._id);
+  const caps = await getCapabilities();
+  send(res, {
+    data: {
+      boardProviders: await boardProviderStatus(req.user, have),
+      defaultBoardProvider: caps?.default_board_provider ?? null,
+      chat: { byok: have.has('groq'), hosted: caps ? Boolean(caps.platform_keys?.groq) : null },
+      engineReachable: Boolean(caps),
+    },
+  });
+});
+
 // POST /api/v1/ai/chat
 export const chat = asyncHandler(async (req, res) => {
   await getProject(req.body.projectId, req.user);
+  const { credentials, refund } = await prepareAiRequest(req);
 
-  const result = await callSupervisor({
-    action: 'chat',
-    project: req.body.projectId,
-    messages: [{ type: 'user', content: req.body.message }],
-    agentType: req.body.agentType,
-    files: req.body.files || [],
-    audit: { userId: req.user._id, projectId: req.body.projectId },
-  });
+  const result = await withRefund(refund, () =>
+    callSupervisor({
+      action: 'chat',
+      project: req.body.projectId,
+      messages: [{ type: 'user', content: req.body.message }],
+      agentType: req.body.agentType,
+      files: req.body.files || [],
+      credentials,
+      audit: { userId: req.user._id, projectId: req.body.projectId },
+    })
+  );
 
   await logActivity('ai_request', req.user._id, { action: 'chat', projectId: req.body.projectId }, req);
 
@@ -36,22 +95,11 @@ export const chat = asyncHandler(async (req, res) => {
 
 // POST /api/v1/ai/code-chat
 export const codeChat = asyncHandler(async (req, res) => {
-  const supervisorUrl = process.env.SUPERVISOR_AGENT_URL || 'http://127.0.0.1:8000';
-  
-  const response = await fetch(`${supervisorUrl}/api/v1/supervisor/code-chat`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      files: req.body.files || [],
-      messages: req.body.messages || []
-    })
-  });
+  const { credentials, refund } = await prepareAiRequest(req);
 
-  if (!response.ok) {
-    throw new Error(`Supervisor code-chat failed: ${response.statusText}`);
-  }
-
-  const data = await response.json();
+  const data = await withRefund(refund, () =>
+    callCodeChat({ files: req.body.files || [], messages: req.body.messages || [], credentials })
+  );
 
   // The code chat is gated by the same safety classifier. Its audit record is
   // internal: removed here, before `data` is saved or sent to the browser.
@@ -95,18 +143,24 @@ export const run = asyncHandler(async (req, res) => {
     ? await getProject(req.body.projectId, req.user, true)
     : null;
 
+  const action = req.body.action || 'run_workflow';
+  const { credentials, refund } = await prepareAiRequest(req, { action, provider: req.body.provider });
+
   const jobId = uuidv4();
-  const result = await callSupervisor({
-    action: req.body.action || 'run_workflow',
-    project: project ? project.toObject() : {},
-    messages: req.body.messages || [],
-    files: req.body.files || [],
-    agentType: req.body.agentType,
-    provider: req.body.provider,
-    model: req.body.model,
-    jobId,
-    audit: { userId: req.user._id, projectId: project?._id },
-  });
+  const result = await withRefund(refund, () =>
+    callSupervisor({
+      action,
+      project: project ? project.toObject() : {},
+      messages: req.body.messages || [],
+      files: req.body.files || [],
+      agentType: req.body.agentType,
+      provider: req.body.provider,
+      model: req.body.model,
+      credentials,
+      jobId,
+      audit: { userId: req.user._id, projectId: project?._id },
+    })
+  );
 
   await logActivity('ai_request', req.user._id, {
     action: req.body.action || 'run_workflow',
@@ -220,6 +274,11 @@ export const runStream = asyncHandler(async (req, res) => {
   // run (only reachable from an older client that doesn't send chatId yet).
   const chat = req.body.chatId ? await getChat(req.body.chatId, req.user) : null;
 
+  // Metered before the job id exists, so a refused request (quota spent,
+  // provider not available here) is a plain 4xx the client can show.
+  const action = req.body.action || 'run_workflow';
+  const { credentials, refund } = await prepareAiRequest(req, { action, provider: req.body.provider });
+
   const jobId = uuidv4();
   const io = req.app.get('io');
 
@@ -241,22 +300,24 @@ export const runStream = asyncHandler(async (req, res) => {
   // Fire-and-forget: the stream runs in the background and emits
   // Socket.io events as progress arrives.  We don't await it here.
   callSupervisorStream(io, {
-    action: req.body.action || 'run_workflow',
+    action,
     project: projectPayload,
     messages: req.body.messages || [],
     files: req.body.files || [],
     agentType: req.body.agentType,
     provider: req.body.provider,
     model: req.body.model,
+    credentials,
     jobId,
     chatId: chat?._id || null,
     audit: { userId: req.user._id, projectId: project?._id },
-  }).catch((err) => {
+  }).catch(async (err) => {
     console.error(`[AI Stream] job ${jobId} failed:`, err.message);
+    await refund();
   });
 
   await logActivity('ai_request', req.user._id, {
-    action: req.body.action || 'run_workflow',
+    action,
     agentType: req.body.agentType,
     projectId: project?._id,
     provider: req.body.provider,

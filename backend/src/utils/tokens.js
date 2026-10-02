@@ -16,6 +16,20 @@ export const signRefreshToken = (user, sessionId) =>
   });
 
 export const verifyAccessToken = (token) => jwt.verify(token, env.accessSecret);
+
+/**
+ * A two-minute token for the Socket.io handshake, and nothing else.
+ *
+ * The socket connects straight to the backend's own origin, while the auth
+ * cookies belong to the frontend's (API calls go through its /api rewrite).
+ * Locally both are `localhost`, so the cookie rode along and this was never
+ * needed; hosted on two domains, the handshake arrived with no cookie and every
+ * socket was refused. The browser fetches this through the same-origin API and
+ * hands it to `io({ auth })`. `scope: 'socket'` stops it being replayed as an
+ * API bearer token (see middleware/auth.js).
+ */
+export const signSocketToken = (user) =>
+  jwt.sign({ sub: user._id.toString(), scope: 'socket' }, env.accessSecret, { expiresIn: '2m' });
 export const verifyRefreshToken = (token) => jwt.verify(token, env.refreshSecret);
 
 // ---- Token hashing (for secure storage) ----
@@ -42,11 +56,14 @@ export const generateVerificationToken = () => {
 
 // ---- Cookie helpers ----
 
+// sameSite 'lax', not 'strict': the Google OAuth callback is a top-level
+// navigation that starts on google.com, and a strict cookie set during it is
+// withheld on the redirect into the app, so the user lands logged out.
 const baseCookieOptions = {
   httpOnly: true,
   secure: env.cookieSecure,
-  sameSite: env.isProduction ? 'strict' : 'lax',
-  domain: env.isProduction ? env.cookieDomain : undefined,
+  sameSite: env.cookieSameSite,
+  ...(env.cookieDomain ? { domain: env.cookieDomain } : {}),
   path: '/',
 };
 

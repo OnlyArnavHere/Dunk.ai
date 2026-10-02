@@ -17,6 +17,8 @@ environment variable (the hosted "platform" key), then nothing.
 from __future__ import annotations
 
 import os
+import sys
+import types
 from contextlib import contextmanager
 from contextvars import ContextVar
 from typing import Iterator, Mapping
@@ -29,7 +31,26 @@ ENV_VARS: dict[str, str] = {
     "ollama": "OLLAMA_API_KEY",
 }
 
-_request_keys: ContextVar[Mapping[str, str]] = ContextVar("dunkai_request_keys", default={})
+
+def _shared_context_var() -> ContextVar[Mapping[str, str]]:
+    """One ContextVar per process, however this module was imported.
+
+    This module is loaded under two names: ``agents.credentials`` by the
+    supervisor package (server.py, board.py) and plain ``credentials`` by the
+    agents, which nodes.py imports as top-level modules. Each name runs this
+    file again, and two ContextVars would mean the server sets the user's key
+    on one while the agents read the other -- every BYOK run silently billed
+    to the operator. Parking the var in ``sys.modules`` makes both share it.
+    """
+    holder = sys.modules.get("_dunkai_credentials_state")
+    if holder is None:
+        holder = types.ModuleType("_dunkai_credentials_state")
+        holder.request_keys = ContextVar("dunkai_request_keys", default={})
+        sys.modules["_dunkai_credentials_state"] = holder
+    return holder.request_keys
+
+
+_request_keys = _shared_context_var()
 
 
 def _clean(credentials: Mapping[str, object] | None) -> dict[str, str]:

@@ -32,5 +32,6 @@ authRoutes.get('/google/callback', c.googleCallback);
 
 // Protected routes
 authRoutes.get('/me', authenticate, c.me);
+authRoutes.get('/socket-token', authenticate, c.socketToken);
 authRoutes.put('/profile', authenticate, updateProfileValidation, validate, c.updateProfile);
 authRoutes.put('/password', authenticate, changePasswordValidation, validate, c.changePassword);

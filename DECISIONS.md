@@ -308,3 +308,73 @@ single merged implementation handles both. The grouped dict is flattened, not
 discarded, because the chips are multi-select: the user can pick one choice per
 facet, so collapsing the facets loses nothing they could not express.
 
+
+## D-011 — BYOK keys live encrypted on the server, and travel per request
+
+**Status:** Accepted
+
+D-008 recorded that the Settings "BYOK" panel wrote keys to `localStorage` that
+nothing read. It also offered OpenAI, which nothing in the engine has ever called.
+BYOK now works end to end, and only for providers the engine uses: Groq (every
+agent, and boards), Gemini and Anthropic (boards).
+
+**Server-side, encrypted — not browser-held and sent per request.** Keys in
+`localStorage` are readable by any script on the page and exist on one device.
+They are stored AES-256-GCM under `BYOK_ENCRYPTION_KEY`, verified against the
+provider's list-models endpoint on save, and sent to the browser only masked.
+
+**A ContextVar, never `os.environ`.** The supervisor serves concurrent requests
+from one process, so a key written to the environment would be read by every
+run in flight. `agents/credentials.py` holds it in a ContextVar set for the
+request; the designer subprocess gets it in its own env copy. Two traps were
+found and are pinned by `test_credentials.py`:
+
+- The module loads under two names (`agents.credentials` from server.py,
+  `credentials` from the agents nodes.py imports). Two ContextVars would mean the
+  server sets the key on one and the agents read the other, silently billing the
+  operator. The var is parked in `sys.modules` so both names share it.
+- `requirement_agent._get_llm` was `lru_cache`d on the model alone. Keyed that way
+  it would hand one user's client, and so their key, to the next caller. The key
+  is now part of the cache key.
+
+## D-012 — Quotas meter the operator's cost, and are off unless asked for
+
+**Status:** Accepted
+
+Plans (`backend/src/config/plans.js`) limit only what the operator pays for:
+hosted AI messages (Groq), hosted boards (any operator-paid provider, including
+the Claude Code subscription) and active projects. A run paid by the user's key
+is recorded but never limited, so BYOK is the escape hatch from every quota.
+
+`BILLING_ENABLED` defaults to false so local and self-hosted installs behave
+exactly as before. The limit sits in the `findOneAndUpdate` filter, making the
+check and the increment one atomic operation; a run whose supervisor call fails
+before starting is refunded. Payment is a checkout link plus an admin endpoint
+for now; a webhook would call the same update.
+
+## D-013 — Hosting fixes that only show up off localhost
+
+**Status:** Accepted
+
+Each of these worked locally and failed once the services had their own hosts:
+
+- **Socket auth.** The socket connects to the backend's origin, but the auth
+  cookies belong to the frontend's (API calls go through its `/api` rewrite).
+  Locally both are `localhost`, so the cookie rode along. Hosted, every handshake
+  was refused. A two-minute `scope: socket` token now rides in the handshake, and
+  is refused as an API bearer.
+- **Supervisor token.** The backend sent `SUPERVISOR_AGENT_TOKEN`; the engine never
+  checked it, and had a wildcard CORS policy. Exposed, anyone could run the
+  pipeline on the operator's key. Now enforced; CORS removed.
+- **`dns.setServers(['8.8.8.8', …])`** at backend startup broke every private
+  hostname (compose services, platform internal networking). Opt-in via `DNS_SERVERS`.
+- **Cookies** defaulted `domain: 'localhost'` in production, which a browser
+  rejects on any real domain, and `sameSite: 'strict'`, which drops the cookie on
+  the Google OAuth return trip. Now host-only and `lax`.
+- **Board artifacts** assumed the engine writes into the backend's disk. When it
+  cannot, the backend proxies `/uploads/boards/*` to the engine.
+- **`lib/api.ts`** used bare `fetch`, bypassing axios's 401 → refresh → retry, so
+  chat and board calls failed once the 15-minute access token expired. It now
+  goes through the shared axios instance.
+- **`pnpm-lock.yaml`** (stale since July) beside `package-lock.json` makes Vercel
+  install with pnpm from the old lockfile. Removed.
