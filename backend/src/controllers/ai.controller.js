@@ -7,6 +7,8 @@ import {
   callSupervisorStream,
   getSupervisorStatus,
   cancelSupervisorJob,
+  takeSafetyAudit,
+  persistSafetyAudit,
 } from '../services/supervisor.service.js';
 import { Document } from '../models/Document.js';
 import { Artifact } from '../models/Artifact.js';
@@ -24,6 +26,7 @@ export const chat = asyncHandler(async (req, res) => {
     messages: [{ type: 'user', content: req.body.message }],
     agentType: req.body.agentType,
     files: req.body.files || [],
+    audit: { userId: req.user._id, projectId: req.body.projectId },
   });
 
   await logActivity('ai_request', req.user._id, { action: 'chat', projectId: req.body.projectId }, req);
@@ -49,6 +52,14 @@ export const codeChat = asyncHandler(async (req, res) => {
   }
 
   const data = await response.json();
+
+  // The code chat is gated by the same safety classifier. Its audit record is
+  // internal: removed here, before `data` is saved or sent to the browser.
+  await persistSafetyAudit(takeSafetyAudit(data), {
+    userId: req.user._id,
+    projectId: req.body.projectId,
+    source: 'code_chat',
+  });
   
   // Save new code to DB — best effort, never crash the response
   try {
@@ -94,6 +105,7 @@ export const run = asyncHandler(async (req, res) => {
     provider: req.body.provider,
     model: req.body.model,
     jobId,
+    audit: { userId: req.user._id, projectId: project?._id },
   });
 
   await logActivity('ai_request', req.user._id, {
@@ -238,6 +250,7 @@ export const runStream = asyncHandler(async (req, res) => {
     model: req.body.model,
     jobId,
     chatId: chat?._id || null,
+    audit: { userId: req.user._id, projectId: project?._id },
   }).catch((err) => {
     console.error(`[AI Stream] job ${jobId} failed:`, err.message);
   });

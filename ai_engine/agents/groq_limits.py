@@ -67,9 +67,11 @@ def retry_after_seconds(text: str) -> float | None:
     return sum(float(value) * _UNIT_SECONDS[unit.lower()] for value, unit in _DURATION_PART.findall(match.group(1)))
 
 
-def candidate_models(requested: str) -> list[str]:
-    raw = os.getenv("GROQ_FALLBACK_MODELS", DEFAULT_FALLBACK_MODELS)
-    fallbacks = [m.strip() for m in raw.split(",") if m.strip()]
+def candidate_models(requested: str, fallbacks: list[str] | None = None) -> list[str]:
+    """The requested model, then its fallbacks: an explicit list, else GROQ_FALLBACK_MODELS."""
+    if fallbacks is None:
+        raw = os.getenv("GROQ_FALLBACK_MODELS", DEFAULT_FALLBACK_MODELS)
+        fallbacks = [m.strip() for m in raw.split(",") if m.strip()]
     return [requested] + [m for m in fallbacks if m != requested]
 
 
@@ -80,15 +82,20 @@ def _describe_wait(seconds: float | None) -> str:
     return f", frees up in ~{minutes}m {secs:02d}s" if minutes else f", frees up in ~{secs}s"
 
 
-def invoke_with_limits(call: Callable[[str], T], model: str, *, agent: str) -> tuple[T, str]:
+def invoke_with_limits(
+    call: Callable[[str], T], model: str, *, agent: str, fallbacks: list[str] | None = None
+) -> tuple[T, str]:
     """Run ``call(model_name)``, handling Groq rate limits.
 
     Returns ``(result, model_actually_used)``. Errors that are not rate limits
     are raised unchanged, on the first attempt -- only 429s are handled here.
+    ``fallbacks`` overrides GROQ_FALLBACK_MODELS for callers that need their
+    own list (the safety classifier falls back to a classifier-capable model,
+    not to whatever the design agents use).
     """
     exhausted: list[str] = []
 
-    for candidate in candidate_models(model):
+    for candidate in candidate_models(model, fallbacks):
         for attempt in range(1, ATTEMPTS_PER_MODEL + 1):
             try:
                 result = call(candidate)

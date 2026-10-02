@@ -27,6 +27,14 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+/** The backend's `{ message, errors }` body, as an ApiError the UI can read. */
+function toApiError(error: { response?: { status?: number; data?: { message?: string; errors?: unknown[] } }; message?: string }) {
+  const data = error.response?.data
+  const message = data?.message || error.message || 'Network error'
+  const status = error.response?.status || 500
+  return new ApiError(status, message, data?.errors || [])
+}
+
 // ---- Response interceptor: unwrap data + auto refresh ----
 let isRefreshing = false
 let failedQueue: Array<{ resolve: (value: unknown) => void; reject: (reason?: unknown) => void }> = []
@@ -46,9 +54,12 @@ api.interceptors.response.use(
 
     // Token expired — try to refresh once
     if (error.response?.status === 401 && !originalRequest._retry) {
-      // Don't retry refresh/logout/login calls themselves
+      // Don't retry refresh/logout/login calls themselves. Rejected as an
+      // ApiError like every other failure: rejecting with the raw response body
+      // (a plain object) made the login page's `err instanceof Error` false, so
+      // "Invalid email or password" was shown as a bare "Login failed".
       if (originalRequest.url?.includes('/auth/refresh') || originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register')) {
-        return Promise.reject(error.response?.data || error)
+        return Promise.reject(toApiError(error))
       }
 
       if (isRefreshing) {
@@ -81,10 +92,7 @@ api.interceptors.response.use(
       }
     }
 
-    const data = error.response?.data
-    const message = data?.message || error.message || 'Network error'
-    const status = error.response?.status || 500
-    return Promise.reject(new ApiError(status, message, data?.errors || []))
+    return Promise.reject(toApiError(error))
   }
 )
 

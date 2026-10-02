@@ -508,6 +508,21 @@ export function ChatInterface({ projectId }: { projectId: string }) {
             return
           }
 
+          // Case 1b: the safety check stopped this turn before any design work.
+          // The supervisor's last message is the neutral explanation; nothing
+          // else in the payload is new (it only echoes the design already on
+          // screen), so none of the artifact handling below applies.
+          if (payload.workflow_status === 'blocked') {
+            const blockedMsgs = payload.messages as Array<{ content?: string }> | undefined
+            const notice =
+              (Array.isArray(blockedMsgs) ? blockedMsgs[blockedMsgs.length - 1]?.content : undefined) ||
+              "This request can't be processed."
+            setMessages((prev) => [...prev, { id: `${Date.now()}-assistant`, role: 'assistant', content: notice }])
+            if (targetChatId) chatApi.saveMessage(targetChatId, 'assistant', notice).catch(() => {})
+            setPipelineRun('error')
+            return
+          }
+
           const errors = payload.errors as string[] | undefined
 
           // Case 2: Full workflow complete -> update state, persist to MongoDB, and update dynamic project title

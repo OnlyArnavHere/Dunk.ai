@@ -88,6 +88,9 @@ async function main() {
   await mkdir(workdir, { recursive: true })
 
   const provider = getProvider(args.provider, { model: args.model })
+  // A provider that cannot run at all (CLI missing or logged out) must say so
+  // now, not minutes into Stage B or D where it would look like a hang.
+  await provider.preflight?.()
   const gateOpts = { iouThreshold: args.iouThreshold, concurrency: args.concurrency }
 
   // --- A ---------------------------------------------------------------------
