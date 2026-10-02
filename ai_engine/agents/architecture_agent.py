@@ -45,8 +45,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 
 try:
+    from .credentials import groq_api_key
     from .groq_limits import GroqQuotaExhausted, invoke_with_limits
 except ImportError:  # imported as a top-level module by the supervisor
+    from credentials import groq_api_key
     from groq_limits import GroqQuotaExhausted, invoke_with_limits
 
 # llama-3.3-70b-versatile, as requested. Note: Groq has this on a deprecation
@@ -385,12 +387,13 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
                max_tokens: int = 4000) -> str:
     """Call Groq via langchain_groq and return the reply text.
 
-    Requires ``GROQ_API_KEY`` in the environment. Raises ``RuntimeError`` on
-    transport or API errors.
+    Uses the request's own Groq key when the user brought one, else
+    ``GROQ_API_KEY``. Raises ``RuntimeError`` on transport or API errors.
     """
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        raise RuntimeError("GROQ_API_KEY is not set in the environment.")
+    try:
+        api_key = groq_api_key()
+    except EnvironmentError as exc:
+        raise RuntimeError(str(exc)) from exc
 
     messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_content)]
 

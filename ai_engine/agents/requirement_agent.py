@@ -45,8 +45,10 @@ from langchain_groq import ChatGroq
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 try:
+    from .credentials import groq_api_key
     from .groq_limits import GroqQuotaExhausted, invoke_with_limits
 except ImportError:  # imported as a top-level module by the supervisor
+    from credentials import groq_api_key
     from groq_limits import GroqQuotaExhausted, invoke_with_limits
 
 __all__ = [
@@ -312,16 +314,14 @@ SYSTEM_PROMPT = _SYSTEM_PROMPT_TEMPLATE.format(min_turns=MIN_INTERVIEW_TURNS, ma
 # Lazy, cached client/chain construction
 #
 # Nothing below runs at import time. Each factory is memoized so the Groq
-# client and prompt/chain objects are built exactly once per process and
-# reused on every subsequent call, no matter how many times run_interview()
-# is invoked.
+# client and prompt/chain objects are built once per (model, key) and reused.
+# The key is part of the cache key on purpose: with BYOK, two requests can hold
+# different keys, and a cache keyed on the model alone would hand one user's
+# client -- and so their key -- to the next caller.
 # ---------------------------------------------------------------------------
 
-@lru_cache(maxsize=8)
-def _get_llm(model: str | None = None) -> ChatGroq:
-    api_key = os.getenv("GROQ_API_KEY")
-    if not api_key:
-        raise EnvironmentError("Set GROQ_API_KEY before running the Requirement Agent.")
+@lru_cache(maxsize=32)
+def _get_llm(model: str | None, api_key: str) -> ChatGroq:
     return ChatGroq(model=model or MODEL_NAME, groq_api_key=api_key, temperature=TEMPERATURE, max_retries=2)
 
 
@@ -333,23 +333,31 @@ _OPTION_SYSTEM_PROMPT = (
 )
 
 
-@lru_cache(maxsize=8)
-def _get_option_chain(model: str | None = None):
+@lru_cache(maxsize=32)
+def _option_chain(model: str | None, api_key: str):
     option_prompt = ChatPromptTemplate.from_messages([
         ("system", _OPTION_SYSTEM_PROMPT),
         ("human", "Question: {question}"),
     ])
-    return option_prompt | _get_llm(model).with_structured_output(QuestionOptions, method="json_schema")
+    return option_prompt | _get_llm(model, api_key).with_structured_output(QuestionOptions, method="json_schema")
 
 
-@lru_cache(maxsize=8)
-def _get_interview_chain(model: str | None = None):
+@lru_cache(maxsize=32)
+def _interview_chain(model: str | None, api_key: str):
     prompt = ChatPromptTemplate.from_messages([
         ("system", SYSTEM_PROMPT),
         MessagesPlaceholder("history"),
         ("human", "{input}"),
     ])
-    return prompt | _get_llm(model).with_structured_output(InterviewResponse, method="json_schema")
+    return prompt | _get_llm(model, api_key).with_structured_output(InterviewResponse, method="json_schema")
+
+
+def _get_option_chain(model: str | None = None):
+    return _option_chain(model, groq_api_key())
+
+
+def _get_interview_chain(model: str | None = None):
+    return _interview_chain(model, groq_api_key())
 
 
 # ---------------------------------------------------------------------------
