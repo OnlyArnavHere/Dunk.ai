@@ -24,6 +24,7 @@ import { documentRoutes } from './routes/document.routes.js';
 import { notificationRoutes } from './routes/notification.routes.js';
 import { accountRoutes } from './routes/account.routes.js';
 import { billingRoutes } from './routes/billing.routes.js';
+import { firmwareRoutes } from './routes/firmware.routes.js';
 import { openapi } from './docs/openapi.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -83,6 +84,7 @@ app.use('/api/v1/documents', documentRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/account', accountRoutes);
 app.use('/api/v1/billing', billingRoutes);
+app.use('/api/v1/firmware', firmwareRoutes);
 
 // ---- Error handling ----
 app.use(notFound);

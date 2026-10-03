@@ -98,7 +98,7 @@ export const codeChat = asyncHandler(async (req, res) => {
   const { credentials, refund } = await prepareAiRequest(req);
 
   const data = await withRefund(refund, () =>
-    callCodeChat({ files: req.body.files || [], messages: req.body.messages || [], credentials })
+    callCodeChat({ files: req.body.files || [], messages: req.body.messages || [], credentials, model: req.body.model })
   );
 
   // The code chat is gated by the same safety classifier. Its audit record is

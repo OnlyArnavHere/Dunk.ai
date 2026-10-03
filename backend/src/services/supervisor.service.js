@@ -444,7 +444,7 @@ export const callSupervisorStream = async (
  * hard-coded path and no token — so it 401s against a supervisor that checks
  * one — and no timeout.
  */
-export const callCodeChat = async ({ files = [], messages = [], credentials = null }) => {
+export const callCodeChat = async ({ files = [], messages = [], credentials = null, model }) => {
   let response;
   try {
     response = await fetch(supervisorUrl('/code-chat'), {
@@ -454,6 +454,7 @@ export const callCodeChat = async ({ files = [], messages = [], credentials = nu
       body: JSON.stringify({
         files,
         messages,
+        ...(typeof model === 'string' && model ? { model } : {}),
         ...(credentials && Object.keys(credentials).length ? { credentials } : {}),
       }),
     });
