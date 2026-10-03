@@ -22,6 +22,7 @@ const activityLogSchema = new mongoose.Schema(
         'file_upload',
         'file_delete',
         'document_created',
+        'firmware_compile',
         'error',
       ],
       required: true,

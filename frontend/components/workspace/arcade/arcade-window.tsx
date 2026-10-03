@@ -11,6 +11,7 @@ import {
 import { Loader2, Minus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ARCADE_HEIGHT, ARCADE_WIDTH, type Shooter, type ShooterStats } from '@/lib/arcade/shooter'
+import { dockStyle, type Dock } from './dock'
 
 export const PLAYER_SHIP_SRC = '/arcade/player-ship.png'
 
@@ -26,6 +27,8 @@ export interface ArcadeNotice {
 }
 
 interface ArcadeWindowProps {
+  /** Where the launcher ship sits; the window opens from there and minimizes back to it. */
+  dock: Dock
   minimized: boolean
   /** Playing the close animation: the game is stopped and the window shrinks away. */
   closing: boolean
@@ -92,12 +95,12 @@ const clampFrame = ({ x, y, width }: Frame): Frame => {
   }
 }
 
-/** Opens bottom-right, over the chat composer, where the launcher ship sat. */
-const initialFrame = (): Frame =>
+/** Opens with its bottom-right corner where the launcher ship sat. */
+const initialFrame = (dock: Dock): Frame =>
   clampFrame({
     width: ARCADE_WIDTH,
-    x: window.innerWidth - outerWidth(ARCADE_WIDTH) - 24,
-    y: window.innerHeight - outerHeight(ARCADE_WIDTH) - 132,
+    x: window.innerWidth - outerWidth(ARCADE_WIDTH) - dock.right,
+    y: window.innerHeight - outerHeight(ARCADE_WIDTH) - dock.bottom,
   })
 
 const pixelated = { imageRendering: 'pixelated' as const }
@@ -113,6 +116,7 @@ const TONE_RING: Record<ArcadeNotice['tone'], string> = {
 }
 
 export function ArcadeWindow({
+  dock,
   minimized,
   closing,
   notice,
@@ -187,8 +191,10 @@ export function ArcadeWindow({
   }, [ready, screenWidth])
 
   // ---- position and size --------------------------------------------------------
+  // Read once at mount: the window opens at the dock, then moves on its own.
+  const openingDock = useRef(dock)
   useEffect(() => {
-    setFrame(initialFrame())
+    setFrame(initialFrame(openingDock.current))
     const onViewportResize = () => setFrame((f) => (f ? clampFrame(f) : f))
     window.addEventListener('resize', onViewportResize)
     return () => window.removeEventListener('resize', onViewportResize)
@@ -265,7 +271,8 @@ export function ArcadeWindow({
           onClick={onRestore}
           title="Resume game"
           aria-label={`Resume Dunk Arcade, score ${stats.score}`}
-          className="group fixed bottom-[132px] right-6 z-40 flex h-12 items-center gap-2 rounded-full border border-border bg-card/90 pl-2 pr-3.5 shadow-[0_14px_50px_rgba(0,0,0,0.3)] backdrop-blur-md transition-colors hover:border-foreground/30 animate-in fade-in-0 zoom-in-95 duration-200"
+          style={dockStyle(dock)}
+          className="group fixed z-40 flex h-12 items-center gap-2 rounded-full border border-border bg-card/90 pl-2 pr-3.5 shadow-[0_14px_50px_rgba(0,0,0,0.3)] backdrop-blur-md transition-colors hover:border-foreground/30 animate-in fade-in-0 zoom-in-95 duration-200"
         >
           <span className="flex h-8 w-8 items-center justify-center rounded-full bg-black">
             <img src={PLAYER_SHIP_SRC} alt="" width={24} height={26} style={pixelated} />

@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Sparkles, ChevronDown, Check, Cpu, Zap, Activity } from 'lucide-react'
+import { Sparkles, ChevronDown, Check, Cpu, Zap } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,22 +44,6 @@ export const AVAILABLE_MODELS: ModelOption[] = [
     badge: 'Balanced',
     description: 'High precision structured breakdown and circuit logic.',
     icon: Cpu,
-  },
-  {
-    id: 'llama-3.3-70b-versatile',
-    name: 'Llama 3.3 70B',
-    provider: 'Groq',
-    badge: 'High Context',
-    description: '128K context window with comprehensive architectural analysis.',
-    icon: Activity,
-  },
-  {
-    id: 'llama-3.1-8b-instant',
-    name: 'Llama 3.1 8B',
-    provider: 'Groq',
-    badge: 'Instant',
-    description: 'Sub-second speed for fast iterations and quick interviews.',
-    icon: Zap,
   },
 ]
 
