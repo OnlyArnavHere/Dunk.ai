@@ -48,8 +48,12 @@ export const errorHandler = (err, req, res, _next) => {
 
   const statusCode = error.statusCode || 500;
   const errors = error.errors || [];
+  // Unexpected errors are hidden in production; an ApiError we raised on
+  // purpose (e.g. "Supervisor Agent is unavailable") is meant to be read.
   const message =
-    statusCode >= 500 && env.isProduction ? 'Internal server error' : error.message || 'Something went wrong';
+    statusCode >= 500 && env.isProduction && !error.isOperational
+      ? 'Internal server error'
+      : error.message || 'Something went wrong';
 
   // Log 5xx errors
   if (statusCode >= 500) {

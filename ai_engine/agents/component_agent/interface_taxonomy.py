@@ -44,6 +44,7 @@ INTERFACE_ROLES: dict[str, tuple[str, ...]] = {
     "SDIO": ("CLOCK", "CMD", "DATA"),
     "PCIe": ("TXP", "TXN", "RXP", "RXN", "CLOCK"),
     "I2S": ("BIT_CLOCK", "WORD_CLOCK", "DATA"),
+    "OneWire": ("DATA",),
     "Power": ("SUPPLY", "GROUND"),
     "GPIO": ("GPIO",),
     "PWM": ("PWM",),

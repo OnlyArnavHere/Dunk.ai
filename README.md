@@ -70,33 +70,67 @@ The `ai_engine/` directory is an independent Python/LangGraph/LangChain system. 
 
 ## Getting started
 
-### Backend
+Each service has an `.env.example`; copy it and fill it in. Never commit the copies.
 
-```powershell
-cd backend
-Copy-Item .env.example .env
-npm install
-npm run check
-npm run dev
+### AI engine
+
+```bash
+cd ai_engine
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirement.txt
+cp .env.example .env          # GROQ_API_KEY, HF_TOKEN_READ
+python -m agents.supervisor.server
 ```
 
-Configure these services before using the API:
+Board generation also needs `cd dunkai-designer && npm install`.
 
-- MongoDB through `MONGODB_URI`
-- The Supervisor Agent through `SUPERVISOR_AGENT_URL` and `SUPERVISOR_AGENT_PATH`
-- JWT secrets through `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`
+### Backend
 
-The backend listens on the port configured by `PORT` (the current local environment uses `3000`). Never commit `.env`; secrets and runtime uploads are excluded by the repository `.gitignore`.
+```bash
+cd backend
+cp .env.example .env          # MONGODB_URI, JWT_* secrets
+npm install
+npm run check
+npm run dev                   # http://localhost:4000, API docs at /docs
+```
 
 ### Frontend
 
-```powershell
+```bash
 cd frontend
+cp .env.example .env.local
 npm install
-npm run dev
+npm run dev                   # http://localhost:3000
 ```
 
-The frontend runs on `http://localhost:3001` and connects to the backend API.
+### Everything at once
+
+```bash
+docker compose up --build
+```
+
+See [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) for the compose setup and for hosting on Vercel, Render, Railway or Fly.io.
+
+## Bring your own keys (BYOK)
+
+Users can add their own **Groq**, **Gemini** and **Anthropic** keys in Settings → API keys. Groq powers every pipeline agent, and all three can build boards.
+
+- A key is verified with the provider when saved, encrypted with AES-256-GCM (`BYOK_ENCRYPTION_KEY`), and never returned to the browser except as `gsk_…a1b2`.
+- At run time the backend decrypts it into the supervisor request only. The AI engine applies it per request through a context variable (`ai_engine/agents/credentials.py`), never through `os.environ`, so concurrent users never see each other's keys. The designer subprocess gets it in its own environment copy.
+- Work paid for by the user's key never counts toward their plan.
+
+## Plans
+
+Defined once in `backend/src/config/plans.js` and enforced only when `BILLING_ENABLED=true`:
+
+| | Free | Pro | Enterprise |
+| --- | --- | --- | --- |
+| Hosted AI messages / month | 50 | 1,000 | unlimited |
+| Hosted board generations / month | 3 | 40 | unlimited |
+| Active projects | 3 | unlimited | unlimited |
+| Board models on hosted keys | Groq, Gemini, Ollama | + Claude Sonnet | + Claude Code |
+
+"Hosted" means the operator's provider keys. With your own key there is no limit on any plan.
 
 ## Main API groups
 
@@ -107,6 +141,8 @@ The frontend runs on `http://localhost:3001` and connects to the backend API.
 | `/api/v1/chats` | Chat sessions and messages |
 | `/api/v1/files` | Project file uploads and listings |
 | `/api/v1/ai` | WebSocket streaming and Supervisor integration |
+| `/api/v1/account` | BYOK key management |
+| `/api/v1/billing` | Plans, usage, and admin plan changes |
 
 ## Engineering principles
 

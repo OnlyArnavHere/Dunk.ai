@@ -1,5 +1,14 @@
+import { Readable } from 'node:stream';
 import { env } from '../config/env.js';
 import { ApiError } from '../utils/ApiError.js';
+
+/** Headers for every call to the Python supervisor. */
+const supervisorHeaders = (extra = {}) => ({
+  ...extra,
+  ...(env.supervisorToken ? { authorization: `Bearer ${env.supervisorToken}` } : {}),
+});
+
+const supervisorUrl = (suffix = '') => new URL(`${env.supervisorPath}${suffix}`, env.supervisorUrl);
 
 // In-memory store for AI job status (replace with Redis in production)
 const jobStore = new Map();
@@ -31,7 +40,11 @@ export const deleteJobStatus = (jobId) => {
  * depends on it. Optional fields are omitted rather than sent as null so the
  * Pydantic defaults on the other side still apply.
  *
- * @param {object} fields - action, project, messages, files, jobId, agentType, provider, model
+ * `credentials` are the user's own decrypted provider keys (BYOK). They go to
+ * the supervisor and nowhere else: never into jobStore, a log line, or a
+ * socket event.
+ *
+ * @param {object} fields - action, project, messages, files, jobId, agentType, provider, model, credentials
  * @returns {object} body for the supervisor, optional keys omitted when unset
  */
 const buildSupervisorBody = ({
@@ -43,6 +56,7 @@ const buildSupervisorBody = ({
   agentType,
   provider,
   model,
+  credentials,
 }) => ({
   action,
   project,
@@ -52,6 +66,7 @@ const buildSupervisorBody = ({
   ...(agentType ? { agentType } : {}),
   ...(provider ? { provider } : {}),
   ...(model ? { model } : {}),
+  ...(credentials && Object.keys(credentials).length ? { credentials } : {}),
 });
 
 /**
@@ -131,6 +146,7 @@ export const callSupervisor = async ({
   agentType = null,
   provider = null,
   model = null,
+  credentials = null,
   audit = {},
 }) => {
   const controller = new AbortController();
@@ -142,17 +158,14 @@ export const callSupervisor = async ({
   }
 
   try {
-    const headers = { 'content-type': 'application/json' };
-    if (env.supervisorToken) headers.authorization = `Bearer ${env.supervisorToken}`;
-
-    const response = await fetch(new URL(env.supervisorPath, env.supervisorUrl), {
+    const response = await fetch(supervisorUrl(), {
       method: 'POST',
-      headers,
+      headers: supervisorHeaders({ 'content-type': 'application/json' }),
       signal: controller.signal,
       // Built with buildSupervisorBody so a field added to the contract cannot
       // be silently dropped here — which is exactly what happened to agentType.
       body: JSON.stringify(
-        buildSupervisorBody({ action, project, messages, files, jobId, agentType, provider, model })
+        buildSupervisorBody({ action, project, messages, files, jobId, agentType, provider, model, credentials })
       ),
     });
 
@@ -187,13 +200,7 @@ export const getSupervisorStatus = async (jobId) => {
 
   // Then check with the Supervisor Agent
   try {
-    const headers = {};
-    if (env.supervisorToken) headers.authorization = `Bearer ${env.supervisorToken}`;
-
-    const response = await fetch(
-      new URL(`${env.supervisorPath}/${jobId}/status`, env.supervisorUrl),
-      { headers }
-    );
+    const response = await fetch(supervisorUrl(`/${jobId}/status`), { headers: supervisorHeaders() });
 
     if (response.ok) {
       const body = await response.json().catch(() => ({}));
@@ -218,13 +225,7 @@ export const cancelSupervisorJob = async (jobId) => {
   }
 
   try {
-    const headers = {};
-    if (env.supervisorToken) headers.authorization = `Bearer ${env.supervisorToken}`;
-
-    await fetch(new URL(`${env.supervisorPath}/${jobId}/cancel`, env.supervisorUrl), {
-      method: 'POST',
-      headers,
-    });
+    await fetch(supervisorUrl(`/${jobId}/cancel`), { method: 'POST', headers: supervisorHeaders() });
   } catch {
     // Best-effort cancel
   }
@@ -358,25 +359,22 @@ export const callSupervisorStream = async (
     agentType = null,
     provider = null,
     model = null,
+    credentials = null,
     chatId = null,
     audit = {},
   }
 ) => {
   setJobStatus(jobId, 'running');
 
-  const headers = { 'content-type': 'application/json' };
-  if (env.supervisorToken) headers.authorization = `Bearer ${env.supervisorToken}`;
-
-  const streamPath = `${env.supervisorPath}/stream`;
   let response;
 
   try {
-    response = await fetch(new URL(streamPath, env.supervisorUrl), {
+    response = await fetch(supervisorUrl('/stream'), {
       method: 'POST',
-      headers,
+      headers: supervisorHeaders({ 'content-type': 'application/json' }),
       // No signal / no timeout — the stream lives as long as the pipeline runs.
       body: JSON.stringify(
-        buildSupervisorBody({ action, project, messages, files, jobId, agentType, provider, model })
+        buildSupervisorBody({ action, project, messages, files, jobId, agentType, provider, model, credentials })
       ),
     });
   } catch (error) {
@@ -434,4 +432,95 @@ export const callSupervisorStream = async (
   }
 
   return finalResult;
+};
+
+
+// ---------------------------------------------------------------------------
+// Code chat, capabilities, board artifacts
+// ---------------------------------------------------------------------------
+
+/**
+ * The firmware code chat. Was inlined in ai.controller.js with its own
+ * hard-coded path and no token — so it 401s against a supervisor that checks
+ * one — and no timeout.
+ */
+export const callCodeChat = async ({ files = [], messages = [], credentials = null, model }) => {
+  let response;
+  try {
+    response = await fetch(supervisorUrl('/code-chat'), {
+      method: 'POST',
+      headers: supervisorHeaders({ 'content-type': 'application/json' }),
+      signal: AbortSignal.timeout(120_000),
+      body: JSON.stringify({
+        files,
+        messages,
+        ...(typeof model === 'string' && model ? { model } : {}),
+        ...(credentials && Object.keys(credentials).length ? { credentials } : {}),
+      }),
+    });
+  } catch (error) {
+    if (error.name === 'TimeoutError') throw new ApiError(504, 'Code chat timed out');
+    throw new ApiError(502, 'Supervisor Agent is unavailable');
+  }
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new ApiError(502, body.detail || body.message || 'Code chat failed');
+  }
+  return body;
+};
+
+const CAPABILITIES_TTL_MS = 60_000;
+let capabilitiesCache = { at: 0, value: null };
+
+/**
+ * What the AI engine can run on the operator's own setup: which board
+ * providers have a key (or, for claude-code, a CLI) there. Cached for a
+ * minute. Null when the engine is unreachable — callers treat that as
+ * "unknown" and let the run itself report the problem.
+ */
+export const getCapabilities = async () => {
+  if (capabilitiesCache.value && Date.now() - capabilitiesCache.at < CAPABILITIES_TTL_MS) {
+    return capabilitiesCache.value;
+  }
+  try {
+    const response = await fetch(supervisorUrl('/capabilities'), {
+      headers: supervisorHeaders(),
+      signal: AbortSignal.timeout(5_000),
+    });
+    if (!response.ok) return null;
+    const body = await response.json();
+    capabilitiesCache = { at: Date.now(), value: body.data ?? body };
+    return capabilitiesCache.value;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * GET /uploads/boards/* when the file is not on this disk: fetch it from the
+ * AI engine, which wrote it. Streams the body; anything but a 200 falls
+ * through to the normal 404.
+ */
+export const proxyBoardArtifact = async (req, res, next) => {
+  const relative = String(req.params[0] || '');
+  if (!relative || relative.split('/').some((part) => part === '..' || part === '')) return next();
+
+  try {
+    const encoded = relative.split('/').map(encodeURIComponent).join('/');
+    const upstream = await fetch(supervisorUrl(`/artifacts/${encoded}`), {
+      headers: supervisorHeaders(),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!upstream.ok || !upstream.body) return next();
+
+    for (const header of ['content-type', 'content-length', 'last-modified', 'etag']) {
+      const value = upstream.headers.get(header);
+      if (value) res.setHeader(header, value);
+    }
+    res.setHeader('cache-control', 'public, max-age=3600');
+    Readable.fromWeb(upstream.body).pipe(res);
+  } catch {
+    next();
+  }
 };

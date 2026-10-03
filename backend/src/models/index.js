@@ -11,3 +11,4 @@ export { EngineeringPackage } from './EngineeringPackage.js';
 export { Notification } from './Notification.js';
 export { ActivityLog } from './ActivityLog.js';
 export { SafetyReview } from './SafetyReview.js';
+export { Usage } from './Usage.js';

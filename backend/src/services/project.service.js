@@ -3,6 +3,7 @@ import { ApiError } from '../utils/ApiError.js';
 import { parsePagination, buildPaginatedResponse } from '../helpers/pagination.js';
 import { logActivity } from '../helpers/activity.js';
 import { notify } from '../helpers/notification.js';
+import { assertCanCreateProject } from './billing.service.js';
 
 // ---- Access control ----
 
@@ -75,6 +76,7 @@ export const getFavouriteProjects = (user) =>
 // ---- Create ----
 
 export const createProject = async (data, user, req = null) => {
+  await assertCanCreateProject(user);
   const project = await Project.create({
     ...data,
     owner: user._id,
@@ -129,6 +131,7 @@ export const archiveProject = async (id, user, req = null) => {
 // ---- Duplicate ----
 
 export const duplicateProject = async (id, user, req = null) => {
+  await assertCanCreateProject(user);
   const original = await getProject(id, user);
   const copy = original.toObject();
 

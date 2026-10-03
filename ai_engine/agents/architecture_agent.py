@@ -45,8 +45,10 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langchain_groq import ChatGroq
 
 try:
+    from .credentials import groq_api_key
     from .groq_limits import GroqQuotaExhausted, invoke_with_limits
 except ImportError:  # imported as a top-level module by the supervisor
+    from credentials import groq_api_key
     from groq_limits import GroqQuotaExhausted, invoke_with_limits
 
 # llama-3.3-70b-versatile, as requested. Note: Groq has this on a deprecation
@@ -61,7 +63,14 @@ ALLOWED_CATEGORIES = {
 ALLOWED_INTERFACES = {
     "GPIO", "UART", "SPI", "I2C", "USB", "CAN", "Ethernet", "PCIe",
     "SDIO", "Power", "BLE", "WiFi", "RF", "Audio", "Analog", "ADC", "PWM", "I2S",
+    # Single-wire sensors (DS18B20 and kin) talk 1-Wire. Without it in the
+    # vocabulary the model filed them under UART, and the board stage found no
+    # TX/RX pins on the part (dunkai-designer D-015).
+    "OneWire",
 }
+
+# Spellings of an interface the model uses that are not the canonical form.
+_INTERFACE_SYNONYMS = {"1-wire": "OneWire", "1wire": "OneWire", "one-wire": "OneWire", "one wire": "OneWire"}
 
 # The model names subsystems in its own words, and a screen is the standard
 # example: it reports "Display" where this taxonomy files it under "Output".
@@ -114,6 +123,8 @@ def _canon_interface(interface: Any) -> str:
     "GPIO", "I2C") and ``"wifi".title()`` would not round-trip.
     """
     text = str(interface or "").strip()
+    if text.lower() in _INTERFACE_SYNONYMS:
+        return _INTERFACE_SYNONYMS[text.lower()]
     for allowed in ALLOWED_INTERFACES:
         if text.lower() == allowed.lower():
             return allowed
@@ -317,6 +328,13 @@ Analog
 ADC
 PWM
 I2S
+OneWire
+--------------------------------------------------
+Interface choice
+Use the interface the PART actually has, not a convenient bus:
+a 1-Wire temperature sensor (DS18B20 type) uses OneWire, not UART;
+a bare 7-segment or LED display is driven by GPIO (or through a driver IC
+on SPI/I2C), not SPI directly.
 --------------------------------------------------
 Rules
 Every processing unit must connect to
@@ -390,8 +408,8 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
                max_tokens: int = 8000) -> str:
     """Call Groq via langchain_groq and return the reply text.
 
-    Requires ``GROQ_API_KEY`` in the environment. Raises ``RuntimeError`` on
-    transport or API errors.
+    Uses the request's own Groq key when the user brought one (BYOK), else
+    ``GROQ_API_KEY``. Raises ``RuntimeError`` on transport or API errors.
 
     Output budget
     -------------
@@ -405,9 +423,10 @@ def _call_groq(system_prompt: str, user_content: str, *, model: str | None = Non
     reasoning short enough for the answer to fit. The cap is a ceiling, not a
     charge: Groq counts tokens actually used against the per-minute limit.
     """
-    api_key = os.environ.get("GROQ_API_KEY")
-    if not api_key:
-        raise RuntimeError("GROQ_API_KEY is not set in the environment.")
+    try:
+        api_key = groq_api_key()
+    except EnvironmentError as exc:
+        raise RuntimeError(str(exc)) from exc
 
     messages = [SystemMessage(content=system_prompt), HumanMessage(content=user_content)]
 

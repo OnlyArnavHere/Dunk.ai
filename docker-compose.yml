@@ -1,0 +1,68 @@
+# Dunk AI, all services on one machine.
+#
+#   cp backend/.env.example backend/.env       # set JWT_*, BYOK_ENCRYPTION_KEY
+#   cp ai_engine/.env.example ai_engine/.env   # set GROQ_API_KEY, HF_TOKEN_READ
+#   echo "SUPERVISOR_AGENT_TOKEN=$(openssl rand -hex 24)" > .env
+#   docker compose up --build
+#
+# Then open http://localhost:3000.
+
+services:
+  mongo:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+
+  ai-engine:
+    build:
+      context: .
+      dockerfile: ai_engine/Dockerfile
+    restart: unless-stopped
+    env_file: ai_engine/.env
+    environment:
+      SUPERVISOR_HOST: 0.0.0.0
+      SUPERVISOR_AGENT_TOKEN: ${SUPERVISOR_AGENT_TOKEN:?set SUPERVISOR_AGENT_TOKEN in .env}
+      # Written into the volume the backend serves at /uploads/boards.
+      DESIGNER_OUTPUT_ROOT: /data/uploads/boards
+    volumes:
+      - uploads:/data/uploads
+      - engine-cache:/data/cache
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    env_file: backend/.env
+    environment:
+      NODE_ENV: production
+      MONGODB_URI: mongodb://mongo:27017/dunkai
+      SUPERVISOR_AGENT_URL: http://ai-engine:8000
+      SUPERVISOR_AGENT_TOKEN: ${SUPERVISOR_AGENT_TOKEN}
+      FRONTEND_URL: http://localhost:3000
+      UPLOAD_DIR: /app/uploads
+      COOKIE_SECURE: "false" # plain http on localhost; true behind HTTPS
+    volumes:
+      - uploads:/app/uploads
+    ports:
+      - "4000:4000" # the browser's Socket.io connection
+    depends_on:
+      - mongo
+      - ai-engine
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        BACKEND_URL: http://backend:4000
+        NEXT_PUBLIC_BACKEND_URL: http://localhost:4000
+        NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+volumes:
+  mongo-data:
+  uploads:
+  engine-cache:

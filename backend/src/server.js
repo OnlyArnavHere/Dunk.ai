@@ -5,7 +5,10 @@ import { env } from './config/env.js';
 import { connectDatabase } from './config/database.js';
 import { initSocket } from './sockets/index.js';
 
-dns.setServers(['8.8.8.8', '1.1.1.1']);
+// Opt-in only. Forcing public resolvers fixed `mongodb+srv` lookups on one
+// local network, but on a host it breaks every private name: docker-compose
+// services (`mongo`, `ai-engine`) and Railway/Render internal hostnames.
+if (env.dnsServers.length) dns.setServers(env.dnsServers);
 
 const start = async () => {
   try {
@@ -17,7 +20,12 @@ const start = async () => {
     const io = initSocket(server);
     app.set('io', io);
 
-    server.listen(env.port, () => {
+    // Socket.io and the SSE relay hold connections open for minutes; keep the
+    // HTTP server from closing idle keep-alive sockets under a proxy first.
+    server.keepAliveTimeout = 65_000;
+    server.headersTimeout = 66_000;
+
+    server.listen(env.port, '0.0.0.0', () => {
       console.info(`\n  Dunk AI Backend running on port ${env.port}`);
       console.info(`  Environment: ${env.nodeEnv}`);
       console.info(`  API docs: http://localhost:${env.port}/docs`);

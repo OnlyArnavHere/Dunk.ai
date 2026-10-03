@@ -4,274 +4,379 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CircuitBoard, Eye, EyeOff, KeyRound, Moon, Palette, Save, Sun, Trash2, User as UserIcon } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import {
+  ArrowLeft,
+  BadgeCheck,
+  CircuitBoard,
+  Gauge,
+  KeyRound,
+  Laptop,
+  Loader2,
+  Moon,
+  Palette,
+  Sun,
+  Trash2,
+  User as UserIcon,
+} from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
 import { ProtectedRoute } from '@/components/layouts/protected-route'
 import { ProviderPicker } from '@/components/workspace/provider-picker'
+import { accountApi, aiApi, billingApi, type ApiKeyStatus, type ByokProvider } from '@/lib/api'
 import {
   BOARD_PROVIDERS,
   DEFAULT_BOARD_PROVIDER,
+  hasStoredBoardProvider,
   readStoredBoardProvider,
   writeStoredBoardProvider,
   type BoardProviderId,
 } from '@/lib/providers'
+import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
-// BYOK providers — static for now, keys are kept locally until backend support lands
-const PROVIDERS = [
-  { id: 'openai', label: 'OpenAI', placeholder: 'sk-...', hint: 'Used for GPT models' },
-  { id: 'anthropic', label: 'Anthropic', placeholder: 'sk-ant-...', hint: 'Used for Claude models' },
-  { id: 'google', label: 'Google AI', placeholder: 'AIza...', hint: 'Used for Gemini models' },
-] as const
+const KEY_PLACEHOLDERS: Record<ByokProvider, string> = {
+  groq: 'gsk_…',
+  gemini: 'AIza…',
+  anthropic: 'sk-ant-…',
+}
 
-const STORAGE_KEY = 'dunkai-byok-keys'
+function Section({
+  icon: Icon,
+  title,
+  description,
+  children,
+}: {
+  icon: typeof KeyRound
+  title: string
+  description: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="shadow-soft rounded-[28px] border border-border bg-card p-6 sm:p-8">
+      <div className="flex items-start gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-secondary">
+          <Icon className="h-5 w-5" />
+        </span>
+        <div>
+          <h2 className="text-lg font-semibold tracking-tight">{title}</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <div className="mt-6">{children}</div>
+    </section>
+  )
+}
 
-function maskKey(key: string): string {
-  if (key.length <= 8) return '••••••••'
-  return `${key.slice(0, 4)}••••••••${key.slice(-4)}`
+function Meter({ label, used, limit }: { label: string; used: number; limit: number | null }) {
+  const pct = limit ? Math.min(100, (used / limit) * 100) : 0
+  return (
+    <div>
+      <div className="flex items-baseline justify-between text-sm">
+        <span>{label}</span>
+        <span className="font-mono text-xs text-muted-foreground">
+          {used.toLocaleString()} / {limit === null ? 'unlimited' : limit.toLocaleString()}
+        </span>
+      </div>
+      {limit !== null && (
+        <Progress value={pct} className={cn('mt-2 h-1.5', pct >= 90 && '[&>div]:bg-destructive')} />
+      )}
+    </div>
+  )
+}
+
+function UsageCard() {
+  const usage = useQuery({ queryKey: ['billing', 'usage'], queryFn: billingApi.usage })
+  const plans = useQuery({ queryKey: ['billing', 'plans'], queryFn: billingApi.plans, staleTime: 5 * 60_000 })
+
+  if (usage.isLoading) return <div className="h-24 animate-pulse rounded-2xl bg-secondary" />
+  if (!usage.data) return <p className="text-sm text-muted-foreground">Usage is unavailable right now.</p>
+
+  const { plan, usage: u, billingEnabled, period } = usage.data
+  const checkout = plans.data?.checkout
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">{plan.name}</span>
+          <span className="text-xs text-muted-foreground">Usage for {period}</span>
+        </div>
+        {billingEnabled && plan.id === 'free' && (checkout?.pro || checkout?.contact) && (
+          <Button asChild size="sm" className="rounded-full">
+            <a href={checkout.pro || checkout.contact} target="_blank" rel="noreferrer">
+              Upgrade to Pro
+            </a>
+          </Button>
+        )}
+      </div>
+
+      {billingEnabled ? (
+        <div className="grid gap-5 sm:grid-cols-3">
+          <Meter label="Hosted AI messages" used={u.hostedMessages} limit={plan.limits.hostedMessages} />
+          <Meter label="Hosted boards" used={u.hostedBoards} limit={plan.limits.hostedBoards} />
+          <Meter label="Active projects" used={u.projects} limit={plan.limits.projects} />
+        </div>
+      ) : (
+        <p className="rounded-2xl bg-secondary px-4 py-3 text-sm text-muted-foreground">
+          Usage limits are off on this server (self-hosted), so nothing here is capped.
+        </p>
+      )}
+
+      <p className="text-sm text-muted-foreground">
+        On your own keys this month: <span className="font-medium text-foreground">{u.byokMessages}</span> messages and{' '}
+        <span className="font-medium text-foreground">{u.byokBoards}</span> boards — never counted against your plan.
+      </p>
+    </div>
+  )
+}
+
+function KeyRow({ status }: { status: ApiKeyStatus }) {
+  const queryClient = useQueryClient()
+  const [draft, setDraft] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const refresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['account', 'keys'] })
+    queryClient.invalidateQueries({ queryKey: ['ai', 'providers'] })
+  }
+
+  const save = useMutation({
+    mutationFn: () => accountApi.saveKey(status.provider, draft.trim()),
+    onSuccess: (saved) => {
+      setDraft('')
+      setError(null)
+      toast.success(`${saved.label} key verified and saved`)
+      refresh()
+    },
+    onError: (err: Error) => setError(err.message),
+  })
+
+  const remove = useMutation({
+    mutationFn: () => accountApi.removeKey(status.provider),
+    onSuccess: () => {
+      toast.success(`${status.label} key removed`)
+      refresh()
+    },
+    onError: (err: Error) => toast.error(err.message),
+  })
+
+  return (
+    <div className="rounded-2xl border border-border p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="font-medium">{status.label}</p>
+          <p className="text-xs text-muted-foreground">Powers: {status.powers}</p>
+        </div>
+        {status.configured && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium">
+            <BadgeCheck className="h-3.5 w-3.5 text-[#36b37e]" />
+            Verified
+            {status.verifiedAt ? ` ${new Date(status.verifiedAt).toLocaleDateString()}` : ''}
+          </span>
+        )}
+      </div>
+
+      {status.configured ? (
+        <div className="mt-3 flex items-center gap-2">
+          <div className="flex h-10 flex-1 items-center rounded-xl bg-secondary px-3 font-mono text-sm text-muted-foreground">
+            {status.masked}
+          </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={`Remove ${status.label} key`}
+            onClick={() => remove.mutate()}
+            disabled={remove.isPending}
+            className="h-10 w-10 rounded-xl text-destructive hover:bg-destructive/10"
+          >
+            {remove.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+          </Button>
+        </div>
+      ) : (
+        <form
+          className="mt-3 flex items-center gap-2"
+          onSubmit={(e) => {
+            e.preventDefault()
+            if (draft.trim()) save.mutate()
+          }}
+        >
+          <label htmlFor={`key-${status.provider}`} className="sr-only">
+            {status.label} API key
+          </label>
+          <Input
+            id={`key-${status.provider}`}
+            type="password"
+            autoComplete="off"
+            spellCheck={false}
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value)
+              setError(null)
+            }}
+            placeholder={KEY_PLACEHOLDERS[status.provider]}
+            aria-invalid={Boolean(error)}
+            className="h-10 rounded-xl font-mono text-sm"
+          />
+          <Button type="submit" disabled={!draft.trim() || save.isPending} className="h-10 rounded-xl">
+            {save.isPending ? (
+              <>
+                <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                Verifying
+              </>
+            ) : (
+              'Save'
+            )}
+          </Button>
+        </form>
+      )}
+      {error && <p className="mt-2 text-sm text-destructive" role="alert">{error}</p>}
+    </div>
+  )
 }
 
 function SettingsContent() {
   const router = useRouter()
-
-  // Hydrated in an effect rather than a lazy initialiser: the stored value only
-  // exists on the client, and reading it during render would make the first
-  // paint disagree with the server's.
-  const [boardProvider, setBoardProvider] = useState<BoardProviderId>(DEFAULT_BOARD_PROVIDER)
-  useEffect(() => setBoardProvider(readStoredBoardProvider()), [])
-
-  const changeBoardProvider = (next: BoardProviderId) => {
-    setBoardProvider(next)
-    writeStoredBoardProvider(next)
-    toast.success('Default model for PCB generation updated')
-  }
-  const { resolvedTheme, setTheme } = useTheme()
+  const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
 
-  const [keys, setKeys] = useState<Record<string, string>>({})
-  const [drafts, setDrafts] = useState<Record<string, string>>({})
-  const [visible, setVisible] = useState<Record<string, boolean>>({})
+  const keys = useQuery({ queryKey: ['account', 'keys'], queryFn: accountApi.listKeys })
+  const providers = useQuery({ queryKey: ['ai', 'providers'], queryFn: aiApi.providers })
 
+  // Hydrated in an effect: the stored choice only exists on the client, and
+  // reading it during render would make the first paint disagree with the server's.
+  const [boardProvider, setBoardProvider] = useState<BoardProviderId>(DEFAULT_BOARD_PROVIDER)
+  const [hasChoice, setHasChoice] = useState(false)
   useEffect(() => {
     setMounted(true)
+    setBoardProvider(readStoredBoardProvider())
+    setHasChoice(hasStoredBoardProvider())
+    // Earlier builds kept "BYOK" keys here in plaintext, and nothing ever read
+    // them. Keys now live encrypted on the server; drop the stale copies.
     try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (stored) setKeys(JSON.parse(stored))
+      window.localStorage.removeItem('dunkai-byok-keys')
     } catch {
-      // Corrupted storage — start fresh
+      // Storage blocked: nothing was stored there either.
     }
   }, [])
 
-  const persist = (next: Record<string, string>) => {
-    setKeys(next)
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next))
+  const changeBoardProvider = (next: BoardProviderId) => {
+    setBoardProvider(next)
+    setHasChoice(true)
+    writeStoredBoardProvider(next)
+    toast.success('Board generation model updated')
   }
 
-  const handleSaveKey = (providerId: string) => {
-    const value = (drafts[providerId] || '').trim()
-    if (!value) return
-    persist({ ...keys, [providerId]: value })
-    setDrafts((d) => ({ ...d, [providerId]: '' }))
-    toast.success('API key saved')
-  }
-
-  const handleRemoveKey = (providerId: string) => {
-    const next = { ...keys }
-    delete next[providerId]
-    persist(next)
-    toast.success('API key removed')
-  }
-
-  const light = mounted && resolvedTheme === 'light'
+  const status = Object.fromEntries((providers.data?.boardProviders ?? []).map((p) => [p.id, p]))
+  const serverDefault = BOARD_PROVIDERS.find((p) => p.provider === providers.data?.defaultBoardProvider)
+  const shown = hasChoice ? BOARD_PROVIDERS.find((p) => p.id === boardProvider) : serverDefault
+  const shownStatus = shown ? status[shown.provider] : undefined
 
   return (
-    <div className="min-h-screen bg-background text-foreground noise-overlay">
-      <div className="pointer-events-none fixed inset-0 -z-10">
-        <div className="absolute top-0 right-1/3 w-[700px] h-[700px] bg-foreground/2 rounded-full blur-3xl" />
-      </div>
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="page-wash pointer-events-none fixed inset-0 -z-10" aria-hidden />
 
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-5 sm:px-10 border-b border-foreground/10">
+      <header className="mx-auto flex max-w-3xl items-center justify-between px-4 py-5 sm:px-6">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.png" alt="DunkAI" width={30} height={24} className="h-6 w-auto" />
-          <span className="font-display text-xl tracking-tight">DunkAI</span>
-          <span className="font-mono text-[9px] tracking-wide text-muted-foreground">COPILOT</span>
+          <Image src="/logo.png" alt="" width={30} height={24} className="h-6 w-auto [image-rendering:pixelated]" />
+          <span className="text-[17px] font-semibold tracking-tight">DunkAI</span>
         </Link>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => router.push('/workspace')}
-          className="text-xs text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="w-3.5 h-3.5 mr-2" />
+        <Button variant="ghost" size="sm" onClick={() => router.push('/workspace')} className="rounded-full">
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to workspace
         </Button>
       </header>
 
-      <main className="mx-auto max-w-2xl px-6 py-10 space-y-6">
-        <div>
-          <h1 className="font-display text-3xl tracking-tight">Settings</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Manage your workspace preferences and API keys.</p>
+      <main className="mx-auto max-w-3xl space-y-5 px-4 pb-16 pt-4 sm:px-6">
+        <div className="pb-2">
+          <h1 className="text-4xl font-semibold tracking-[-0.03em]">Settings</h1>
+          <p className="mt-2 text-muted-foreground">Your plan, your API keys, and how DunkAI looks.</p>
         </div>
 
-        {/* BYOK */}
-        <Card className="bg-secondary/30 border-foreground/10">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <KeyRound className="w-4 h-4" />
-              Bring your own keys
-              <Badge variant="outline" className="text-[10px] font-mono ml-1">BETA</Badge>
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Use your own AI provider keys. Keys are stored locally in this browser for now and never leave your device.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            {PROVIDERS.map((provider) => {
-              const savedKey = keys[provider.id]
+        <Section icon={Gauge} title="Plan & usage" description="What runs on DunkAI's keys counts toward your plan. Your own keys never do.">
+          <UsageCard />
+        </Section>
+
+        <Section
+          icon={KeyRound}
+          title="Your API keys"
+          description="Verified with the provider when you save, encrypted at rest, and never shown again in full."
+        >
+          <div className="space-y-3">
+            {keys.isLoading && <div className="h-28 animate-pulse rounded-2xl bg-secondary" />}
+            {keys.isError && <p className="text-sm text-destructive">Could not load your keys. Try refreshing.</p>}
+            {keys.data?.map((k) => <KeyRow key={k.provider} status={k} />)}
+          </div>
+          {providers.data && (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Design chat runs on{' '}
+              <span className="font-medium text-foreground">
+                {providers.data.chat.byok ? 'your Groq key' : 'DunkAI’s hosted Groq key'}
+              </span>
+              .
+            </p>
+          )}
+        </Section>
+
+        <Section
+          icon={CircuitBoard}
+          title="Board generation model"
+          description="Which model lays out the PCB once the pipeline hands off a design."
+        >
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium">
+                {shown?.label ?? 'Server default'}
+                {!hasChoice && <span className="ml-2 text-xs font-normal text-muted-foreground">(server default)</span>}
+              </p>
+              <p className="mt-0.5 text-sm text-muted-foreground">{shown?.hint ?? 'Applies to the next run.'}</p>
+              {shownStatus && !shownStatus.available && (
+                <p className="mt-1 text-sm text-destructive">Unavailable: {shownStatus.reason}. Pick another model or add a key above.</p>
+              )}
+            </div>
+            <ProviderPicker
+              value={hasChoice ? boardProvider : (serverDefault?.id ?? boardProvider)}
+              onChange={changeBoardProvider}
+              status={providers.data ? status : undefined}
+              className="w-[210px] rounded-xl"
+            />
+          </div>
+        </Section>
+
+        <Section icon={Palette} title="Appearance" description="Follow your system, or pick a side.">
+          <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-full border border-border bg-secondary p-1">
+            {[
+              { value: 'system', label: 'System', icon: Laptop },
+              { value: 'light', label: 'Light', icon: Sun },
+              { value: 'dark', label: 'Dark', icon: Moon },
+            ].map(({ value, label, icon: Icon }) => {
+              const selected = mounted && theme === value
               return (
-                <div key={provider.id} className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-medium">{provider.label}</label>
-                    <span className="text-[10px] text-muted-foreground">{provider.hint}</span>
-                  </div>
-                  {savedKey ? (
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-10 rounded-lg bg-background/50 border border-foreground/10 px-3 flex items-center font-mono text-xs text-muted-foreground">
-                        {visible[provider.id] ? savedKey : maskKey(savedKey)}
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        type="button"
-                        aria-label={visible[provider.id] ? 'Hide key' : 'Show key'}
-                        onClick={() => setVisible((v) => ({ ...v, [provider.id]: !v[provider.id] }))}
-                        className="h-10 w-10 text-muted-foreground hover:text-foreground"
-                        title={visible[provider.id] ? 'Hide key' : 'Show key'}
-                      >
-                        {visible[provider.id] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        type="button"
-                        aria-label="Remove key"
-                        onClick={() => handleRemoveKey(provider.id)}
-                        className="h-10 w-10 text-destructive hover:bg-destructive/10"
-                        title="Remove key"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="password"
-                        value={drafts[provider.id] || ''}
-                        onChange={(e) => setDrafts((d) => ({ ...d, [provider.id]: e.target.value }))}
-                        placeholder={provider.placeholder}
-                        className="h-10 rounded-lg bg-background/50 font-mono text-xs"
-                      />
-                      <Button
-                        size="sm"
-                        onClick={() => handleSaveKey(provider.id)}
-                        disabled={!(drafts[provider.id] || '').trim()}
-                        className="h-10 bg-foreground text-background hover:bg-foreground/90"
-                      >
-                        <Save className="w-3.5 h-3.5 mr-1.5" />
-                        Save
-                      </Button>
-                    </div>
+                <button
+                  key={value}
+                  role="radio"
+                  aria-checked={selected}
+                  onClick={() => setTheme(value)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium transition-colors',
+                    selected ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
                   )}
-                </div>
+                >
+                  <Icon className="h-4 w-4" />
+                  {label}
+                </button>
               )
             })}
-          </CardContent>
-        </Card>
+          </div>
+        </Section>
 
-        {/* PCB generation */}
-        <Card className="bg-secondary/30 border-foreground/10">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <CircuitBoard className="w-4 h-4" />
-              Default agent/model for PCB generation
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Board generation starts on its own once the chat pipeline hands off a design. This is the
-              model it uses.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between gap-4">
-              <div className="min-w-0">
-                <p className="text-xs font-medium">Default agent/model for PCB generation</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  {BOARD_PROVIDERS.find((p) => p.id === boardProvider)?.hint ?? 'Applies to the next run.'}
-                </p>
-              </div>
-              <ProviderPicker
-                value={boardProvider}
-                onChange={changeBoardProvider}
-                className="w-[190px] border-foreground/10 text-xs"
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Appearance */}
-        <Card className="bg-secondary/30 border-foreground/10">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Palette className="w-4 h-4" />
-              Appearance
-            </CardTitle>
-            <CardDescription className="text-xs">Customize how DunkAI looks for you.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs font-medium">Theme</p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">Switch between light and dark mode.</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                type="button"
-                onClick={() => setTheme(light ? 'dark' : 'light')}
-                className="text-xs border-foreground/10"
-              >
-                {light ? <Moon className="w-3.5 h-3.5 mr-2" /> : <Sun className="w-3.5 h-3.5 mr-2" />}
-                {light ? 'Dark mode' : 'Light mode'}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Account shortcut */}
-        <Card className="bg-secondary/30 border-foreground/10">
-          <CardHeader>
-            <CardTitle className="text-sm flex items-center gap-2">
-              <UserIcon className="w-4 h-4" />
-              Account
-            </CardTitle>
-            <CardDescription className="text-xs">Profile details, password, and session management.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              size="sm"
-              type="button"
-              onClick={() => router.push('/profile')}
-              className="text-xs border-foreground/10"
-            >
-              Manage profile
-            </Button>
-          </CardContent>
-        </Card>
+        <Section icon={UserIcon} title="Account" description="Profile details, password, and sessions.">
+          <Button variant="outline" onClick={() => router.push('/profile')} className="rounded-full">
+            Manage profile
+          </Button>
+        </Section>
       </main>
     </div>
   )

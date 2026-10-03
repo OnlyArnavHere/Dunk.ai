@@ -1,12 +1,13 @@
 {
-  "name": "my-v0-project",
+  "name": "dunkai-frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+    "start": "next start",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",

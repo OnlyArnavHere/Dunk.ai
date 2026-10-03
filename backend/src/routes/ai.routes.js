@@ -10,6 +10,7 @@ export const aiRoutes = Router();
 aiRoutes.use(authenticate);
 aiRoutes.use(aiLimiter);
 
+aiRoutes.get('/providers', c.providers);
 aiRoutes.post('/chat', chatValidation, validate, c.chat);
 aiRoutes.post('/code-chat', c.codeChat);
 aiRoutes.post('/run', runValidation, validate, c.run);

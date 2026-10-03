@@ -1,0 +1,16 @@
+# Root context, used by ai_engine/Dockerfile (it needs dunkai-designer too).
+**/node_modules
+**/.next
+**/venv
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.env
+**/.env.*
+!**/.env.example
+backend/uploads
+dunkai-designer/build
+dunkai-designer/dist
+ai_engine/.hf-cache
+.git
+*.log

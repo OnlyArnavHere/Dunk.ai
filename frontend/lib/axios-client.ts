@@ -13,6 +13,7 @@ export class ApiError extends Error {
   }
 }
 
+// Exported at the bottom; lib/api.ts uses it too, so both share one refresh-aware client.
 const api = axios.create({
   baseURL: '/api/v1',
   withCredentials: true,

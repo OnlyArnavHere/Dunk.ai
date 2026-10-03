@@ -30,8 +30,10 @@ from pathlib import Path
 from typing import Any, Generator
 
 try:
+    from ..credentials import subprocess_env
     from .state import CircuitState
 except ImportError:
+    from credentials import subprocess_env
     from state import CircuitState
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -152,6 +154,10 @@ def stream_board(state: CircuitState, job_id: str) -> Generator[dict[str, Any], 
     process = subprocess.Popen(
         cmd,
         cwd=str(designer),
+        # The designer reads provider keys from its environment. A BYOK user's
+        # key goes into this child's copy only, never into ours, where every
+        # concurrent run would see it.
+        env=subprocess_env(),
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,

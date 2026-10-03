@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { aiApi } from '@/lib/api'
 import { useWorkspaceStore, type BoardArtifact } from '@/lib/store'
-import { boardProviderRequest, readStoredBoardProvider } from '@/lib/providers'
+import { boardProviderRequest, hasStoredBoardProvider, readStoredBoardProvider } from '@/lib/providers'
 
 /**
  * Board generation ("Generate PCB").
@@ -63,7 +63,9 @@ export function useBoardGeneration(projectId: string | null, chatId: string | nu
       // The stored id is an OPTION id, which is not always the provider name:
       // two entries can differ only by model. boardProviderRequest is what
       // splits one back into the {provider, model} pair the backend expects.
-      const res = await aiApi.generateBoard(projectId, chatId, liveIr, boardProviderRequest(readStoredBoardProvider()))
+      // No stored choice: send none, so the server's own default applies.
+      const choice = hasStoredBoardProvider() ? boardProviderRequest(readStoredBoardProvider()) : {}
+      const res = await aiApi.generateBoard(projectId, chatId, liveIr, choice)
       const jobId = res?.jobId
       if (!jobId) {
         failBoardJob('The server did not return a job id.')

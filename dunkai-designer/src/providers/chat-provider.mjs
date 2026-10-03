@@ -30,6 +30,7 @@ import {
   TSCIRCUIT_SKELETON,
   REPAIR_RULES,
   REPAIR_PREAMBLE,
+  pinQuestionPrompt,
 } from "./prompts.mjs"
 
 /**
@@ -219,6 +220,22 @@ export function createChatProvider({ name, label, model, chat, maxTokens }) {
       const bare = unfence(content).split(/\s/)[0]
       if (/^[a-z]+\d+_/.test(bare)) return { footprint: bare, rationale: "unparsed reply" }
       return { footprint: null, rationale: `unparseable reply: ${content.slice(0, 200)}` }
+    },
+
+    /**
+     * Stage D, structured strategy: choose a pin for each question. The model
+     * only picks from listed pins; lib/pinmap.mjs validates every answer.
+     */
+    async answerPinQuestions(questions, context = {}) {
+      const { content } = await chat([{ role: "user", content: pinQuestionPrompt(questions, context) }], {
+        json: true,
+        tokens: Math.min(maxTokens, 6000),
+      })
+      const parsed = parseJsonObject(content)
+      if (!parsed?.answers || typeof parsed.answers !== "object") {
+        throw new Error(`${label} did not return an {answers:{...}} object — got: ${content.slice(0, 300)}`)
+      }
+      return parsed.answers
     },
 
     /** Stage D — the model returns the sources, this module writes them. */
