@@ -9,13 +9,14 @@
  * stdout is NDJSON progress (see lib/events.mjs). Human output goes to stderr.
  */
 
-import { mkdir, writeFile, stat } from "node:fs/promises"
+import { mkdir, readFile, writeFile, stat } from "node:fs/promises"
 import path from "node:path"
 import process from "node:process"
 import { intake } from "./stages/a-intake.mjs"
 import { resolveComponents } from "./stages/b-resolve.mjs"
 import { synthesiseBrief } from "./stages/c-brief.mjs"
-import { generateProject } from "./stages/d-generate.mjs"
+import { generateProject, generateStructured } from "./stages/d-generate.mjs"
+import { applyStructuredFixes } from "./lib/structured-fixes.mjs"
 import { buildOutputs } from "./stages/e-outputs.mjs"
 import { buildGltf } from "./stages/f-gltf.mjs"
 import { getProvider, PROVIDER_NAMES } from "./providers/index.mjs"
@@ -32,6 +33,8 @@ function parseArgs(argv) {
     concurrency: 4,
     iouThreshold: 98,
     repairAttempts: 2,
+    strategy: "auto",
+    cache: true,
   }
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i]
@@ -46,6 +49,8 @@ function parseArgs(argv) {
       case "--concurrency": args.concurrency = Number(next()); break
       case "--iou-threshold": args.iouThreshold = Number(next()); break
       case "--repair-attempts": args.repairAttempts = Number(next()); break
+      case "--strategy": args.strategy = next(); break
+      case "--no-cache": args.cache = false; break
       case "-h":
       case "--help": args.help = true; break
       default:
@@ -66,6 +71,12 @@ dunkai-designer — pcb_ir -> tscircuit project -> manufacturing outputs
   --concurrency <n>      parallel component resolutions (default 4)
   --iou-threshold <n>    minimum copper IoU % to accept (default 98)
   --repair-attempts <n>  placement repair passes after a failed build (default 2)
+  --strategy <s>         structured | freeform | auto (default auto)
+                         structured: pins mapped in code, the model only answers
+                         multiple-choice pin questions, board.tsx is emitted.
+                         freeform: the model writes board.tsx itself.
+                         auto: freeform for claude-code, structured otherwise.
+  --no-cache             resolve every part live, ignoring earlier resolutions
   --skip-3d              stop after stage E, do not build the glTF
   --fail-on-error        exit non-zero when the board has DRC error elements
 `.trim()
@@ -91,7 +102,7 @@ async function main() {
   // A provider that cannot run at all (CLI missing or logged out) must say so
   // now, not minutes into Stage B or D where it would look like a hang.
   await provider.preflight?.()
-  const gateOpts = { iouThreshold: args.iouThreshold, concurrency: args.concurrency }
+  const gateOpts = { iouThreshold: args.iouThreshold, concurrency: args.concurrency, cache: args.cache }
 
   // --- A ---------------------------------------------------------------------
   const source = args.ir === "-" ? JSON.parse(await readStdin()) : path.resolve(args.ir)
@@ -137,7 +148,15 @@ async function main() {
   const brief = synthesiseBrief(design, resolution)
 
   // --- D ---------------------------------------------------------------------
-  await generateProject(design, brief, provider, workdir)
+  // claude-code is agentic: it reads the imports and has built clean boards
+  // freehand. The chat-API models do far better choosing pins than writing
+  // tscircuit, so they default to the structured path (DECISIONS D-011).
+  const strategy = args.strategy === "auto" ? (provider.name === "claude-code" ? "freeform" : "structured") : args.strategy
+  if (!["structured", "freeform"].includes(strategy)) throw new Error(`unknown --strategy "${args.strategy}"`)
+  note(`  strategy: ${strategy}`)
+  const structured =
+    strategy === "structured" ? await generateStructured(design, brief, resolution, provider, workdir) : null
+  if (!structured) await generateProject(design, brief, provider, workdir)
 
   // --- E (build, then verify and repair) -------------------------------------
   //
@@ -149,7 +168,16 @@ async function main() {
   // retried rather than shipped broken.
   let outputs = await buildOutputs(workdir, {})
 
-  for (let attempt = 1; attempt <= args.repairAttempts && outputs.stats.errors > 0; attempt++) {
+  // Structured boards: footprint defects and an undersized outline are fixed
+  // in code (lib/structured-fixes.mjs) before any model repair is considered.
+  if (structured) outputs = await applyStructuredFixes(structured, outputs, () => buildOutputs(workdir, {}))
+
+  // A freehand repair would rewrite the emitted board.tsx — and the repair
+  // prompt tells the model to use grid layout, which is exactly what the
+  // structured path replaced (lib/placement.mjs). Structured boards are fixed
+  // in code above, not repaired freehand.
+  const repairAttempts = structured ? 0 : args.repairAttempts
+  for (let attempt = 1; attempt <= repairAttempts && outputs.stats.errors > 0; attempt++) {
     const placementErrors = outputs.circuitJson.filter(
       (e) => e.type.includes("error") && !e.type.startsWith("pcb_port_not_connected")
     )
@@ -176,6 +204,10 @@ async function main() {
     // loop and keeps the last good outputs instead of failing the whole run.
     // Each provider reads src/board.tsx itself (there is no separate floorplan
     // file any more — placement is automatic via layoutMode="grid").
+    // Kept so a repair that makes things worse can be undone: the pass
+    // rewrites src/board.tsx in place.
+    const boardPath = path.join(workdir, "src", "board.tsx")
+    const previousBoard = await readFile(boardPath, "utf-8").catch(() => null)
     try {
       await provider.repair({ workdir, errors: distinct.join("\n") })
     } catch (err) {
@@ -184,10 +216,19 @@ async function main() {
       break
     }
 
-    const retried = await buildOutputs(workdir, {})
-    if (retried.stats.errors >= outputs.stats.errors && retried.stats.traces <= outputs.stats.traces) {
-      note(`  repair ${attempt} did not improve the board (${retried.stats.errors} errors); keeping it and stopping`)
-      outputs = retried
+    const retried = await buildOutputs(workdir, {}).catch((err) => {
+      note(`  repair ${attempt} produced a board that does not build: ${err.message}`)
+      return null
+    })
+    if (!retried || (retried.stats.errors >= outputs.stats.errors && retried.stats.traces <= outputs.stats.traces)) {
+      // This used to keep the repaired board even when it was worse — the
+      // files on disk had already been overwritten. Put the previous source
+      // back and rebuild it, so the run ends on the better board.
+      note(`  repair ${attempt} did not improve the board; restoring the previous one and stopping`)
+      if (previousBoard !== null) {
+        await writeFile(boardPath, previousBoard, "utf-8")
+        outputs = await buildOutputs(workdir, {})
+      }
       break
     }
     outputs = retried
@@ -249,6 +290,10 @@ async function main() {
       placeholderPinComponents: resolution.placeholders.length,
       substitutedComponents: resolution.substituted.length,
       gltf: gltfStats,
+      // Open connections the architecture asked for and the parts cannot do;
+      // the workspace offers to revise the architecture around them.
+      mismatches: structured?.mismatches ?? [],
+      supportParts: structured?.support?.length ?? 0,
     },
   })
 

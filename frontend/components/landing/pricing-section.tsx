@@ -1,200 +1,111 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { ArrowRight, Check } from "lucide-react";
-
-const plans = [
-  {
-    name: "Starter",
-    description: "For individuals and small projects",
-    price: { monthly: 0, annual: 0 },
-    features: [
-      "Up to 3 projects",
-      "1GB storage",
-      "Community support",
-      "Basic analytics",
-      "SSL certificates",
-    ],
-    cta: "Start free",
-    popular: false,
-    colorScheme: "cyan",
-  },
-  {
-    name: "Pro",
-    description: "For growing teams and businesses",
-    price: { monthly: 29, annual: 24 },
-    features: [
-      "Unlimited projects",
-      "100GB storage",
-      "Priority support",
-      "Advanced analytics",
-      "Custom domains",
-      "Team collaboration",
-      "API access",
-    ],
-    cta: "Start trial",
-    popular: true,
-    colorScheme: "emerald",
-  },
-  {
-    name: "Enterprise",
-    description: "For large-scale operations",
-    price: { monthly: null, annual: null },
-    features: [
-      "Everything in Pro",
-      "Unlimited storage",
-      "24/7 dedicated support",
-      "Custom integrations",
-      "SLA guarantee",
-      "On-premise option",
-      "Security audit",
-      "Custom contracts",
-    ],
-    cta: "Contact sales",
-    popular: false,
-    colorScheme: "violet",
-  },
-];
+import { useState } from "react";
+import Link from "next/link";
+import { Check, KeyRound } from "lucide-react";
+import { PLAN_COPY } from "@/lib/plans";
+import { cn } from "@/lib/utils";
 
 export function PricingSection() {
-  const [isAnnual, setIsAnnual] = useState(true);
-  const [isVisible, setIsVisible] = useState(false);
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) setIsVisible(true);
-      },
-      { threshold: 0.1 }
-    );
-    if (sectionRef.current) observer.observe(sectionRef.current);
-    return () => observer.disconnect();
-  }, []);
+  const [annual, setAnnual] = useState(true);
 
   return (
-    <section id="pricing" ref={sectionRef} className="relative py-32 lg:py-48 bg-background">
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-        <div className="flex flex-col lg:flex-row gap-16 lg:gap-24 mb-24 lg:mb-32">
-          <div className="flex-1 max-w-xl">
-            <h2 className={`text-5xl lg:text-7xl font-light tracking-[-0.02em] text-foreground transition-all duration-1000 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-              Transparent
-              <br />
-              <span className="font-serif italic text-muted-foreground">pricing.</span>
-            </h2>
-            <p className={`mt-8 text-xl text-muted-foreground font-light transition-all duration-1000 delay-200 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-              Start free and scale as you grow. No hidden fees, no surprises.
-            </p>
-          </div>
+    <section id="pricing" data-ribbon="pricing" className="relative py-24 sm:py-32">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-sm font-medium text-muted-foreground">Pricing</p>
+          <h2 className="mt-2 text-4xl font-semibold tracking-[-0.03em] sm:text-5xl">
+            Start free. <span className="text-soft">Pay for what we run.</span>
+          </h2>
+          <p className="mt-4 text-lg text-muted-foreground">
+            Plans cover AI that runs on our keys. Anything you run on your own key is free and unlimited, on every plan.
+          </p>
 
-          <div className={`flex-1 flex items-end justify-start lg:justify-end transition-all duration-1000 delay-300 ease-out ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"}`}>
-            <div className="flex items-center gap-4 p-2 rounded-full border border-border bg-foreground/[0.02] backdrop-blur-sm">
+          <div role="radiogroup" aria-label="Billing period" className="mx-auto mt-8 inline-flex rounded-full border border-border bg-card p-1">
+            {[
+              { value: false, label: "Monthly" },
+              { value: true, label: "Annual · save 20%" },
+            ].map((option) => (
               <button
-                onClick={() => setIsAnnual(false)}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  !isAnnual ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "text-muted-foreground hover:text-foreground"
-                }`}
+                key={option.label}
+                role="radio"
+                aria-checked={annual === option.value}
+                onClick={() => setAnnual(option.value)}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+                  annual === option.value ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
               >
-                Monthly
+                {option.label}
               </button>
-              <button
-                onClick={() => setIsAnnual(true)}
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  isAnnual ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Annual <span className={isAnnual ? "text-emerald-600/70 dark:text-emerald-500/70" : "text-muted-foreground"}>(-17%)</span>
-              </button>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Pricing Layout */}
-        <div className="grid lg:grid-cols-12 gap-8 lg:gap-12 items-center">
-          {/* Starter */}
-          <div className={`col-span-12 lg:col-span-4 transition-all duration-1000 delay-200 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
-            <PricingCard plan={plans[0]} isAnnual={isAnnual} />
-          </div>
+        <div className="mt-14 grid gap-4 lg:grid-cols-3">
+          {PLAN_COPY.map((plan) => {
+            const price = plan.price ? (annual ? plan.price.annual : plan.price.monthly) : null;
+            return (
+              <div
+                key={plan.id}
+                className={cn(
+                  "shadow-soft relative flex flex-col rounded-[30px] bg-card p-8",
+                  plan.highlighted ? "border-2 border-foreground" : "border border-border"
+                )}
+              >
+                {plan.highlighted && (
+                  <span className="absolute -top-3 left-8 rounded-full bg-primary px-3 py-1 text-xs font-medium text-primary-foreground">
+                    Most popular
+                  </span>
+                )}
+                <h3 className="text-xl font-semibold">{plan.name}</h3>
+                <p className="mt-1 text-sm text-muted-foreground">{plan.tagline}</p>
 
-          {/* Pro (Emphasized) */}
-          <div className={`col-span-12 lg:col-span-4 lg:-my-8 relative z-10 transition-all duration-1000 delay-400 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
-            <div className="absolute inset-0 bg-gradient-to-b from-emerald-500/20 to-transparent blur-3xl opacity-40" />
-            <PricingCard plan={plans[1]} isAnnual={isAnnual} emphasized />
-          </div>
+                <div className="mt-6 flex items-baseline gap-1">
+                  {price === null ? (
+                    <span className="text-4xl font-semibold tracking-tight">Custom</span>
+                  ) : (
+                    <>
+                      <span className="text-5xl font-semibold tracking-tight">${price}</span>
+                      <span className="text-muted-foreground">/ month</span>
+                    </>
+                  )}
+                </div>
+                <p className="mt-1 h-5 text-xs text-muted-foreground">
+                  {price ? (annual ? `Billed $${price * 12} yearly` : "Billed monthly") : price === 0 ? "No card needed" : ""}
+                </p>
 
-          {/* Enterprise */}
-          <div className={`col-span-12 lg:col-span-4 transition-all duration-1000 delay-600 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-12"}`}>
-            <PricingCard plan={plans[2]} isAnnual={isAnnual} />
-          </div>
+                <ul className="mt-6 flex-1 space-y-3 text-[15px]">
+                  {plan.features.map((feature) => (
+                    <li key={feature} className="flex gap-3">
+                      {feature.includes("own API keys") ? (
+                        <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-2)]" />
+                      ) : (
+                        <Check className="mt-0.5 h-4 w-4 shrink-0 text-[var(--brand-1)]" />
+                      )}
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <Link
+                  href={plan.href}
+                  className={cn(
+                    "mt-8 inline-flex items-center justify-center rounded-full px-5 py-3 text-sm font-medium transition-opacity hover:opacity-90",
+                    plan.highlighted ? "bg-primary text-primary-foreground" : "border border-border bg-background"
+                  )}
+                >
+                  {plan.cta}
+                </Link>
+              </div>
+            );
+          })}
         </div>
+
+        <p className="mt-8 text-center text-sm text-muted-foreground">
+          A <em>hosted AI message</em> is one turn answered on our keys — an interview reply or a pipeline run. Prices in USD.
+        </p>
       </div>
     </section>
-  );
-}
-
-function PricingCard({ plan, isAnnual, emphasized = false }: { plan: any, isAnnual: boolean, emphasized?: boolean }) {
-  const getCardStyle = () => {
-    if (emphasized) return "bg-card dark:bg-gradient-to-b dark:from-[#091a13] dark:to-[#040907] border-emerald-500/40 shadow-2xl dark:shadow-[0_0_40px_rgba(16,185,129,0.15)] z-10 scale-[1.02] lg:scale-105";
-    if (plan.colorScheme === "cyan") return "bg-secondary/40 hover:bg-card border-border hover:border-cyan-500/40 shadow-lg dark:hover:bg-cyan-950/20";
-    return "bg-secondary/40 hover:bg-card border-border hover:border-violet-500/40 shadow-lg dark:hover:bg-violet-950/20";
-  };
-
-  const getCheckColor = () => {
-    if (emphasized) return "text-emerald-400";
-    if (plan.colorScheme === "cyan") return "text-cyan-400";
-    return "text-violet-400";
-  };
-
-  const getButtonClass = () => {
-    if (emphasized) return "bg-gradient-to-r from-emerald-500 to-cyan-500 text-white hover:from-emerald-400 hover:to-cyan-400 border-none shadow-[0_0_20px_rgba(16,185,129,0.2)]";
-    if (plan.colorScheme === "cyan") return "border-cyan-500/30 text-cyan-600 dark:text-cyan-400 hover:bg-cyan-500/10";
-    return "border-violet-500/30 text-violet-600 dark:text-violet-400 hover:bg-violet-500/10";
-  };
-
-  return (
-    <div className={`relative p-10 lg:p-12 rounded-3xl flex flex-col h-full transition-colors ${getCardStyle()}`}>
-      {emphasized && (
-        <div className="absolute -top-4 left-10">
-          <span className="px-4 py-1.5 bg-gradient-to-r from-emerald-500 to-cyan-500 text-white text-xs font-mono uppercase tracking-widest rounded-full shadow-lg border border-emerald-400/50">
-            Most Popular
-          </span>
-        </div>
-      )}
-
-      <div className="mb-10">
-        <h3 className="text-3xl font-light tracking-tight text-foreground mb-3">{plan.name}</h3>
-        <p className="text-muted-foreground font-light text-sm">{plan.description}</p>
-      </div>
-
-      <div className="mb-12">
-        {plan.price.monthly !== null ? (
-          <div className="flex items-baseline gap-2">
-            <span className="text-6xl font-light text-foreground tracking-tighter">
-              ${isAnnual ? plan.price.annual : plan.price.monthly}
-            </span>
-            <span className="text-muted-foreground font-light">/mo</span>
-          </div>
-        ) : (
-          <span className="text-5xl font-light text-foreground tracking-tighter">Custom</span>
-        )}
-      </div>
-
-      <ul className="space-y-4 mb-16 flex-1">
-        {plan.features.map((feature: string) => (
-          <li key={feature} className="flex items-start gap-4">
-            <Check className={`w-5 h-5 shrink-0 mt-0.5 ${getCheckColor()}`} />
-            <span className="text-muted-foreground font-light text-sm">{feature}</span>
-          </li>
-        ))}
-      </ul>
-
-      <button
-        type="button"
-        className={`w-full py-4 px-6 flex items-center justify-center gap-2 text-sm font-medium transition-all rounded-full group border ${getButtonClass()}`}
-      >
-        {plan.cta}
-        <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
-      </button>
-    </div>
   );
 }

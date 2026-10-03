@@ -1,56 +1,24 @@
-import type { ApiResponse } from './types'
-import type { FirmwareBoardsResponse, FirmwareBuild } from './firmware/types'
+import { api, ApiError } from './axios-client'
 
 const API_BASE = '/api/v1'
 
-class ApiError extends Error {
-  constructor(
-    public statusCode: number,
-    message: string,
-    public errors: unknown[] = []
-  ) {
-    super(message)
-  }
-}
-
-async function request<T = unknown>(
-  path: string,
-  options: RequestInit = {}
-): Promise<T> {
-  const url = `${API_BASE}${path}`
-
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-  }
-  // Merge caller-provided headers if they're a plain object
-  if (options.headers && typeof options.headers === 'object' && !(options.headers instanceof Headers)) {
-    Object.assign(headers, options.headers)
-  } else if (options.headers instanceof Headers) {
-    options.headers.forEach((value, key) => {
-      headers[key] = value
-    })
-  }
-
-  const response = await fetch(url, {
-    ...options,
-    headers,
-    credentials: 'include', // Send cookies for auth
-  })
-
-  const data: ApiResponse<T> = await response.json().catch(() => ({
-    success: false,
-    message: 'Network error',
-    data: null as T,
-    errors: [],
-    timestamp: new Date().toISOString(),
-  }))
-
-  if (!response.ok || !data.success) {
-    const message = data.message || `Request failed with status ${response.status}`
-    throw new ApiError(response.status, message, data.errors)
-  }
-
-  return data.data
+/**
+ * Every call here goes through the shared axios instance in axios-client.ts.
+ *
+ * This module used to call fetch() directly, which skipped that instance's
+ * 401 → /auth/refresh → retry handling. The access token lives 15 minutes, so
+ * a chat message, board generation or code-chat turn sent after that failed
+ * with "Invalid or expired access token" while the rest of the app (which
+ * uses axios) quietly refreshed. The signature is unchanged so no caller moves.
+ */
+async function request<T = unknown>(path: string, options: RequestInit = {}): Promise<T> {
+  const { body } = options
+  // The response interceptor unwraps `response.data.data`, so this resolves to T.
+  return api.request({
+    url: path,
+    method: options.method || 'GET',
+    data: body instanceof FormData ? body : typeof body === 'string' ? JSON.parse(body) : body ?? undefined,
+  }) as Promise<T>
 }
 
 // ---- Auth API ----
@@ -279,6 +247,73 @@ export const aiApi = {
     }),
 
   projectArtifacts: (projectId: string) => request(`/ai/project/${projectId}`),
+
+  /** Board generators as this user can use them: their own key, hosted, or not at all. */
+  providers: () =>
+    request<{
+      boardProviders: Array<{
+        id: string
+        label: string
+        available: boolean
+        source: 'byok' | 'hosted' | null
+        reason: string | null
+      }>
+      defaultBoardProvider: string | null
+      chat: { byok: boolean; hosted: boolean | null }
+      engineReachable: boolean
+    }>('/ai/providers'),
+}
+
+// ---- Account (BYOK keys) ----
+export type ByokProvider = 'groq' | 'gemini' | 'anthropic'
+
+export interface ApiKeyStatus {
+  provider: ByokProvider
+  label: string
+  powers: string
+  configured: boolean
+  masked: string | null
+  verifiedAt: string | null
+}
+
+export const accountApi = {
+  listKeys: () => request<ApiKeyStatus[]>('/account/keys'),
+  /** Verified against the provider before it is stored; rejects with its reason. */
+  saveKey: (provider: ByokProvider, key: string) =>
+    request<ApiKeyStatus>(`/account/keys/${provider}`, { method: 'PUT', body: JSON.stringify({ key }) }),
+  removeKey: (provider: ByokProvider) =>
+    request<ApiKeyStatus>(`/account/keys/${provider}`, { method: 'DELETE' }),
+}
+
+// ---- Billing ----
+export interface PlanLimits {
+  hostedMessages: number | null
+  hostedBoards: number | null
+  projects: number | null
+}
+
+export interface UsageSummary {
+  billingEnabled: boolean
+  period: string
+  plan: { id: string; name: string; limits: PlanLimits; status: string }
+  usage: {
+    hostedMessages: number
+    hostedBoards: number
+    byokMessages: number
+    byokBoards: number
+    projects: number
+  }
+}
+
+export interface PublicPlans {
+  billingEnabled: boolean
+  checkout: { pro: string | null; contact: string }
+  plans: Array<{ id: string; name: string; price: { monthly: number; annual: number } | null; limits: PlanLimits }>
+}
+
+export const billingApi = {
+  plans: () => request<PublicPlans>('/billing/plans'),
+  usage: () => request<UsageSummary>('/billing/usage'),
 }
 
 // ---- File API ----

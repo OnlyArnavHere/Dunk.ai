@@ -11,6 +11,7 @@ import { useCreateProject } from '@/hooks/use-projects'
 import { fileApi } from '@/lib/api'
 import { useSpeechToText } from '@/hooks/use-speech-to-text'
 import { toast } from 'sonner'
+import { takeDraftPrompt } from '@/lib/draft-prompt'
 
 const suggestions = ['Design a low-power sensor board', 'Review my power architecture', 'Create a KiCad starter project']
 const placeholderPrompts = [
@@ -44,6 +45,12 @@ export function NewProjectChat() {
   const [uploadingFile, setUploadingFile] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const speech = useSpeechToText(setInput)
+
+  // An idea typed on the landing page before signing in (lib/draft-prompt.ts).
+  useEffect(() => {
+    const draft = takeDraftPrompt()
+    if (draft) setInput(draft)
+  }, [])
 
   useEffect(() => {
     if (input) return

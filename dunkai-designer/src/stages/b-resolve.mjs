@@ -29,6 +29,8 @@ import { mkdir, readFile, readdir } from "node:fs/promises"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { stage, item, note } from "../lib/events.mjs"
+import { standardFootprintCandidates } from "../lib/package-footprints.mjs"
+import { readCached, writeCached } from "../lib/resolution-cache.mjs"
 import {
   parseImportedChip,
   parseImportOutput,
@@ -279,6 +281,27 @@ async function resolveOne(component, workdir, provider, opts) {
   const expected = expectedPinCount(component.package)
   let lastError = null
 
+  // A standard package needs a lookup, not a model (lib/package-footprints.mjs):
+  // each candidate is compiled and pad-counted exactly like a model's answer.
+  for (const footprint of standardFootprintCandidates(component.package)) {
+    const check = validateFootprintString(footprint, req)
+    const padsOk = check.valid && (!expected || check.pads === expected.pins || check.pads === expected.pins + 1)
+    tried.push({ tier: 5, query: `standard ${footprint}`, reason: padsOk ? null : check.valid ? `${check.pads} pads` : check.error })
+    if (!padsOk) continue
+    item("B", ref, 5, "running", `standard footprint ${footprint} for "${component.package}"`)
+    return {
+      ok: true,
+      tier: 5,
+      component,
+      custom: { footprint, rationale: `standard ${component.package} land pattern (not catalogue-verified)` },
+      tried,
+      chip: null,
+      footprinter: footprint,
+      padCount: check.pads,
+      gates: { passed: true, failures: [], notes: [`standard package footprint, ${check.pads} pads`] },
+    }
+  }
+
   for (let attemptNo = 1; attemptNo <= 2; attemptNo++) {
     item("B", ref, 5, "running", `custom footprint for "${component.package}"${attemptNo > 1 ? " (retry)" : ""}`)
 
@@ -314,6 +337,8 @@ async function resolveOne(component, workdir, provider, opts) {
       tried,
       chip: null,
       footprinter: custom.footprint,
+      // Numbered pads only (no symbol): lib/pinmap.mjs asks about each of them.
+      padCount: check.pads,
       gates: {
         passed: true,
         failures: [],
@@ -357,7 +382,16 @@ export async function resolveComponents(design, workdir, provider, opts = {}) {
 
   const concurrency = opts.concurrency ?? DEFAULT_CONCURRENCY
   const resolutions = await mapLimit(design.components, concurrency, async (component) => {
+    // A part that resolved on an earlier run resolves the same way now: the
+    // catalogue search is a live service and has returned a different (wrong)
+    // part for the same query between runs.
+    const cached = opts.cache === false ? null : await readCached(component, workdir)
+    if (cached) {
+      item("B", component.ref_id, cached.tier, "resolved", `from cache · ${cached.footprinter ?? ""}`)
+      return { component, ...cached }
+    }
     const result = await resolveOne(component, workdir, provider, opts)
+    if (result.ok && result.chip && opts.cache !== false) await writeCached(component, result, workdir).catch(() => {})
     if (result.ok) {
       item(
         "B",

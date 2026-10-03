@@ -150,3 +150,73 @@ export const REPAIR_PREAMBLE = [
   "connections key that isn't a real pin on that part. Read the errors below",
   "for which one this is.",
 ]
+
+/**
+ * The pin-mapping questions: the model's whole job under the structured
+ * strategy (stages/d-generate.mjs).
+ *
+ * A model is asked to choose, not to write: each answer must be one of the
+ * listed pins, and lib/pinmap.mjs rejects anything else. Grouped by part, so
+ * the part number and its free pins are stated once and the model can reason
+ * about the part's datasheet pinout as a whole (which is where the knowledge
+ * lives — "UART TX on an 8051" is P3.1, pin 11 on a DIP-40).
+ *
+ * @param {object[]} questions  from mapPins(); each has candidates
+ * @param {{ rejected?: Array<{id: string, answer: unknown, reason: string}> }} [context]
+ */
+export function pinQuestionPrompt(questions, context = {}) {
+  const byPart = new Map()
+  for (const q of questions) {
+    if (!byPart.has(q.ref_id)) byPart.set(q.ref_id, [])
+    byPart.get(q.ref_id).push(q)
+  }
+
+  const lines = [
+    "You are wiring a printed circuit board. For each question below, choose which",
+    "pin of the named part carries the stated signal, using your knowledge of that",
+    "part's datasheet pinout.",
+    "",
+    "Rules:",
+    "- Answer with exactly one of that question's listed pins, written as listed (e.g. \"pin10\").",
+    "- Use each pin at most once per part across all your answers.",
+    "- If the part has no pin for that function, answer \"NONE\". A missing connection",
+    "  is far better than a wrong one: a wrong pin can short a power rail.",
+    "- On a microcontroller, use the pin of its hardware peripheral where it has one",
+    "  (an 8051's UART is P3.0 RXD = pin10 and P3.1 TXD = pin11 on a DIP-40); for",
+    "  GPIO, any free general-purpose port pin is correct.",
+    "- A microcontroller WITHOUT that hardware peripheral (an 8051 has no I2C or SPI)",
+    "  still drives the bus from free GPIO port pins in firmware (bit-banging): pick",
+    "  free port pins, do not answer NONE. NONE is for parts that physically cannot",
+    "  take part — a 7-segment display has no SPI pins, a 1-Wire sensor has no UART.",
+    "- Role TX means THIS part's transmit output; RX means its receive input.",
+    "- SUPPLY and GROUND questions are about the part's own power and ground pins.",
+    "",
+  ]
+
+  if (context.rejected?.length) {
+    lines.push("Your previous answers to these were rejected; answer them again:")
+    for (const r of context.rejected) lines.push(`- ${r.id}: ${JSON.stringify(r.answer)} — ${r.reason}`)
+    lines.push("")
+  }
+
+  for (const [ref, qs] of byPart) {
+    const first = qs[0]
+    const pins = new Map()
+    for (const q of qs) for (const c of q.candidates) pins.set(c.pin, c.labels)
+    const pinList = [...pins]
+      .sort((a, b) => Number(a[0].slice(3)) - Number(b[0].slice(3)))
+      .map(([pin, labels]) => (labels.length ? `${pin}=${labels.join("/")}` : pin))
+      .join(", ")
+    lines.push(`## ${ref} — ${first.part_number} (${first.package})`)
+    lines.push(`Free pins: ${pinList}`)
+    for (const q of qs) {
+      const only = q.candidates.length < pins.size ? ` (choose from: ${q.candidates.map((c) => c.pin).join(", ")})` : ""
+      lines.push(`- ${q.id}: net ${q.net} — ${q.interface} ${q.role}${only}`)
+    }
+    lines.push("")
+  }
+
+  lines.push('Reply with ONLY a JSON object, no prose and no code fence: {"answers": {"q1": "pin10", "q2": "NONE"}}')
+  lines.push("Answer every question id listed above.")
+  return lines.join("\n")
+}

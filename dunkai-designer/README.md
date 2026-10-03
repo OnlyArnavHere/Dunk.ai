@@ -21,7 +21,7 @@ the browser line by line instead of buffering it.
 | **A** | intake | Normalises pcb_ir schema 1.0 and 2.0 onto one internal shape. Quarantines 1.0's asserted pin names rather than trusting them — see [D-002](DECISIONS.md). |
 | **B** | resolve | Resolves each component against the JLCPCB catalogue through a five-tier ladder, with acceptance gates. Runs several components at a time. |
 | **C** | brief | Assembles the design brief. Deterministic string assembly, not a model call — [D-006](DECISIONS.md). |
-| **D** | generate | The provider writes `src/board.tsx`, `src/floorplan.ts` and `index.tsx`. |
+| **D** | generate | `--strategy structured` (default for chat models): pins mapped in code, the model answers multiple-choice pin questions, `board.tsx` is emitted and parts placed in code — [D-015](DECISIONS.md). `freeform` (default for claude-code): the provider writes `src/board.tsx` itself. |
 | **E** | outputs | Drives the tscircuit evaluator, writes `dist/`, counts DRC errors, and repairs placement when the board fails (see below). |
 | **F** | 3D | `dist/board.glb` + `dist/board.gltf.json` via gltf-transform. |
 
@@ -76,6 +76,18 @@ A resolution is accepted only when all three pass.
   `tsci import` emits `pin7: ["pin7"]`. Measured on `MC9S08DZ32ACLC`: **29 of 32
   pins**. This does *not* reject the part; it records that the part cannot be
   wired by signal name, and the brief tells the generator to wire it by number.
+
+## Measuring a change
+
+`scripts/eval.mjs` reruns Stage D and E on an earlier build directory (its
+`imports/` are reused, so no network for parts) and prints errors, traces,
+connections, nets joined and pin agreement with that build's own board:
+
+```bash
+node scripts/eval.mjs --fixture build/<dir> --strategy deterministic
+node scripts/eval.mjs --fixture build/<dir> --provider groq --strategy structured
+node scripts/eval.mjs --fixture build/<dir> --provider groq --strategy freeform
+```
 
 ## Options
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { Bell, CheckCheck, Loader2, Sparkles, AlertTriangle, FileText, Share2, AtSign, Info } from 'lucide-react'
+import { Bell, CheckCheck, Loader2, Sparkles, AlertTriangle, FileText, Share2, AtSign, Info, type LucideIcon } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useNotifications, useMarkAsRead, useMarkAllAsRead } from '@/hooks/use-notifications'
 import type { AppNotification } from '@/lib/types'
 
-const TYPE_ICONS: Record<AppNotification['type'], React.ElementType> = {
+// LucideIcon, not React.ElementType: once @react-three/fiber is in the build it adds
+// three.js tags to JSX, and ElementType's union then types className as never.
+const TYPE_ICONS: Record<AppNotification['type'], LucideIcon> = {
   project_shared: Share2,
   ai_complete: Sparkles,
   ai_failed: AlertTriangle,

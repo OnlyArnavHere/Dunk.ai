@@ -30,6 +30,11 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
   } catch {
     throw ApiError.unauthorized('Invalid or expired access token');
   }
+  // A socket handshake token is readable by page scripts; it must not double
+  // as an API credential.
+  if (payload.scope === 'socket') {
+    throw ApiError.unauthorized('Socket tokens cannot be used for API requests');
+  }
 
   const user = await User.findById(payload.sub);
   if (!user) throw ApiError.unauthorized('User not found');
@@ -54,6 +59,7 @@ export const optionalAuth = asyncHandler(async (req, _res, next) => {
     }
     if (token) {
       const payload = verifyAccessToken(token);
+      if (payload.scope === 'socket') return next();
       const user = await User.findById(payload.sub);
       if (user && user.isActive) req.user = user;
     }

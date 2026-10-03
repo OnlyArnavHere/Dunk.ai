@@ -3,76 +3,114 @@
 
 @custom-variant dark (&:is(.dark *, .force-dark *));
 
-/* Dark tokens are the defaults; .force-dark re-applies them inside a
-   light-mode subtree (e.g. the PCB workspace around the KiCanvas viewer) */
+/* Gemini-style palette. Dark tokens are the defaults; .light overrides them,
+   and .force-dark re-applies dark inside a light-mode subtree (e.g. the PCB
+   workspace around the KiCanvas viewer). */
 :root,
 .force-dark {
-  --background: #0a0a0a;
-  --foreground: #f5f5f5;
-  --card: #141414;
-  --card-foreground: #f5f5f5;
-  --popover: #141414;
-  --popover-foreground: #f5f5f5;
-  --primary: #ffffff;
-  --primary-foreground: #000000;
-  --secondary: #1a1a1a;
-  --secondary-foreground: #e0e0e0;
-  --muted: #424242;
-  --muted-foreground: #a0a0a0;
-  --accent: #b9c0ca;
-  --accent-foreground: #111316;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: #262626;
-  --input: #1a1a1a;
-  --ring: #aeb6c1;
-  --chart-1: #b9c0ca;
-  --chart-2: #8e98a6;
-  --chart-3: #d5d9df;
-  --chart-4: #6d7785;
-  --chart-5: #a2aab5;
-  --radius: 0.5rem;
-  --sidebar: #0f0f0f;
-  --sidebar-foreground: #e5e5e5;
-  --sidebar-primary: #b9c0ca;
-  --sidebar-primary-foreground: #111316;
-  --sidebar-accent: #24272c;
-  --sidebar-accent-foreground: #e5e5e5;
-  --sidebar-border: #262626;
-  --sidebar-ring: #aeb6c1;
+  --background: #0f1014;
+  --foreground: #e8eaed;
+  --card: #1a1b20;
+  --card-foreground: #e8eaed;
+  --popover: #1d1e24;
+  --popover-foreground: #e8eaed;
+  --primary: #e8eaed;
+  --primary-foreground: #131417;
+  --secondary: #202127;
+  --secondary-foreground: #dadce0;
+  --muted: #26272e;
+  --muted-foreground: #9aa0a6;
+  --accent: #8ab4f8;
+  --accent-foreground: #0f1014;
+  --destructive: #f28b82;
+  --destructive-foreground: #1a0a09;
+  --border: #2b2c33;
+  --input: #202127;
+  --ring: #8ab4f8;
+  --chart-1: #8ab4f8;
+  --chart-2: #c58af9;
+  --chart-3: #f28b82;
+  --chart-4: #81c995;
+  --chart-5: #fdd663;
+  --radius: 0.75rem;
+  --sidebar: #131418;
+  --sidebar-foreground: #e3e3e3;
+  --sidebar-primary: #8ab4f8;
+  --sidebar-primary-foreground: #0f1014;
+  --sidebar-accent: #23242b;
+  --sidebar-accent-foreground: #e3e3e3;
+  --sidebar-border: #26272e;
+  --sidebar-ring: #8ab4f8;
+
+  /* Accents: one blue, used sparingly; muted slate for soft headlines. */
+  --brand-1: #8ab4f8;
+  --brand-2: #8ab4f8;
+  --soft-text: #9aa3b2;
+  /* The hero greeting: cyan -> blue -> violet, bright against the dark page. */
+  --greeting-1: #5eeafd;
+  --greeting-2: #6aa8ff;
+  --greeting-3: #c58bff;
+  --wash-1: rgba(79, 140, 255, 0.16);
+  --wash-2: rgba(164, 119, 242, 0.14);
+  --wash-3: rgba(231, 112, 139, 0.08);
+  --glass: rgba(26, 27, 32, 0.66);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3), 0 12px 40px -12px rgba(0, 0, 0, 0.55);
 }
 
 .light {
-  --background: #f8f7f3;
-  --foreground: #18191c;
+  --background: #f6f7fb;
+  --foreground: #1b1c1f;
   --card: #ffffff;
-  --card-foreground: #18191c;
+  --card-foreground: #1b1c1f;
   --popover: #ffffff;
-  --popover-foreground: #18191c;
-  --primary: #111111;
+  --popover-foreground: #1b1c1f;
+  --primary: #1b1c1f;
   --primary-foreground: #ffffff;
-  --secondary: #edece8;
-  --secondary-foreground: #2b2d31;
-  --muted: #f1f0ec;
-  --muted-foreground: #4a4b50;
-  --border: #e2e0d5;
-  --input: #ffffff;
-  --sidebar: #f8f7f3;
-  --sidebar-foreground: #18191c;
-  --sidebar-accent: #edece8;
-  --sidebar-border: #e2e0d5;
-  --accent: #10b981;
+  --secondary: #eef0f6;
+  --secondary-foreground: #2d2f34;
+  --muted: #eef0f6;
+  --muted-foreground: #5f6368;
+  --accent: #3b6cf6;
   --accent-foreground: #ffffff;
-  --ring: #10b981;
-  --sidebar-primary: #10b981;
+  --destructive: #d93025;
+  --destructive-foreground: #ffffff;
+  --border: #e3e6ee;
+  --input: #ffffff;
+  --ring: #3b6cf6;
+  --chart-1: #3b6cf6;
+  --chart-2: #8b5cf6;
+  --chart-3: #e2557a;
+  --chart-4: #1e8e3e;
+  --chart-5: #f9ab00;
+  --sidebar: #f1f3f9;
+  --sidebar-foreground: #1b1c1f;
+  --sidebar-primary: #3b6cf6;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-ring: #10b981;
+  --sidebar-accent: #e6e9f2;
+  --sidebar-accent-foreground: #1b1c1f;
+  --sidebar-border: #e3e6ee;
+  --sidebar-ring: #3b6cf6;
+
+  --brand-1: #3b6cf6;
+  --brand-2: #3b6cf6;
+  --soft-text: #5b6577;
+  /* Deep enough to hold strong contrast on the pale page. */
+  --greeting-1: #0891b2;
+  --greeting-2: #2563eb;
+  --greeting-3: #7c3aed;
+  --wash-1: rgba(122, 146, 255, 0.28);
+  --wash-2: rgba(178, 150, 255, 0.24);
+  --wash-3: rgba(255, 196, 160, 0.22);
+  --glass: rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.9);
+  --shadow-soft: 0 1px 2px rgba(31, 41, 80, 0.04), 0 16px 48px -16px rgba(31, 41, 80, 0.16);
 }
 
 @theme inline {
-  --font-sans: var(--font-instrument), 'Instrument Sans', system-ui, sans-serif;
-  --font-mono: var(--font-jetbrains), 'JetBrains Mono', monospace;
-  --font-display: var(--font-instrument-serif), 'Instrument Serif', Georgia, serif;
+  --font-sans: var(--font-sans-face), 'Figtree', system-ui, sans-serif;
+  --font-mono: var(--font-mono-face), 'Google Sans Code', ui-monospace, monospace;
+  --font-display: var(--font-sans-face), 'Figtree', system-ui, sans-serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -123,6 +161,79 @@
   }
 }
 
+/* Page curtain (components/page-transition.tsx): rises from the bottom to
+   cover, lifts toward the top to reveal — the intro loader's motion. */
+@keyframes curtain-cover {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes curtain-lift {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 100% 0);
+  }
+}
+.curtain-cover {
+  animation: curtain-cover 400ms cubic-bezier(0.76, 0, 0.24, 1) both;
+}
+.curtain-lift {
+  animation: curtain-lift 650ms cubic-bezier(0.76, 0, 0.24, 1) 60ms both;
+}
+.curtain-mark {
+  transition: opacity 250ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .curtain-cover,
+  .curtain-lift {
+    animation: none;
+  }
+  .curtain-lift {
+    opacity: 0;
+    transition: opacity 300ms ease;
+  }
+}
+
+/* Chat loader word: a light sweep across muted text, like Claude's "Thinking…". */
+@keyframes text-shimmer {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--muted-foreground) 0%,
+    var(--muted-foreground) 35%,
+    var(--foreground) 50%,
+    var(--muted-foreground) 65%,
+    var(--muted-foreground) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: text-shimmer 1.8s linear infinite;
+}
+
+/* Indeterminate loader bar (components/brand-loader.tsx). */
+@keyframes loader-slide {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 /* Dunk Arcade launcher: the idle ship bobs gently while a job runs. */
 @keyframes arcade-float {
   0%,
@@ -154,9 +265,51 @@
     font-family: var(--font-display);
   }
   
+  /* Headings that used Playfair now use the display face, so the app
+     reads as one typeface. Tracking tightens at display sizes. */
   .font-serif {
-    font-family: var(--font-playfair), serif;
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
   }
+
+  /* The quieter half of a two-tone headline, as in "Hi maker, what are we
+     building today?" — a muted slate, not a colour. */
+  .text-soft {
+    color: var(--soft-text);
+  }
+
+  /* The hero greeting ("Hi maker,"): a high-contrast three-colour sweep that
+     picks up the ribbon's cyan. */
+  .text-greeting {
+    background: linear-gradient(90deg, var(--greeting-1), var(--greeting-2) 50%, var(--greeting-3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    /* Room for descenders and the comma, which background-clip would crop. */
+    padding-bottom: 0.08em;
+  }
+
+  /* A frosted surface for floating chrome: nav, composer, overlays. */
+  .glass {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    /* 12px, not 18: blur cost grows with radius, and this sits over canvases. */
+    backdrop-filter: blur(12px) saturate(1.3);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  }
+  .shadow-soft {
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* The soft colour washes behind landing and auth pages. */
+  .page-wash {
+    background:
+      radial-gradient(60% 50% at 15% 0%, var(--wash-1), transparent 70%),
+      radial-gradient(50% 45% at 90% 10%, var(--wash-2), transparent 70%),
+      radial-gradient(45% 40% at 70% 85%, var(--wash-3), transparent 70%),
+      var(--background);
+  }
+
   
   .text-stroke {
     -webkit-text-stroke: 1.5px currentColor;

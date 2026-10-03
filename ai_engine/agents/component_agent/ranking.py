@@ -32,6 +32,7 @@ import logging
 import math
 from typing import Any, Dict, List, Optional
 
+import catalogue
 import config
 import coverage
 import utils
@@ -425,12 +426,12 @@ class ComponentRanker:
         for result in retrieval_results:
             ranked = self.rank(result)
 
-            # Walk down ranked_candidates to find the best part not already used elsewhere in this BOM
-            for candidate in ranked["ranked_candidates"]:
-                part = utils.get_mfr_part(candidate)
-                if part not in selected_parts:
-                    ranked["best_candidate"] = candidate
-                    break
+            unused = [c for c in ranked["ranked_candidates"] if utils.get_mfr_part(c) not in selected_parts]
+            chosen = self._first_orderable(unused, ranked)
+            if chosen is not None:
+                ranked["best_candidate"] = chosen
+            elif unused:
+                ranked["best_candidate"] = unused[0]
             else:
                 # every candidate is already used elsewhere -- keep top pick, flag it
                 ranked["best_candidate"]["duplicate_warning"] = True
@@ -439,6 +440,44 @@ class ComponentRanker:
             ranked_results.append(ranked)
 
         return ranked_results
+
+    # ------------------------------------------------------------------
+    #: How far down the ranking to look for an orderable part. Each look is one
+    #: catalogue query (cached per part), so this bounds the added latency.
+    CATALOGUE_DEPTH = 6
+
+    def _first_orderable(self, candidates: List[Dict[str, Any]], ranked: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """The best-ranked candidate the JLCPCB catalogue actually stocks.
+
+        A part not in the catalogue is dropped later by the board stage, taking
+        its connections with it (see catalogue.py). Unknown -- catalogue
+        unreachable, or the check disabled -- counts as orderable, so this never
+        makes an offline run worse than it was. Returns None when every checked
+        candidate is confirmed absent; the caller then keeps the old top pick.
+        """
+        skipped = []
+        for candidate in candidates[: self.CATALOGUE_DEPTH]:
+            part = utils.get_mfr_part(candidate)
+            extra = candidate.get("extra_params")
+            number = extra.get("number") if isinstance(extra, dict) else None
+            ok, listing = catalogue.verdict(part, number)
+            if ok is False:
+                skipped.append(part)
+                continue
+            if listing:
+                # The board stage resolves fastest and surest by catalogue number
+                # (its tier 1). Record it when the dataset did not carry one.
+                if isinstance(extra, dict) and not extra.get("number"):
+                    extra["number"] = listing["lcsc"].lstrip("C")
+                candidate["catalogue_verified"] = True
+            if skipped:
+                ranked["catalogue_skipped"] = skipped
+                logger.info("Skipped %s: not in the JLCPCB catalogue; chose %s", ", ".join(skipped), part)
+            return candidate
+        if skipped:
+            ranked["catalogue_skipped"] = skipped
+            logger.warning("None of %s are in the JLCPCB catalogue; keeping the top pick", ", ".join(skipped))
+        return None
 
 
 if __name__ == "__main__":

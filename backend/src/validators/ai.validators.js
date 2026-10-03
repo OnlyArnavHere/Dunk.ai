@@ -1,4 +1,5 @@
 import { body } from 'express-validator';
+import { BOARD_PROVIDER_IDS } from '../config/providers.js';
 
 export const chatValidation = [
   body('projectId').isMongoId().withMessage('Valid project ID is required'),
@@ -18,7 +19,7 @@ export const runValidation = [
   // dunkai-designer's provider registry; an unknown name would be rejected
   // there anyway, but failing here gives the user a 400 instead of a job that
   // dies three stages in.
-  body('provider').optional().isIn(['claude-code', 'anthropic', 'gemini', 'groq', 'ollama']),
+  body('provider').optional().isIn(BOARD_PROVIDER_IDS),
   // Not enumerated here on purpose: which models a provider will run is the
   // designer's rule, not this layer's, and it enforces it (the anthropic
   // provider refuses anything above the 4.5 generation). Duplicating the list

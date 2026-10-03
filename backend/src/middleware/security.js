@@ -1,6 +1,7 @@
 import rateLimit from 'express-rate-limit';
 import mongoSanitize from 'express-mongo-sanitize';
 import { env } from '../config/env.js';
+import { ApiError } from '../utils/ApiError.js';
 
 // General API rate limiter
 export const generalLimiter = rateLimit({
@@ -52,11 +53,12 @@ export const corsOptions = {
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, server-to-server)
     if (!origin) return callback(null, true);
-    const allowed = [env.clientOrigin, env.clientOriginFallback];
-    if (allowed.includes(origin)) {
+    if (env.corsOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error(`CORS: origin ${origin} not allowed`));
+      // A 403, not a bare Error: that surfaced as a logged 500 "Server Error"
+      // for every request from an origin not in CORS_ORIGINS.
+      callback(ApiError.forbidden(`CORS: origin ${origin} not allowed`));
     }
   },
   credentials: true,

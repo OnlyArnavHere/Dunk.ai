@@ -40,6 +40,24 @@ const userSchema = new mongoose.Schema(
       seats: { type: Number, default: 1 },
     },
 
+    // BYOK: the user's own provider keys, AES-256-GCM encrypted
+    // (utils/secrets.js). Never selected by default and never serialised; the
+    // only way out is services/apiKey.service.js, which sends masked values to
+    // the browser and plaintext to the AI engine only.
+    apiKeys: {
+      type: Map,
+      of: new mongoose.Schema(
+        {
+          encrypted: { type: String, required: true },
+          masked: { type: String, required: true },
+          verifiedAt: { type: Date },
+        },
+        { _id: false }
+      ),
+      default: undefined,
+      select: false,
+    },
+
     // Activity
     lastLogin: { type: Date },
     isActive: { type: Boolean, default: true },
@@ -53,6 +71,7 @@ const userSchema = new mongoose.Schema(
         delete ret.resetPasswordToken;
         delete ret.resetPasswordExpires;
         delete ret.emailVerificationToken;
+        delete ret.apiKeys;
         return ret;
       },
     },

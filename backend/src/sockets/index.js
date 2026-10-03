@@ -10,7 +10,7 @@ import { env } from '../config/env.js';
 export const initSocket = (httpServer) => {
   const io = new SocketIOServer(httpServer, {
     cors: {
-      origin: [env.clientOrigin, env.clientOriginFallback],
+      origin: env.corsOrigins,
       credentials: true,
       methods: ['GET', 'POST'],
     },
@@ -21,10 +21,12 @@ export const initSocket = (httpServer) => {
   // Socket authentication middleware
   io.use(async (socket, next) => {
     try {
-      // Try token from handshake auth
+      // Preferred: the short-lived socket token from GET /auth/socket-token,
+      // which is the only thing that works when the frontend and this server
+      // are on different domains (see signSocketToken in utils/tokens.js).
       let token = socket.handshake.auth?.token;
 
-      // Fall back to cookie (if passed in headers)
+      // Fall back to the access cookie, which only arrives when both are on one host
       if (!token && socket.handshake.headers?.cookie) {
         const cookies = socket.handshake.headers.cookie
           .split(';')
